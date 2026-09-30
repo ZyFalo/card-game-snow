@@ -16,6 +16,7 @@
     ]
   },
   "deploy": {
+    "startCommand": "node --enable-source-maps apps/server/dist/server.mjs",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",

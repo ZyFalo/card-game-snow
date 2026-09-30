@@ -39,10 +39,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      # Las pruebas e2e levantan el servidor de verdad (cuentas, PR 7) contra el Postgres del servicio.
+      # Las e2e levantan el servidor de verdad (cuentas, PR 7), con su propia base en el Postgres del servicio.
       - name: Prueba de humo e2e
-        env:
-          E2E_DATABASE_URL: postgres://ventisca:ventisca@localhost:5432/ventisca
         run: |
           pnpm --filter @ventisca/web exec playwright install --with-deps chromium
           PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --grep-invert @lento

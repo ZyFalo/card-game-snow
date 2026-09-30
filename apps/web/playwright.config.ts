@@ -6,14 +6,15 @@ import { defineConfig } from '@playwright/test';
  * GPU se puede forzar el render por software con PW_SWIFTSHADER=1; PW_CHROMIUM_PATH permite usar un
  * Chromium ya instalado.
  *
- * El servidor usa E2E_DATABASE_URL (la CI) o el DATABASE_URL del .env local (docker compose up -d db).
- * Los correos no se envían: se guardan en E2E_OUTBOX, donde las pruebas leen los códigos.
+ * El servidor arranca con una base propia, `ventisca_e2e`, que recrea en cada corrida en el Postgres de
+ * DATABASE_URL_TEST (el del .env local con docker compose up -d db, o el de la CI): la base de desarrollo
+ * no se toca. Los correos no se envían: se guardan en E2E_OUTBOX, donde las pruebas leen los códigos.
  */
 const swiftshader = process.env.PW_SWIFTSHADER === '1';
 try {
   process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url)));
 } catch {
-  /* sin .env: la CI da E2E_DATABASE_URL */
+  /* sin .env: la CI da DATABASE_URL_TEST */
 }
 export const E2E_OUTBOX = fileURLToPath(new URL('./.e2e-outbox', import.meta.url));
 const API_PORT = 3100;
@@ -43,7 +44,7 @@ export default defineConfig({
       env: { VENTISCA_API: `http://127.0.0.1:${API_PORT}` },
     },
     {
-      command: '../server/node_modules/.bin/tsx ../server/src/main.ts',
+      command: '../server/node_modules/.bin/tsx ../server/test/support/e2e-server.ts',
       url: `http://127.0.0.1:${API_PORT}/api/health`,
       reuseExistingServer: true,
       timeout: 60_000,
@@ -51,7 +52,7 @@ export default defineConfig({
         NODE_ENV: 'test',
         HOST: '127.0.0.1',
         PORT: String(API_PORT),
-        DATABASE_URL: process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL ?? '',
+        DATABASE_URL_TEST: process.env.DATABASE_URL_TEST ?? '',
         SESSION_SECRET: 'solo-para-las-pruebas-e2e-no-es-un-secreto',
         APP_URL: 'http://127.0.0.1:5174',
         MAIL_OUTBOX_DIR: E2E_OUTBOX,

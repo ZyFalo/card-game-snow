@@ -148,7 +148,8 @@ export interface TurnResult {
 }
 
 export interface ReplayData {
-  version: 1;
+  /** Versión de las reglas con que se grabó (REPLAY_VERSION); runReplay rechaza las demás. */
+  version: number;
   seed: number;
   mapId: MapId;
   difficulty: Difficulty;

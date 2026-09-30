@@ -15,6 +15,7 @@ import {
   openBox,
   type Plan,
   planTeam,
+  REPLAY_VERSION,
   reservesFor,
   resolveTurn,
   rngFrom,
@@ -119,7 +120,7 @@ describe('§18 Progresión: monedas, cajas y colección', () => {
       state = r.state;
     }
     const replay = runReplay({
-      version: 1,
+      version: REPLAY_VERSION,
       seed: 99,
       mapId: first.mapId,
       difficulty: first.difficulty,

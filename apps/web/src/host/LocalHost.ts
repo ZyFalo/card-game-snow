@@ -7,6 +7,7 @@ import {
   type MapId,
   type MatchState,
   type Plan,
+  REPLAY_VERSION,
   type ReplayData,
   resolveTurn,
   type TurnResult,
@@ -101,7 +102,7 @@ export class LocalHost implements GameHost {
   replay(): ReplayData | null {
     if (!this.state) return null;
     return {
-      version: 1,
+      version: REPLAY_VERSION,
       seed: this.state.seed,
       mapId: this.state.mapId,
       difficulty: this.state.difficulty,

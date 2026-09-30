@@ -22,7 +22,8 @@
     "e2e": "pnpm --filter @ventisca/web e2e",
     "ci": "biome ci . && pnpm typecheck && pnpm test && pnpm build",
     "pacing": "pnpm --filter @ventisca/web pacing",
-    "db:generate": "pnpm --filter @ventisca/server db:generate"
+    "db:generate": "pnpm --filter @ventisca/server db:generate",
+    "check:prod": "pnpm --filter @ventisca/web check:prod"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

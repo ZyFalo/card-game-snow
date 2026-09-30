@@ -6,7 +6,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 
 > ¿Continúas el desarrollo con Claude Code? Empieza por `docs/traspaso.md`.
 
-- En línea: la página publicada que comparta el equipo.
+- En línea: https://ventisca.wpena.dev (el juego sin cuenta; las cuentas llegan con el hito M7).
 - Local: `pnpm install` y luego `pnpm dev`, y abre http://localhost:5173. Si `pnpm` falla con "Cannot find module …/bin/pnpm.cjs", tu Corepack es anterior a pnpm 12: actualízalo con `npm i -g corepack@latest` (o usa `npx corepack@latest pnpm dev`).
 - Con el servidor (modo en línea, en construcción): `cp .env.example .env` y luego `docker compose up --build`, y abre http://localhost:3000. Detalle en `docs/traspaso.md`.
 - Un solo archivo: `pnpm build:single` genera `apps/web/dist-single/index.html`, que sirve para itch.io o para compartir.

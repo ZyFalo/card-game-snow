@@ -16,10 +16,10 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - Cuentas (`/api/auth/*`), R-43 a R-49:
     - registro con captcha (Turnstile) y verificación con código de 6 dígitos;
     - inicio y cierre de sesión;
-    - recuperación de la contraseña, cambio de contraseña y de correo, y borrado.
+    - recuperación de la contraseña, cambio de contraseña y de correo, borrado, y deshacer un cambio de correo desde el correo anterior (R-50).
   - Los datos de cuenta viajan siempre en el cuerpo de la petición, nunca en la URL, porque los registros guardan la URL.
   - Ninguna respuesta revela si un correo tiene cuenta (D-59).
-  - Límites en memoria (hay una sola instancia): 5 intentos fallidos de contraseña cada 15 min por cuenta y por IP, y 3 correos por hora por dirección.
+  - Límites en memoria (hay una sola instancia): 5 intentos fallidos de contraseña cada 15 min por cuenta y 50 por IP (D-61), y 3 correos por hora por dirección, salvo los avisos de seguridad.
   - `/api/config` entrega al cliente solo valores públicos (la clave del sitio de Turnstile).
   - El progreso llega en los siguientes pasos del M7.
 - **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.

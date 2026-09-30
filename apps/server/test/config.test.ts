@@ -1,33 +1,61 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config';
 
+const base = {
+  DATABASE_URL: 'postgres://u:p@localhost:5432/ventisca',
+  SESSION_SECRET: 'x'.repeat(48),
+  APP_URL: 'https://ventisca.wpena.dev',
+};
+
 describe('Configuración del servidor', () => {
-  it('con solo DATABASE_URL usa el puerto, el host y el nivel de registro por defecto', () => {
-    expect(loadConfig({ DATABASE_URL: 'postgres://u:p@localhost:5432/ventisca' })).toEqual({
-      databaseUrl: 'postgres://u:p@localhost:5432/ventisca',
+  it('con lo obligatorio usa el puerto, el host y el nivel de registro por defecto', () => {
+    expect(loadConfig(base)).toEqual({
+      production: false,
+      databaseUrl: base.DATABASE_URL,
+      sessionSecret: base.SESSION_SECRET,
+      appUrl: base.APP_URL,
       port: 3000,
       host: '0.0.0.0',
       logLevel: 'info',
     });
   });
 
-  it('toma el puerto que da Railway en PORT', () => {
-    expect(loadConfig({ DATABASE_URL: 'postgresql://db/ventisca', PORT: '8080' }).port).toBe(8080);
+  it('toma el puerto que da Railway en PORT y reconoce producción', () => {
+    const config = loadConfig({ ...base, PORT: '8080', NODE_ENV: 'production' });
+    expect(config.port).toBe(8080);
+    expect(config.production).toBe(true);
   });
 
-  it('sin DATABASE_URL no arranca y dice qué variable falta', () => {
+  it('sin DATABASE_URL, SESSION_SECRET o APP_URL no arranca y dice cuál falta', () => {
     expect(() => loadConfig({})).toThrow(/DATABASE_URL/);
+    expect(() => loadConfig({ ...base, SESSION_SECRET: undefined })).toThrow(/SESSION_SECRET/);
+    expect(() => loadConfig({ ...base, APP_URL: undefined })).toThrow(/APP_URL/);
+  });
+
+  it('SESSION_SECRET necesita al menos 32 caracteres', () => {
+    expect(() => loadConfig({ ...base, SESSION_SECRET: 'corto' })).toThrow(/SESSION_SECRET: debe tener al menos 32/);
+  });
+
+  it('APP_URL va sin barra final ni ruta', () => {
+    expect(() => loadConfig({ ...base, APP_URL: 'https://ventisca.wpena.dev/' })).toThrow(/APP_URL/);
+    expect(() => loadConfig({ ...base, APP_URL: 'ventisca.wpena.dev' })).toThrow(/APP_URL/);
   });
 
   it('el error nombra la variable pero nunca muestra su valor, que puede traer la contraseña', () => {
     let message = '';
     try {
-      loadConfig({ DATABASE_URL: 'mysql://root:secreto@db/ventisca', PORT: 'x' });
+      loadConfig({
+        ...base,
+        DATABASE_URL: 'mysql://root:secreto@db/ventisca',
+        SESSION_SECRET: 'clave-corta',
+        PORT: 'x',
+      });
     } catch (err) {
       message = (err as Error).message;
     }
     expect(message).toMatch(/DATABASE_URL/);
+    expect(message).toMatch(/SESSION_SECRET/);
     expect(message).toMatch(/PORT/);
-    expect(message).not.toMatch(/secreto/);
+    expect(message).not.toMatch(/secreto|clave-corta/);
   });
 });

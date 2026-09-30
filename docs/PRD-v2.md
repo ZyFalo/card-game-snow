@@ -1,8 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.1: aprobada para implementar · 29 de septiembre de 2026 · William Andres Peña Vargas
+Versión 1.2: aprobada para implementar · 30 de septiembre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
+>
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7.
 
 ## Resumen y alcance
 
@@ -16,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una; D-57, la gestión de la cuenta, se aprobó después. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta, y D-51 a D-56, tomadas al empezar el M7; las herramientas del servidor se explican en el ADR 0006. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -37,6 +39,12 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-48 | Recompensas individuales: cada persona cobra sus rondas (D-31) y gana sus logros. Solo cobra una ronda quien estaba conectado al terminarla; el bot no cobra. | Aprobada |
 | D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio. | Aprobada |
 | D-50 | El sandbox usa por ninja el mazo de referencia del balance (8, 9, 10, 10, 11 y 12). El mazo de una cuenta nueva, con un solo 9, apenas permite combos. | Aprobada |
+| D-51 | El servidor HTTP y de WebSocket usa Fastify (ADR 0006). | Tomada |
+| D-52 | El servidor usa Postgres a través de Drizzle. drizzle-kit genera las migraciones como SQL versionado en el repositorio, y se aplican al desplegar (ADR 0006). | Tomada |
+| D-53 | Los mensajes del protocolo y las entradas de la API se validan con esquemas de Zod, compartidos por cliente y servidor en `packages/protocol` (ADR 0006). | Tomada |
+| D-54 | Las contraseñas se guardan con Argon2id mediante @node-rs/argon2 (ADR 0006). | Tomada |
+| D-55 | El progreso guardado en el navegador en v1 (camino, monedas, colección y logros) se descarta: no pasa a la cuenta, y el sandbox deja de usarlo. Los ajustes no son progreso y se conservan. | Tomada |
+| D-56 | Borrar la cuenta borra la fila del usuario junto con sus sesiones, sus tokens y su progreso: perfil, colección, libro de monedas, logros y estadísticas. Su lugar en `match_players` queda anónimo, como el del bot. | Tomada |
 | D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en todo lo que pasa por el correo, en lugar de enlaces. Contraseña de 8 a 128 caracteres con mayúscula, número y símbolo, más una lista de contraseñas comunes. Cambiar la contraseña con la sesión iniciada solo pide la actual (R-43 a R-49). | Aprobada |
 
 ## Experiencia del jugador
@@ -92,14 +100,14 @@ Con público abierto, el servidor no confía en nada que llegue del cliente y gu
 | Tema | Cómo se resuelve |
 | --- | --- |
 | Registro | Correo, contraseña (R-45) y nombre visible de 3 a 16 caracteres, único y con filtro de palabras. Incluye aceptar el aviso de privacidad. No se pide la edad (P-19). |
-| Contraseñas | Se guardan con Argon2id. Nunca se guardan ni se registran en claro. |
+| Contraseñas | Se guardan con Argon2id (D-54). Nunca se guardan ni se registran en claro. |
 | Verificación | Código de 6 dígitos que vence en 15 min (R-43 y R-44). Sin verificar no se juega en línea. |
 | Recuperación | Código de 6 dígitos por correo (R-43 y R-46). Al terminar se cierran todas las sesiones. |
 | Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. |
 | Abuso | Hasta 5 intentos de inicio de sesión cada 15 min por cuenta y por IP, y hasta 3 correos por hora por dirección. Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
-| Mensajes del juego | Cada mensaje se valida con un esquema, y el servidor verifica cada plan con el motor antes de aceptarlo. |
+| Mensajes del juego | Cada mensaje se valida con un esquema (D-53), y el servidor verifica cada plan con el motor antes de aceptarlo. |
 | Correo | Resend, con el dominio wpena.dev verificado mediante registros SPF y DKIM. Remitente no-responder@wpena.dev. |
-| Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil. |
+| Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil (D-56). |
 
 ### Gestión de la cuenta
 
@@ -177,7 +185,7 @@ Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasa
 
 | Tabla | Campos clave | Para qué |
 | --- | --- | --- |
-| `users` | id, email único, password_hash, display_name único, email_verified_at, deleted_at | La cuenta |
+| `users` | id, email único, password_hash, display_name único, email_verified_at | La cuenta; borrarla borra su progreso (D-56) |
 | `sessions` | id, user_id, expires_at | Sesiones con cookie |
 | `email_codes` | hash del código, user_id, propósito (verificar, recuperar o cambiar correo), correo nuevo (solo al cambiarlo), intentos, expires_at y used_at | Códigos de un solo uso (R-43) |
 | `profiles` | user_id, coins, camino_element, boxes_opened | Estado del progreso |
@@ -185,10 +193,10 @@ Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasa
 | `coin_ledger` | user_id, match_id, round, amount; única por (user_id, match_id, round) | Cobro por ronda sin duplicados (D-31) |
 | `achievements` | user_id, achievement_id, unlocked_at | Logros |
 | `matches` | id, room_code, difficulty, seed, status, turn, state_snapshot (jsonb), hash | Partidas y su estado por turno (D-49) |
-| `match_players` | match_id, user_id (vacío para el bot), ninja, joined_at, left_at | Quién jugó qué ninja |
+| `match_players` | match_id, user_id (vacío para el bot o para una cuenta borrada, D-56), ninja, joined_at, left_at | Quién jugó qué ninja |
 | `player_stats` | user_id y un contador por cada estadística de R-42; los desgloses por gólem y por elemento en jsonb | Estadísticas en línea |
 
-Las migraciones viven en el repositorio y se aplican al desplegar. La herramienta (por ejemplo Drizzle o Kysely) la elige Claude Code al empezar el M7.
+Las migraciones viven en el repositorio y se aplican al desplegar. Se generan con drizzle-kit (D-52).
 
 ## Hitos M7 a M9
 

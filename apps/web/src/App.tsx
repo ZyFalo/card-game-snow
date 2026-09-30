@@ -18,7 +18,6 @@ import { BattleHud } from './ui/BattleHud';
 import { CardFlights } from './ui/CardFlights';
 import { HelpModal, PauseMenu } from './ui/Menus';
 import { Overlays } from './ui/Overlays';
-import { CaminoScreen, CollectionScreen } from './ui/Progression';
 import { LoadingScreen, NoWebGLScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
 import { ScreenWipe } from './ui/Transitions';
 
@@ -211,9 +210,7 @@ export function App() {
           <CardFlights />
           <Overlays />
           {screen === 'title' ? <TitleScreen /> : null}
-          {screen === 'camino' ? <CaminoScreen /> : null}
           {screen === 'team' ? <TeamScreen /> : null}
-          {screen === 'collection' ? <CollectionScreen /> : null}
           {screen === 'loading' ? <LoadingScreen /> : null}
           {screen === 'results' ? <ResultsScreen /> : null}
           <ScreenWipe />

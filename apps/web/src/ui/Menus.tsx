@@ -154,13 +154,6 @@ export function HelpModal() {
         ))}
       </ul>
 
-      <h3>{HELP.coinsTitle}</h3>
-      <ul>
-        {HELP.coins.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-
       <h3>{HELP.keysTitle}</h3>
       <div className="keys">
         {HELP.keys.map(([key, what]) => (

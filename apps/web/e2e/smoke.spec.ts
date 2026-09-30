@@ -61,36 +61,8 @@ test('una partida completa con sugerencias llega a resultados @lento', async ({ 
     await page.keyboard.press('Space');
   }
   await expect(page.getByRole('heading', { name: /Victoria|Derrota/ })).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
-test('colección y tienda: comprar una caja descuenta monedas y suma cartas (R-28)', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript(() => {
-    window.localStorage.setItem(
-      'ventisca:profile:v1',
-      JSON.stringify({
-        version: 1,
-        coins: 500,
-        camino: 'snow',
-        boxesOpened: 0,
-        collection: { 'fire-01': 1, 'water-01': 1, 'snow-01': 1, 'snow-18': 1 },
-      }),
-    );
-  });
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Colección', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Colección y tienda' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Nieve/ })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('button', { name: 'Comprar caja de 2 cartas de Nieve por 180 monedas' }).click();
-  await expect(page.getByRole('dialog', { name: 'Tu caja de Nieve' })).toBeVisible();
-  await page.getByRole('button', { name: 'Seguir' }).click();
-  const saved = await page.evaluate(() => JSON.parse(window.localStorage.getItem('ventisca:profile:v1') ?? '{}'));
-  expect(saved.coins).toBe(320);
-  const snowCards = Object.entries(saved.collection as Record<string, number>)
-    .filter(([id]) => id.startsWith('snow-'))
-    .reduce((sum, [, qty]) => sum + qty, 0);
-  expect(snowCards).toBe(4);
+  // El sandbox no da monedas ni logros (D-34).
+  await expect(page.getByRole('heading', { name: 'Monedas' })).toHaveCount(0);
+  await expect(page.getByText(/Logros/)).toHaveCount(0);
   expect(errors).toEqual([]);
 });

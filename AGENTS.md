@@ -4,7 +4,7 @@ Lee también `docs/PRD.md` (el mapa del proyecto) y `docs/adr/`.
 
 ## Comandos
 - `pnpm install`, luego `pnpm dev` (http://localhost:5173)
-- `pnpm test` (Vitest), `pnpm typecheck` (TypeScript 7), `pnpm lint` (Biome), `pnpm ci` (todo lo anterior + build)
+- `pnpm test` (Vitest), `pnpm typecheck` (TypeScript 7), `pnpm lint` (Biome), `pnpm run ci` (todo lo anterior + build; en pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada)
 - `pnpm sim -- --matches 2000 --skill 1 [--storm] [--collection starter|box|full]` para simular balance sin render. La reserva real es la colección del jugador (R-26): mide por etapa con `--collection`, porque sin esa opción se usa el mazo fijo de v1. `pnpm sim -- --table` reproduce la tabla del §18.3 del PRD
 - `pnpm e2e` (Playwright; `PW_SWIFTSHADER=1` en máquinas sin GPU)
 - `pnpm build:single` genera `apps/web/dist-single/index.html`, un solo archivo jugable
@@ -19,7 +19,7 @@ Lee también `docs/PRD.md` (el mapa del proyecto) y `docs/adr/`.
 5. Las pruebas del core se nombran por regla: `it('R-17: …')`.
 6. Identidad original (D-01): prohibido usar nombres, arte, audio o textos del juego original en el producto. Las referencias solo pueden aparecer en `docs/`.
 7. Los textos de la UI van en `apps/web/src/i18n/es.ts`, con verbos claros y frases cortas en español neutro.
-8. La progresión (PRD §18) es pura y vive en `packages/core/src/cards.ts` y `economy.ts`. Precios, monedas y banco se cambian en `balance.json`. El perfil del jugador se guarda en `apps/web/src/state/profile.ts`; si cambias su forma, sube la versión de la clave de almacenamiento.
+8. La progresión (PRD §18) es pura y vive en `packages/core/src/cards.ts` y `economy.ts`. Precios, monedas y banco se cambian en `balance.json`. En v2 el progreso vive en la cuenta, en el servidor (D-34); el sandbox no guarda progreso en el navegador (D-55).
 
 ## Phaser 4
 Antes de tocar la escena, consulta las guías oficiales para agentes que vienen con el paquete, en `apps/web/node_modules/phaser/skills/` (cámaras, tweens, partículas, input, etc.). Notas locales:
@@ -28,4 +28,4 @@ Antes de tocar la escena, consulta las guías oficiales para agentes que vienen 
 - `fps.smoothStep` está desactivado a propósito (ADR 0004).
 
 ## Antes de terminar una tarea
-`pnpm ci` en verde, capturas si cambió algo visible y una línea en `docs/ai-log.md` si fue una decisión relevante.
+`pnpm run ci` en verde, capturas si cambió algo visible y una línea en `docs/ai-log.md` si fue una decisión relevante.

@@ -16,7 +16,7 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 ## Cómo trabajar aquí
 
 - **Idioma:** español neutro en la interfaz, la documentación y los mensajes de commit; identificadores de código en inglés.
-- **Terminado significa:** `pnpm ci` en verde, más `pnpm e2e` si tocaste la interfaz o la escena. Si cambias algo visible, verifícalo en el navegador.
+- **Terminado significa:** `pnpm run ci` en verde, más `pnpm e2e` si tocaste la interfaz o la escena. Si cambias algo visible, verifícalo en el navegador.
 - **Commits pequeños,** uno por paso lógico, con mensajes que expliquen el porqué.
 - **Registro:** toda decisión de producto o arquitectura va al registro de decisiones del PRD (D-xx), con una línea en `docs/ai-log.md`.
 - **Identidad (D-01):** nunca uses nombres, arte, audio ni textos del juego original.

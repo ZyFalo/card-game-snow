@@ -24,6 +24,10 @@ test('mantener Espacio acelera la resolución, pero no confirma el turno siguien
   await startMatch(page);
   await watchConfirms(page);
   for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+  // No siempre son tres: una sugerencia puede ser quedarse quieto sin acción, y un plan vacío no se guarda.
+  const planned = await page.evaluate(
+    () => Object.keys((window as unknown as TestWindow).__ventisca.getState().plans).length,
+  );
 
   // Espacio confirma y se queda pulsado: cada keydown siguiente llega con repeat = true,
   // como la autorrepetición del teclado.
@@ -44,7 +48,7 @@ test('mantener Espacio acelera la resolución, pero no confirma el turno siguien
 
   expect(sawBoost).toBe(true);
   expect(await phase(page)).toBe('planning');
-  expect(await confirms(page)).toEqual([3]);
+  expect(await confirms(page)).toEqual([planned]);
 
   // Al soltarlo, una pulsación nueva sí confirma.
   await page.keyboard.up('Space');

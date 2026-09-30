@@ -1,4 +1,4 @@
-import type { AchievementId, BonusCondition, Difficulty, ElementKind, EnemyKind } from '@ventisca/core';
+import type { BonusCondition, Difficulty, ElementKind, EnemyKind } from '@ventisca/core';
 
 /* Todos los textos de la interfaz viven aquí (P-11: listos para traducir). */
 
@@ -54,9 +54,6 @@ export const ES = {
   combo: '¡Combo!',
   victory: 'Victoria',
   defeat: 'Derrota',
-  newAchievement: 'Nuevo',
-  achievements: 'Logros',
-  achievementsProgress: (n: number, total: number) => `Logros · ${n} de ${total}`,
   blocked: 'Bloqueado',
   statsTitle: 'Resumen de la partida',
   loading: 'Doblando a los aprendices…',
@@ -152,18 +149,6 @@ export const BONUS_SHORT: Record<BonusCondition, string> = {
   noKo: 'Bonus: sin caídas',
   fullHealth: 'Bonus: vida completa',
   turnLimit: 'Bonus: contra el reloj',
-};
-
-export const ACHIEVEMENT_TEXT: Record<AchievementId, { name: string; detail: string }> = {
-  combo2: { name: 'Combo doble', detail: 'Juega dos cartas en el mismo turno.' },
-  combo3: { name: 'Combo triple', detail: 'Los tres ninjas juegan carta en el mismo turno.' },
-  reviver: { name: 'Reanimador', detail: 'Revive a un ninja caído.' },
-  upAgain: { name: 'De pie otra vez', detail: 'Gana con un ninja que cayó y fue revivido.' },
-  noOneLeft: { name: 'Nadie se queda atrás', detail: 'Gana después de que los tres hayan caído alguna vez.' },
-  healer15: { name: 'Mano sanadora', detail: 'Cura 15 veces en una partida.' },
-  perfectStorm: { name: 'Tormenta perfecta', detail: 'Alcanza a 3 gólems con una sola carta.' },
-  bonusWon: { name: 'Bonus conquistado', detail: 'Gana la ronda bonus.' },
-  untouched: { name: 'Sin un rasguño', detail: 'Llega al bonus con todos a vida completa.' },
 };
 
 export const TIPS: readonly string[] = [
@@ -284,11 +269,7 @@ export const OVERLAY_TEXT = {
 
 export const SCREEN_TEXT = {
   kicker: 'Tácticas por turnos · 1 jugador',
-  collection: 'Colección',
   credits: 'Proyecto de clase. Arte, sonido y música generados en código.',
-  welcome: (camino: string, card: string | undefined) =>
-    `Bienvenida al ${camino}: recibiste ${card ?? 'tu carta de camino'} y un 9 de cada elemento.`,
-  reserveTitle: 'Cartas de tu reserva para esta partida',
   cardLabel: 'Carta:',
   comboLabel: 'Combo:',
   stats: { hp: 'Vida', attack: 'Daño', range: 'Alcance', move: 'Paso' },
@@ -296,9 +277,6 @@ export const SCREEN_TEXT = {
   tip: 'Consejo',
   victory: 'Los tres aprendices resistieron la tormenta.',
   defeat: 'La escarcha cubrió a los tres. Revisa el orden de acciones y vuelve a intentarlo.',
-  coinLine: (round: number | 'bonus') => (round === 'bonus' ? 'Bonus' : `Ronda ${round}`),
-  total: 'Total',
-  balance: 'Ahora tienes',
   matchMeta: (difficulty: string, map: string) => `Dificultad ${difficulty}, mapa ${map}.`,
   clearedIn: (turns: number) => `Rondas 1 a 3 en ${turns} turnos.`,
 } as const;
@@ -331,12 +309,6 @@ export const HELP = {
     'Un ninja caído no actúa, pero puede ser revivido desde una casilla vecina (también en diagonal).',
     'Revivir ocupa la acción. El caído se levanta al instante con 1 de vida, antes de que actúen los gólems: si lo alcanzan, puede volver a caer ese mismo turno.',
   ],
-  coinsTitle: 'Monedas, cajas y colección',
-  coins: [
-    'Cada ronda superada paga al instante: 60, 120 y 120, más 120 si ganas el bonus. Lo cobrado no se pierde aunque después caigas o salgas. Con los 9 logros, las monedas se duplican.',
-    'Con monedas compras cajas de 1, 2 o 3 cartas del elemento que elijas. Los números altos son menos comunes.',
-    'Tu reserva en cada partida es toda tu colección de ese elemento, con repetidas: al llenarse el medidor sale una al azar. Más cartas, más combos.',
-  ],
   keysTitle: 'Controles',
   keys: [
     ['Clic', 'Seleccionar ninja, casilla u objetivo'],
@@ -349,36 +321,4 @@ export const HELP = {
     ['P', 'Pausa'],
   ],
   backToPause: 'Volver a la pausa',
-} as const;
-
-/* ---------- Progresión (§18) ---------- */
-
-export const CAMINO_TITLE: Record<ElementKind, string> = {
-  fire: 'Camino del Fuego',
-  water: 'Camino del Agua',
-  snow: 'Camino de la Nieve',
-};
-
-export const PROGRESSION = {
-  caminoTitle: 'Elige tu camino',
-  caminoIntro:
-    'Es tu primera carta de poder y define tu camino ninja: tu título, tu color y, en el multijugador, el ninja que llevarás. La elección es permanente.',
-  caminoNote: 'Además recibes una carta de 9 de cada elemento para empezar.',
-  caminoPick: 'Elige una carta',
-  collection: 'Colección y tienda',
-  collectionIntro:
-    'Tus cartas forman tu reserva en cada partida: todas, con repetidas, salen al azar al llenarse el medidor.',
-  coins: 'Monedas',
-  reserve: (n: number) => (n === 1 ? '1 carta' : `${n} cartas`),
-  box: (element: string) => `Caja de ${element}`,
-  boxSize: (n: number) => (n === 1 ? '1 carta' : `${n} cartas`),
-  repeatedNote: 'Puede salir repetida: las repetidas también entran a tu reserva.',
-  earnHint: 'Ganas monedas por cada ronda superada: 60, 120 y 120, más 120 si ganas el bonus.',
-  revealTitle: (element: string) => `Tu caja de ${element}`,
-  fresh: 'Nueva',
-  repeated: 'Repetida',
-  keepGoing: 'Seguir',
-  noCoins: 'Esta vez no superaste ninguna ronda, así que no hubo monedas.',
-  doubleCoins: 'Monedas dobles (9 logros)',
-  stormWarning: 'Tormenta es casi imposible con menos de 4 cartas por elemento. Junta más antes de intentarlo.',
 } as const;

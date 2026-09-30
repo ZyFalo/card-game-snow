@@ -1,7 +1,7 @@
-import { type AchievementId, DIFFICULTIES, type Difficulty } from '@ventisca/core';
+import { DIFFICULTIES, type Difficulty } from '@ventisca/core';
 import { PACES, type Pace } from '../i18n/es';
 
-/* Preferencias y logros del jugador en localStorage (siempre con try/catch). */
+/* Preferencias del jugador en localStorage (siempre con try/catch). */
 
 export interface Settings {
   pace: Pace;
@@ -35,7 +35,6 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const KEY_SETTINGS = 'ventisca:settings:v1';
-const KEY_ACHIEVEMENTS = 'ventisca:achievements:v1';
 
 export function loadSettings(): Settings {
   const base = { ...DEFAULT_SETTINGS, reducedMotion: prefersReducedMotion() };
@@ -69,21 +68,13 @@ export function saveSettings(s: Settings): void {
   }
 }
 
-export type Unlocked = Partial<Record<AchievementId, string>>;
+/** Perfil y logros de v1. El sandbox no da progreso (D-34) y lo guardado se descarta (D-55). */
+const DISCARDED_KEYS = ['ventisca:profile:v1', 'ventisca:achievements:v1'];
 
-export function loadAchievements(): Unlocked {
+export function discardLocalProgress(): void {
   try {
-    const raw = window.localStorage.getItem(KEY_ACHIEVEMENTS);
-    return raw ? (JSON.parse(raw) as Unlocked) : {};
+    for (const key of DISCARDED_KEYS) window.localStorage.removeItem(key);
   } catch {
-    return {};
-  }
-}
-
-export function saveAchievements(u: Unlocked): void {
-  try {
-    window.localStorage.setItem(KEY_ACHIEVEMENTS, JSON.stringify(u));
-  } catch {
-    /* sin almacenamiento disponible */
+    /* sin almacenamiento disponible: no hay nada que borrar */
   }
 }

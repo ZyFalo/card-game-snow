@@ -26,7 +26,7 @@ export interface EnemyStats {
 
 export interface DifficultyConfig {
   enemiesPerRound: { min: number; max: number; bonus: number };
-  /** Multiplica la vida de los enemigos al aparecer (se redondea hacia abajo). */
+  /** Multiplica la vida de los enemigos al aparecer (se redondea al entero más cercano, D-31). */
   enemyHpMultiplier: number;
   /** Los enemigos priorizan rematar y a los ninjas más débiles. */
   focusWeakest: boolean;

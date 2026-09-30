@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.1 |
+| Versión | 0.9.2 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -395,7 +395,7 @@ Los valores numéricos viven en configuración (Apéndice A) para poder balancea
 ### Reglas técnicas
 
 - **R-23 Aleatoriedad determinista.** Todo el azar (orden de aparición, tipo y cantidad de enemigos, empates de la IA, robo de cartas, condición del bonus) sale de un generador pseudoaleatorio con semilla por partida. Misma semilla + mismos planes = misma partida, bit a bit.
-- **R-24 Números enteros.** HP y daño son enteros. Los multiplicadores se aplican y luego se redondea hacia abajo. Con los valores actuales no aparecen fracciones (15, 12 y 9 con Potencia; 4 y 10 de salpicadura).
+- **R-24 Números enteros.** HP y daño son enteros. Los multiplicadores se aplican y luego se redondea hacia abajo. Con los valores actuales no aparecen fracciones (15, 12 y 9 con Potencia; 4 y 10 de salpicadura). Excepción (D-31): la vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano, así que queda en 42, 63 y 84.
 
 ---
 
@@ -970,6 +970,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-31 | La vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano (R-24). Truncar dejaba a Granizo con 62 en vez de 63, porque en coma flotante 45 × 1,4 da 62,999…. Cambia el hash de las repeticiones de Tormenta en las que aparece un Granizo | ✅ | 2026-09-29 |
 | D-30 | Las animaciones de interfaz usan Web Animations y CSS: no bloquean el turno y se pueden congelar en un punto exacto para verificarlas | ✅ | 2026-09-29 |
 | D-29 | Coreografía con tabla única de tiempos y estimador de ritmo; metas de duración por turno vigiladas por pruebas | ✅ | 2026-09-29 |
 | D-28 | La pausa de impacto se mide con el delta real de cada cuadro (no con temporizadores): en equipos lentos dura como mucho un cuadro | ✅ | 2026-09-29 |
@@ -982,6 +983,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.9.2 | 2026-09-29 | R-24 y D-31: en Tormenta, la vida de los gólems se redondea al entero más cercano (Granizo pasa de 62 a 63). Las repeticiones de Tormenta grabadas antes, en las que aparece un Granizo, ya no reproducen el mismo hash. En 2.000 partidas del bot cambian 1.952 (todas las que tienen un Granizo) y el resultado cambia en 60. Las de Clásica no cambian. Ritmo vuelto a medir: Clásica igual y Tormenta en 3,5 s / 6,7 s / 102 s por partida, dentro de las metas |
 | 0.9.1 | 2026-09-29 | Traspaso a Claude Code: `CLAUDE.md`, guía `docs/traspaso.md` con puesta en marcha y primer mensaje, y script `pnpm pacing` |
 | 0.9 | 2026-09-29 | Animación fase 4 (interfaz): cartas que vuelan a la mano, medidor vivo, rastro de vida, temblor de panel, transiciones entre pantallas, entradas escalonadas y conteo de resultados. D-30. Plan de animación completo |
 | 0.8 | 2026-09-29 | Animación fase 3: tabla de tiempos y estimador (D-29), metas de ritmo, combos encadenados, quemaduras y estados agrupados, explosiones sin bloqueo, anillo del actor, consejo por fase, animaciones rápidas y aceleración con Espacio. Carteles sincronizados con la velocidad |
@@ -1099,7 +1101,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 | `burn` | 3 de daño × 3 turnos | Wiki y reimplementación | |
 | `reviveHp` | 1 | Reimplementación | 🧪 |
 | `bonusTurnLimit` | 13 turnos (Clásica) y 18 (Tormenta) para superar las rondas 1 a 3 | Simulación de 2.000 partidas por configuración (M4) | ✅ Ver reporte de balance |
-| `difficulty.storm` | 2 a 4 gólems (bonus 5), vida ×1,4, rematan al más débil | Propuesta calibrada con simulación (D-13) | ✅ |
+| `difficulty.storm` | 2 a 4 gólems (bonus 5), vida ×1,4 redondeada (D-31), rematan al más débil | Propuesta calibrada con simulación (D-13) | ✅ |
 | `rocks` | (2,0) (6,0) (2,4) (6,4) | Reimplementación | Por mapa |
 | `spawn.ninjas` | x = 0; y ∈ {0, 2, 4} al azar | Reimplementación | |
 | `spawn.enemies` | x ∈ {7, 8}; y al azar | Reimplementación | |

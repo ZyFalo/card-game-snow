@@ -114,7 +114,8 @@ export function spawnRound(state: MatchState, rng: Rng, round: Round, events: Ga
     const pos = pickSpawnTile(state, rng);
     if (!pos || kinds.length === 0) break;
     const kind = rng.pick(kinds);
-    const hp = Math.floor(BALANCE.enemies[kind].hp * diff.enemyHpMultiplier);
+    // Se redondea al entero más cercano (D-31): truncar convertía 45 × 1,4 = 62,999… en 62.
+    const hp = Math.round(BALANCE.enemies[kind].hp * diff.enemyHpMultiplier);
     const enemy: Enemy = {
       id: `e${state.nextEnemySeq++}`,
       kind,

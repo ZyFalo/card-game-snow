@@ -19,7 +19,7 @@ import { CardFlights } from './ui/CardFlights';
 import { HelpModal, PauseMenu } from './ui/Menus';
 import { Overlays } from './ui/Overlays';
 import { CaminoScreen, CollectionScreen } from './ui/Progression';
-import { LoadingScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
+import { LoadingScreen, NoWebGLScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
 import { ScreenWipe } from './ui/Transitions';
 
 interface Frame {
@@ -176,6 +176,7 @@ export function App() {
   const paused = useApp((s) => s.paused);
   const helpOpen = useApp((s) => s.helpOpen);
   const reduced = useApp((s) => s.settings.reducedMotion);
+  const webglMissing = useApp((s) => s.webglMissing);
   useKeyboard();
   useRenderLoopByScreen();
 
@@ -216,6 +217,7 @@ export function App() {
           {screen === 'loading' ? <LoadingScreen /> : null}
           {screen === 'results' ? <ResultsScreen /> : null}
           <ScreenWipe />
+          {webglMissing ? <NoWebGLScreen /> : null}
           {paused && screen === 'battle' ? <PauseMenu /> : null}
           {helpOpen ? <HelpModal /> : null}
         </div>

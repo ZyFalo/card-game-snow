@@ -1,5 +1,5 @@
-import type { AchievementId, Difficulty } from '@ventisca/core';
-import type { Pace } from '../i18n/es';
+import { type AchievementId, DIFFICULTIES, type Difficulty } from '@ventisca/core';
+import { PACES, type Pace } from '../i18n/es';
 
 /* Preferencias y logros del jugador en localStorage (siempre con try/catch). */
 
@@ -41,10 +41,24 @@ export function loadSettings(): Settings {
   const base = { ...DEFAULT_SETTINGS, reducedMotion: prefersReducedMotion() };
   try {
     const raw = window.localStorage.getItem(KEY_SETTINGS);
-    return raw ? { ...base, ...(JSON.parse(raw) as Partial<Settings>) } : base;
+    return raw ? sanitizeSettings(JSON.parse(raw), base) : base;
   } catch {
     return base;
   }
+}
+
+const BOOLEAN_SETTINGS = ['tips', 'autoAdvance', 'sfx', 'music', 'reducedMotion', 'fastAnimations'] as const;
+
+/** Ajustes leídos del almacenamiento: cada campo inválido o ausente vuelve a su valor de `base`. */
+function sanitizeSettings(raw: unknown, base: Settings): Settings {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
+  const r = raw as Record<string, unknown>;
+  const out: Settings = { ...base };
+  // Solo claves propias: con `in`, "toString" o "constructor" pasarían y dejarían el reloj en NaN.
+  if (typeof r.pace === 'string' && Object.hasOwn(PACES, r.pace)) out.pace = r.pace as Pace;
+  if ((DIFFICULTIES as readonly unknown[]).includes(r.difficulty)) out.difficulty = r.difficulty as Difficulty;
+  for (const k of BOOLEAN_SETTINGS) if (typeof r[k] === 'boolean') out[k] = r[k];
+  return out;
 }
 
 export function saveSettings(s: Settings): void {

@@ -49,8 +49,9 @@ test('mantener Espacio acelera la resolución, pero no confirma el turno siguien
   // Al soltarlo, una pulsación nueva sí confirma.
   await page.keyboard.up('Space');
   await page.keyboard.press('Space');
-  await expect.poll(() => phase(page)).toBe('resolving');
-  expect(await confirms(page)).toHaveLength(2);
+  // Se mira el registro de confirmaciones y no la fase: un turno sin combate se resuelve tan
+  // rápido que, con la máquina cargada, el sondeo puede no llegar a ver "resolving".
+  await expect.poll(() => confirms(page)).toHaveLength(2);
   expect(errors).toEqual([]);
 });
 
@@ -70,7 +71,7 @@ test('las teclas de planificación no se repiten al mantenerlas', async ({ page 
 
   // Mantener Enter confirma una sola vez.
   await page.keyboard.down('Enter');
-  await expect.poll(() => phase(page)).toBe('resolving');
+  await expect.poll(() => confirms(page)).toHaveLength(1);
   await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');
   for (let i = 0; i < 20; i++) {
     await page.keyboard.down('Enter');
@@ -79,4 +80,22 @@ test('las teclas de planificación no se repiten al mantenerlas', async ({ page 
   await page.keyboard.up('Enter');
   expect(await phase(page)).toBe('planning');
   expect(await confirms(page)).toHaveLength(1);
+});
+
+test('deshacer la única acción no deja un plan vacío: el siguiente Esc abre la pausa', async ({ page }) => {
+  await startMatch(page);
+  // Un ninja que solo ataca, sin moverse (no es fácil de lograr al empezar, así que se prepara el plan).
+  await page.evaluate(() => {
+    const store = (window as unknown as TestWindow).__ventisca as unknown as {
+      getState(): { active: string; match: { enemies: { id: string }[] } };
+      setState(patch: object): void;
+    };
+    const { active, match } = store.getState();
+    const target = match.enemies[0]?.id ?? 'e1';
+    store.setState({ plans: { [active]: { ninjaId: active, action: { type: 'attack', targetId: target } } } });
+  });
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().plans)).toEqual({});
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pausa' })).toBeVisible();
 });

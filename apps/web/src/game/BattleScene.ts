@@ -18,6 +18,7 @@ import * as Phaser from 'phaser';
 import { ELEMENT_COLORS, hex, ICE, PALETTE } from '../art/palette';
 import { golemRig, ninjaRig } from '../art/rigs';
 import { audio } from '../audio/audio';
+import { ES } from '../i18n/es';
 import { clickTile, setHover, undo } from '../state/actions';
 import { bridge } from '../state/bridge';
 import { activeInfo, plansArray, threatTiles } from '../state/planning';
@@ -1000,7 +1001,7 @@ export class BattleScene extends Phaser.Scene {
       audio.play('block');
       u.crackShield();
       this.fx.impact(u.center(), MINT, 70);
-      this.floatText(u, 'Bloqueado', ELEMENT_COLORS.snow.accent);
+      this.floatText(u, ES.blocked, ELEMENT_COLORS.snow.accent);
       await this.wait(TIMING.blockedHold);
       return;
     }

@@ -12,7 +12,9 @@ import {
   resolutionOrder,
   resolveTurn,
   reviveTargets,
+  rngFrom,
   sanitizePlans,
+  spawnRound,
 } from '../src';
 import { addEnemy, blank, ninja, place } from './helpers';
 
@@ -42,6 +44,37 @@ describe('Tablero y aparición', () => {
       { x: 6, y: 0 },
       { x: 2, y: 4 },
       { x: 6, y: 4 },
+    ]);
+  });
+});
+
+describe('Turno (R-04)', () => {
+  it('R-04: cada ninja recibe como máximo un movimiento y una acción; un plan repetido se ignora', () => {
+    const s = blank();
+    const e = addEnemy(s, 'colossus', 2, 1);
+    const clean = sanitizePlans(s, [
+      { ninjaId: 'fire', moveTo: { x: 1, y: 0 }, action: { type: 'attack', targetId: e.id } },
+      { ninjaId: 'fire', moveTo: { x: 0, y: 1 } },
+    ]);
+    expect(clean).toEqual([{ ninjaId: 'fire', moveTo: { x: 1, y: 0 }, action: { type: 'attack', targetId: e.id } }]);
+  });
+
+  it('R-04: al vencer el reloj se ejecuta lo elegido: un plan incompleto hace su parte y sin plan no se hace nada', () => {
+    const s = blank();
+    addEnemy(s, 'colossus', 8, 2);
+    const r = resolveTurn(s, [{ ninjaId: 'fire', moveTo: { x: 1, y: 0 } }]);
+    const ninjaEvents = r.events.filter(
+      (e) => (e.t === 'move' && ['fire', 'water', 'snow'].includes(e.unitId)) || e.t === 'attack' || e.t === 'heal',
+    );
+    expect(ninjaEvents).toEqual([
+      {
+        t: 'move',
+        unitId: 'fire',
+        path: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+        ],
+      },
     ]);
   });
 });
@@ -159,6 +192,48 @@ describe('Acciones básicas', () => {
     expect(r.events.filter((e) => e.t === 'revive')).toHaveLength(1);
     expect(ninja(r.state, 'fire').hp).toBe(BALANCE.reviveHp);
     expect(r.state.stats.revives).toBe(1);
+  });
+
+  it('R-10 el caído no planifica y sigue ocupando su casilla: nadie termina ahí ni la atraviesa un gólem', () => {
+    const s = blank();
+    place(s, 'fire', 1, 0, { hp: 0, everKo: true });
+    place(s, 'water', 0, 0);
+    const e = addEnemy(s, 'sniper', 3, 0);
+    expect(
+      sanitizePlans(s, [{ ninjaId: 'fire', moveTo: { x: 1, y: 1 }, action: { type: 'attack', targetId: e.id } }]),
+    ).toEqual([]);
+    // Agua puede cruzar a su aliado caído, pero no quedarse en su casilla.
+    expect(moveOptions(s, 'water').has(key({ x: 2, y: 0 }))).toBe(true);
+    expect(moveOptions(s, 'water').has(key({ x: 1, y: 0 }))).toBe(false);
+    const r = resolveTurn(s, []);
+    expect(r.state.ninjas.find((n) => n.id === 'fire')?.pos).toEqual({ x: 1, y: 0 });
+    expect(r.state.enemies.every((x) => !(x.pos.x === 1 && x.pos.y === 0))).toBe(true);
+  });
+
+  it('R-10 los gólems ignoran al caído: atacan al que sigue en pie y no lo salpican', () => {
+    const s = blank();
+    // El caído queda pegado al gólem y es vecino del objetivo: aun así no se ataca ni se salpica.
+    place(s, 'fire', 6, 3, { hp: 0, everKo: true });
+    place(s, 'water', 5, 3);
+    addEnemy(s, 'artillery', 7, 3);
+    const r = resolveTurn(s, []);
+    expect(r.events.filter((x) => x.t === 'enemyAttack').map((x) => x.t === 'enemyAttack' && x.targetId)).toEqual([
+      'water',
+    ]);
+    expect(r.events.some((x) => x.t === 'damage' && x.targetId === 'fire')).toBe(false);
+  });
+
+  it('R-10 al caer no carga el medidor y conserva su mano y sus estados', () => {
+    const s = blank();
+    const hand = [{ id: 'w', element: 'water' as const, value: 10 }];
+    place(s, 'water', 4, 2, { hp: 1, meter: 6, hand, boost: true });
+    addEnemy(s, 'colossus', 5, 2);
+    const r = resolveTurn(s, []);
+    const water = ninja(r.state, 'water');
+    expect(water.hp).toBe(0);
+    expect(water.meter).toBe(6);
+    expect(water.hand).toEqual(hand);
+    expect(water.boost).toBe(true);
   });
 
   it('R-11 las acciones se resuelven en orden Fuego, Agua, Nieve', () => {
@@ -288,6 +363,38 @@ describe('Enemigos (R-12, R-13)', () => {
     const r = resolveTurn(s, []);
     expect(r.state.enemies.find((x) => x.id === e.id)?.pos.x).toBe(5);
   });
+});
+
+describe('Cantidad de gólems por ronda (R-14)', () => {
+  const kindsWithinLimit = (s: ReturnType<typeof blank>) =>
+    ['sniper', 'artillery', 'colossus'].every((k) => s.enemies.filter((e) => e.kind === k).length <= 3);
+
+  for (const difficulty of ['classic', 'storm'] as const) {
+    const cfg = BALANCE.difficulty[difficulty].enemiesPerRound;
+
+    it(`R-14 (${difficulty}): las rondas 1 a 3 traen entre ${cfg.min} y ${cfg.max} gólems al azar`, () => {
+      const counts = new Set<number>();
+      for (let seed = 1; seed <= 300; seed++) {
+        const s = blank();
+        s.difficulty = difficulty;
+        spawnRound(s, rngFrom(seed), 2, []);
+        counts.add(s.enemies.length);
+        expect(kindsWithinLimit(s)).toBe(true);
+      }
+      const expected = Array.from({ length: cfg.max - cfg.min + 1 }, (_, i) => cfg.min + i);
+      expect([...counts].sort()).toEqual(expected);
+    });
+
+    it(`R-14 (${difficulty}): la ronda bonus trae ${cfg.bonus} gólems y nunca más de 3 del mismo tipo`, () => {
+      for (let seed = 1; seed <= 200; seed++) {
+        const s = blank();
+        s.difficulty = difficulty;
+        spawnRound(s, rngFrom(seed), 'bonus', []);
+        expect(s.enemies).toHaveLength(cfg.bonus);
+        expect(kindsWithinLimit(s)).toBe(true);
+      }
+    });
+  }
 });
 
 describe('Medidor y cartas (R-15 a R-18)', () => {

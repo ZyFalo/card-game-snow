@@ -1,7 +1,6 @@
 import {
   type AchievementId,
   addToCollection,
-  BALANCE,
   boxPrice,
   type CoinReward,
   coinsForRound,
@@ -30,10 +29,10 @@ import {
 import { audio } from '../audio/audio';
 import { URL_SPEED } from '../game/speed';
 import { LocalHost } from '../host/LocalHost';
-import { NINJA_TEXT, TIPS } from '../i18n/es';
+import { NINJA_TEXT, NOTICE, TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveAchievements, saveSettings } from './persist';
-import { activeInfo, nextPlannable, plansArray } from './planning';
+import { activeInfo, nextPlannable, plansArray, turnClockMs } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { saveProfile } from './profile';
 import { type CardFlight, type Screen, store } from './store';
@@ -155,12 +154,10 @@ export async function startMatch(): Promise<void> {
   beginPlanning();
 }
 
-/** Reloj del turno (R-04): 10 s por ninja que controla el jugador, según el ritmo. */
+/** Reloj del turno (R-04) de la partida en curso. */
 export function planningMs(): number | null {
   const { settings, match } = store.getState();
-  const mult = BALANCE.paceMultiplier[settings.pace];
-  if (!match || !mult) return null;
-  return Math.max(1, livingNinjas(match).length) * BALANCE.planSecondsPerNinja * mult * 1000;
+  return match ? turnClockMs(settings.pace, livingNinjas(match).length) : null;
 }
 
 export function beginPlanning(): void {
@@ -254,8 +251,14 @@ export function replayJson(): string {
 
 /* ---------- Planificación (§9.3) ---------- */
 
+/** Sin movimiento ni acción no hay plan: se quita, para que Esc vuelva a abrir la pausa. */
 function setPlan(id: ElementKind, plan: Plan): void {
-  store.setState((s) => ({ plans: { ...s.plans, [id]: plan } }));
+  store.setState((s) => {
+    const plans = { ...s.plans };
+    if (plan.moveTo || plan.action) plans[id] = plan;
+    else delete plans[id];
+    return { plans };
+  });
 }
 
 const withoutAction = (plan: Plan): Plan =>
@@ -323,7 +326,7 @@ export function clickTile(v: Vec): void {
       selectNinja(occupant.id);
       return;
     }
-    reject('Esa casilla queda fuera del alcance de la carta.');
+    reject(NOTICE.cardOutOfRange);
     return;
   }
 
@@ -336,7 +339,7 @@ export function clickTile(v: Vec): void {
       setAction(ninja.id, plan, { type: 'revive', targetId: occupant.id });
       // R-09 (D-18): se levanta con 1 de vida antes del turno de los gólems.
       if (isThreatened(m, occupant.pos)) {
-        notify(`Ojo: ${NINJA_TEXT[occupant.id].name} volverá con 1 de vida y ahí lo pueden alcanzar.`);
+        notify(NOTICE.exposedRevive(NINJA_TEXT[occupant.id].name));
       }
       return;
     }
@@ -344,7 +347,7 @@ export function clickTile(v: Vec): void {
       selectNinja(occupant.id);
       return;
     }
-    reject(`Para revivir a ${NINJA_TEXT[occupant.id].name}, planea terminar en una casilla vecina.`);
+    reject(NOTICE.reviveFromNeighbor(NINJA_TEXT[occupant.id].name));
     return;
   }
 
@@ -364,7 +367,7 @@ export function clickTile(v: Vec): void {
       setAction(ninja.id, plan, { type: 'attack', targetId: enemy.id });
       return;
     }
-    reject('Ese gólem está fuera de alcance desde la casilla planeada.');
+    reject(NOTICE.enemyOutOfRange);
     return;
   }
 
@@ -372,15 +375,15 @@ export function clickTile(v: Vec): void {
   if (info.moves.has(key(v))) {
     const next: Plan = { ninjaId: ninja.id, moveTo: v };
     if (plan.action && isActionValid(m, ninja.id, v, plan.action)) next.action = plan.action;
-    else if (plan.action) notify('La acción anterior ya no alcanza desde aquí: elige otra.');
+    else if (plan.action) notify(NOTICE.actionLost);
     setPlan(ninja.id, next);
     audio.play('select');
     return;
   }
   const reservedBy = plansArray(st.plans).find((p) => p.ninjaId !== ninja.id && p.moveTo && eq(p.moveTo, v));
-  if (reservedBy) reject(`Esa casilla ya la reservó ${NINJA_TEXT[reservedBy.ninjaId].name}.`);
-  else if (isRock(m, v)) reject('Ahí hay una roca.');
-  else reject(`${NINJA_TEXT[ninja.id].name} no llega hasta ahí este turno.`);
+  if (reservedBy) reject(NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name));
+  else if (isRock(m, v)) reject(NOTICE.rock);
+  else reject(NOTICE.outOfReach(NINJA_TEXT[ninja.id].name));
 }
 
 export function undo(): void {

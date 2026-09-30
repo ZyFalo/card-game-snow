@@ -1,6 +1,6 @@
 import { createMatch, type Difficulty, difficultyConfig } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
-import { bonusProgress } from './planning';
+import { bonusProgress, turnClockMs } from './planning';
 
 /* R-21: la ficha del bonus contra el reloj cuenta el turno que se planifica y los que quedan. */
 describe('Bonus contra el reloj en la planificación (R-21)', () => {
@@ -27,5 +27,17 @@ describe('Bonus contra el reloj en la planificación (R-21)', () => {
       text: `Turno ${n + 1} de ${n} · límite superado`,
       cls: 'bad',
     });
+  });
+});
+
+describe('Reloj del turno (R-04)', () => {
+  it('R-04: 10 s por cada uno de los 3 ninjas: 30 s en Normal, 15 s en Experto y sin reloj en Relajado', () => {
+    expect(turnClockMs('normal', 3)).toBe(30_000);
+    expect(turnClockMs('expert', 3)).toBe(15_000);
+    expect(turnClockMs('relaxed', 3)).toBeNull();
+  });
+
+  it('R-04: con un ninja caído el turno dura 20 s, porque el reloj cuenta solo los ninjas en pie', () => {
+    expect(turnClockMs('normal', 2)).toBe(20_000);
   });
 });

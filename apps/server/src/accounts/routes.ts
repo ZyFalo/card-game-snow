@@ -201,7 +201,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
           .returning({ id: users.id });
         const code = await issueCode(tx, (user as { id: string }).id, 'verify');
         // Dentro de la transacción: si el correo no sale, la cuenta no queda a medias.
-        await mailer.send(verificationMail(email, displayName, code, appUrl));
+        await mailer.send(verificationMail(email, code, appUrl));
       });
     } catch (err) {
       if (isUniqueViolation(err, 'users_display_name_key_unique')) return reply.code(409).send(apiError('name_taken'));
@@ -245,7 +245,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
       const waited = !last || now().getTime() - last.createdAt.getTime() >= CODE_COOLDOWN_SECONDS * 1000;
       if (waited) {
         const code = await issueCode(db, user.id, 'verify');
-        await sendQuietly(verificationMail(user.email, user.displayName, code, appUrl), req);
+        await sendQuietly(verificationMail(user.email, code, appUrl), req);
       }
     }
     return reply.code(202).send(checkEmail);

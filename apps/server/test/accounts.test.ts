@@ -87,6 +87,14 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
       expect(cookieOf(res)).toBeUndefined();
     });
 
+    it('el correo de verificación no lleva el nombre visible: nadie puede meter su texto en el correo de otro', async () => {
+      const data = { ...fresh(), displayName: 'Visita Ya' };
+      await register(data);
+      expect(sent[0]?.text.startsWith('Hola:\n')).toBe(true);
+      expect(sent[0]?.text).not.toContain(data.displayName);
+      expect(sent[0]?.subject).not.toContain(data.displayName);
+    });
+
     it('R-44: el código verifica la cuenta y abre una sesión con cookie HttpOnly, Secure y SameSite=Lax de 30 días', async () => {
       const data = fresh();
       await register(data);

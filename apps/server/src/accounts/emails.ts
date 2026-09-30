@@ -1,13 +1,17 @@
 import type { Mail } from './mailer';
 
-/* Textos de los correos de cuentas. Frases cortas en español neutro, como la interfaz. */
+/*
+ * Textos de los correos de cuentas. Frases cortas en español neutro, como la interfaz. Ningún correo
+ * lleva texto escrito por quien llena un formulario: la dirección de destino todavía puede no ser suya.
+ */
 
-export function verificationMail(to: string, displayName: string, code: string, appUrl: string): Mail {
+/** Sin el nombre visible: lo escribe quien se registra y el correo aún no está verificado. */
+export function verificationMail(to: string, code: string, appUrl: string): Mail {
   return {
     to,
     subject: 'Tu código para Ventisca',
     text: [
-      `Hola, ${displayName}:`,
+      'Hola:',
       '',
       'Tu código para verificar tu cuenta de Ventisca es:',
       '',

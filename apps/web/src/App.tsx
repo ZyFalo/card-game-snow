@@ -91,17 +91,34 @@ function useRenderLoopByScreen(): void {
 
 function useKeyboard(): void {
   useEffect(() => {
+    // Espacio que sigue pulsado desde antes (por ejemplo, acelerando la resolución):
+    // no confirma el turno siguiente hasta que se suelte.
+    let spaceDown = false;
     const onKey = (ev: KeyboardEvent) => {
       const st = store.getState();
+      const k = ev.key.toLowerCase();
+      // Pulsación nueva: ni autorrepetición del teclado ni un Espacio que nunca se soltó.
+      const fresh = !ev.repeat && !(k === ' ' && spaceDown);
+      if (k === ' ') spaceDown = true;
       if (st.helpOpen) {
-        if (ev.key === 'Escape') {
+        if (k === 'escape' && fresh) {
           ev.preventDefault();
           setHelp(false);
         }
         return;
       }
       if (st.screen !== 'battle' || ev.altKey || ev.ctrlKey || ev.metaKey) return;
-      const k = ev.key.toLowerCase();
+      // Mantener Espacio acelera la resolución, también con la autorrepetición.
+      if (st.phase === 'resolving' && !st.paused && k === ' ') {
+        ev.preventDefault();
+        setBoost(true);
+        return;
+      }
+      // Las demás teclas actúan una vez por pulsación: mantenerlas no confirma ni alterna nada.
+      if (!fresh) {
+        if (k === ' ' || k === 'enter' || k === 'tab') ev.preventDefault();
+        return;
+      }
       if (k === 'p') {
         ev.preventDefault();
         togglePause();
@@ -112,11 +129,6 @@ function useKeyboard(): void {
           ev.preventDefault();
           togglePause(false);
         }
-        return;
-      }
-      if (st.phase === 'resolving' && k === ' ') {
-        ev.preventDefault();
-        setBoost(true);
         return;
       }
       if (st.phase !== 'planning') return;
@@ -138,9 +150,14 @@ function useKeyboard(): void {
       }
     };
     const onKeyUp = (ev: KeyboardEvent) => {
-      if (ev.key === ' ') setBoost(false);
+      if (ev.key !== ' ') return;
+      spaceDown = false;
+      setBoost(false);
     };
-    const onBlur = () => setBoost(false);
+    const onBlur = () => {
+      spaceDown = false;
+      setBoost(false);
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);

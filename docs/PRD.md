@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.2 |
+| Versión | 0.9.3 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -476,7 +476,7 @@ El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los pan
 3. Clic en una casilla: aparece el fantasma de ese ninja y se recalculan sus objetivos desde ahí. Los objetivos se marcan con íconos distintos para atacar, curar y revivir (forma y color, no solo color).
 4. Clic en un objetivo, o elegir una carta (1 a 4 o clic en la mano) y luego la casilla, con previsualización del patrón 3×3 y de los enemigos que alcanzaría.
 5. Al completar movimiento y acción se activa el siguiente ninja sin plan (se puede desactivar).
-6. Los tres fantasmas se ven a la vez, cada uno con un número que indica su orden de resolución (R-11), para que el resultado sea predecible.
+6. Los tres fantasmas se ven a la vez. Cada ninja con una acción planificada muestra, en su panel y sobre su fantasma, el orden real en que actuará (R-11, D-32): primero las acciones básicas (atacar, curar, revivir) en orden Fuego, Agua, Nieve, y después las cartas en el mismo orden. Los movimientos son simultáneos y no se numeran; un ninja sin acción no muestra número. El orden se recalcula con cada cambio de plan.
 7. "Confirmar turno" (botón o Espacio) cierra la planificación de los tres. Se puede confirmar con planes incompletos: ese ninja no hace nada. Esc deshace el último paso del ninja activo.
 
 **Atajos:** Tab y Shift+Tab cambian de ninja, 1 a 4 eligen carta del ninja activo, Espacio confirma el turno, Esc deshace.
@@ -971,6 +971,8 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
 | D-33 | La vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano (R-24). Se registró primero como D-31; se renumeró porque D-31 y D-32 ya estaban aprobadas para otras decisiones. Truncar dejaba a Granizo con 62 en vez de 63, porque en coma flotante 45 × 1,4 da 62,999…. Cambia el hash de las repeticiones de Tormenta en las que aparece un Granizo | ✅ | 2026-09-29 |
+| D-32 | Los números de orden muestran el orden real de R-11 según los planes del momento: primero acciones básicas y luego cartas, ambas en orden Fuego, Agua, Nieve; sin acción no hay número (§9) | ✅ | 2026-09-29 |
+| D-31 | Cobro por ronda: cada ronda superada se acredita al instante; resultados y logros se guardan en el evento de fin de partida, antes de la celebración; abandonar antes solo pierde los logros de esa partida (enmienda R-29) | ✅ | 2026-09-29 |
 | D-30 | Las animaciones de interfaz usan Web Animations y CSS: no bloquean el turno y se pueden congelar en un punto exacto para verificarlas | ✅ | 2026-09-29 |
 | D-29 | Coreografía con tabla única de tiempos y estimador de ritmo; metas de duración por turno vigiladas por pruebas | ✅ | 2026-09-29 |
 | D-28 | La pausa de impacto se mide con el delta real de cada cuadro (no con temporizadores): en equipos lentos dura como mucho un cuadro | ✅ | 2026-09-29 |
@@ -983,6 +985,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.9.3 | 2026-09-29 | Decisiones aprobadas: D-31 (cobro al instante por ronda; resultados y logros en el evento de fin de partida; enmienda R-29) y D-32 (los números de orden siguen el orden real de R-11; nuevo punto 6 del §9.3) |
 | 0.9.2 | 2026-09-29 | Primer commit en GitHub (se recuperaron `.gitignore` y los workflows, que se perdieron al copiar el zip) y CI en verde. Correcciones: mantener Espacio ya no confirma turnos vacíos; reiniciar o salir ya no deja efectos vivos; una animación interrumpida ya no aplica eventos a la partida nueva. `pnpm sim` mide con la colección real y el reporte de balance se rehízo con ella. ADR 0003 queda reemplazado en su parte de animación por D-27. R-24 y D-33: en Tormenta, la vida de los gólems se redondea al entero más cercano (Granizo pasa de 62 a 63). Las repeticiones de Tormenta grabadas antes, en las que aparece un Granizo, ya no reproducen el mismo hash. En 2.000 partidas del bot cambian 1.952 (todas las que tienen un Granizo) y el resultado cambia en 60. Las de Clásica no cambian. Ritmo vuelto a medir: Clásica igual y Tormenta en 3,5 s / 6,7 s / 102 s por partida, dentro de las metas |
 | 0.9.1 | 2026-09-29 | Traspaso a Claude Code: `CLAUDE.md`, guía `docs/traspaso.md` con puesta en marcha y primer mensaje, y script `pnpm pacing` |
 | 0.9 | 2026-09-29 | Animación fase 4 (interfaz): cartas que vuelan a la mano, medidor vivo, rastro de vida, temblor de panel, transiciones entre pantallas, entradas escalonadas y conteo de resultados. D-30. Plan de animación completo |
@@ -1020,7 +1023,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **R-26 Reserva en batalla.** La reserva de cada ninja es toda la colección de su elemento, con repetidas (D-20). Al llenarse el medidor sale una carta al azar, sin reposición dentro de la partida (R-15 no cambia). Si la reserva se agota, el medidor sigue cargando sin dar cartas.
 - **R-27 Valores y rareza 📌.** Valores del 9 al 12, como las cartas de poder del original. Banco por elemento: 7 cartas de 9, 6 de 10, 4 de 11 y 3 de 12. Cada una de las 20 tiene la misma probabilidad de salir, así que por carta: 35 % / 30 % / 20 % / 15 %.
 - **R-28 Cajas.** Cajas de 1, 2 o 3 cartas (D-22). 📌 La caja es de un elemento a elección y cada carta se sortea por separado entre las 20 del banco, así que puede salir repetida. 📌 Precios: 100, 180 y 250 monedas.
-- **R-29 Monedas.** Como el original (D-23): 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Se cobran al final y se conserva lo de las rondas superadas aunque se pierda después; la ronda en la que caes no paga. Con los 9 logros completos, las monedas se duplican (hasta 840).
+- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros.
 - **R-30 Inicio.** Inventario inicial: 1 carta de 9 por elemento (la categoría más baja) (D-24). Al entrar por primera vez, el jugador elige además su **carta de camino** (D-25). 📌 Se elige entre tres cartas de 12, una por elemento, del banco (cuentan dentro de las 20). La elección es permanente y define el título ("Camino del Fuego"), el color y emblema del perfil y, en v2, el ninja que controla por defecto.
 - **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea.
 - **R-32 Persistencia.** Colección, monedas y camino se guardan en el navegador hasta que existan cuentas (v2). Borrar los datos del navegador reinicia el progreso.

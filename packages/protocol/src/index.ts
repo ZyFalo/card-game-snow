@@ -125,6 +125,13 @@ export type ChangeEmailRequestBody = z.infer<typeof changeEmailRequestSchema>;
 export const changeEmailConfirmSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
 export type ChangeEmailConfirmBody = z.infer<typeof changeEmailConfirmSchema>;
 
+/**
+ * `POST /api/auth/email/revert`: deshace un cambio de correo sin sesión, con el correo anterior, el
+ * código que llegó a ese correo y una contraseña nueva (R-50).
+ */
+export const revertEmailSchema = z.object({ email, code: z.string().regex(/^\d{6}$/), password });
+export type RevertEmailBody = z.infer<typeof revertEmailSchema>;
+
 /** `POST /api/auth/delete`: con la sesión iniciada, se confirma con la contraseña (R-49). */
 export const deleteAccountSchema = z.object({ password });
 export type DeleteAccountBody = z.infer<typeof deleteAccountSchema>;

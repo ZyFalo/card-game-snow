@@ -96,8 +96,11 @@ export function passwordChangedMail(to: string, appUrl: string): Mail {
   };
 }
 
-/** R-48: aviso al correo anterior. No incluye la dirección nueva, que escribió quien pidió el cambio. */
-export function emailChangedMail(to: string, appUrl: string): Mail {
+/**
+ * R-48 y R-50: aviso al correo anterior, con el código que deshace el cambio durante 7 días. No incluye
+ * la dirección nueva, que escribió quien pidió el cambio.
+ */
+export function emailChangedMail(to: string, code: string, appUrl: string): Mail {
   return {
     to,
     subject: 'El correo de tu cuenta de Ventisca cambió',
@@ -106,7 +109,13 @@ export function emailChangedMail(to: string, appUrl: string): Mail {
       '',
       'Tu cuenta de Ventisca ya no usa este correo: se cambió por otro.',
       '',
-      `Si fuiste tú, no tienes que hacer nada. Si no fuiste tú, recupera tu contraseña desde la pantalla de inicio de sesión en ${appUrl}.`,
+      'Si fuiste tú, no tienes que hacer nada.',
+      '',
+      `Si no fuiste tú, deshaz el cambio en ${appUrl}, en "Deshacer un cambio de correo", con este correo, este código y una contraseña nueva. El código vale 7 días y sirve una sola vez:`,
+      '',
+      code,
+      '',
+      'Te pediremos una contraseña nueva porque quien hizo el cambio conocía la anterior.',
       '',
       `Ventisca · ${appUrl}`,
     ].join('\n'),

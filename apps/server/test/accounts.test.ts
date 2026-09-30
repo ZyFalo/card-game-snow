@@ -662,6 +662,169 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
     });
   });
 
+  describe('Deshacer un cambio de correo (R-50)', () => {
+    /** Cambia el correo con la sesión y devuelve el código que llegó al correo anterior. */
+    async function hijack(data: ReturnType<typeof fresh>, cookie: string) {
+      const newEmail = `ajeno.${data.email}`;
+      await post('/api/auth/email/request', { password: data.password, newEmail }, cookie);
+      await post('/api/auth/email/confirm', { code: lastCode() }, cookie);
+      return { newEmail, notice: sent.at(-1) as Mail, revertCode: lastCode() };
+    }
+
+    it('R-50: el aviso al correo anterior trae un código para deshacer el cambio, sin la dirección nueva', async () => {
+      const { data, cookie } = await signUp();
+      const { newEmail, notice, revertCode } = await hijack(data, cookie);
+      expect(notice.to).toBe(data.email);
+      expect(notice.text).toContain('Deshacer un cambio de correo');
+      expect(revertCode).toMatch(/^\d{6}$/);
+      expect(notice.text).not.toContain(newEmail);
+    });
+
+    it('R-50: sin sesión, con el correo anterior, el código y una contraseña nueva, se restaura el correo y se cierran todas las sesiones', async () => {
+      const { data, cookie } = await signUp();
+      const { newEmail, revertCode } = await hijack(data, cookie);
+      const res = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(res.statusCode).toBe(204);
+      expect((await me(cookie)).statusCode).toBe(401);
+      expect((await post('/api/auth/login', { email: data.email, password: 'Glaciar8$Nuevo' })).statusCode).toBe(200);
+      // La contraseña anterior la conocía quien hizo el cambio: ya no sirve.
+      expect((await post('/api/auth/login', { email: data.email, password: data.password })).statusCode).toBe(401);
+      expect((await post('/api/auth/login', { email: newEmail, password: 'Glaciar8$Nuevo' })).statusCode).toBe(401);
+    });
+
+    it('R-50: el código vale 7 días y sirve una sola vez', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      at(7 * 86_400 - 1);
+      const ok = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(ok.statusCode).toBe(204);
+      const again = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Otra8$Clave',
+      });
+      expect(errorOf(again)).toEqual({ code: 'invalid_code' });
+    });
+
+    it('R-50: después de 7 días el código ya no sirve', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      at(7 * 86_400);
+      const res = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(errorOf(res)).toEqual({ code: 'invalid_code' });
+    });
+
+    it('R-50: admite 5 intentos; después ni el código correcto sirve', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      const wrong = revertCode === '000000' ? '111111' : '000000';
+      for (let i = 0; i < CODE_ATTEMPTS; i++) {
+        await post('/api/auth/email/revert', { email: data.email, code: wrong, password: 'Glaciar8$Nuevo' });
+      }
+      const right = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(errorOf(right)).toEqual({ code: 'invalid_code' });
+    });
+
+    it('D-59: un correo sin cambio pendiente responde igual que un código equivocado', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      const wrong = revertCode === '000000' ? '111111' : '000000';
+      const known = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: wrong,
+        password: 'Glaciar8$Nuevo',
+      });
+      const unknown = await post('/api/auth/email/revert', {
+        email: 'nadie@example.com',
+        code: wrong,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect([unknown.statusCode, unknown.body]).toEqual([known.statusCode, known.body]);
+    });
+
+    it('una contraseña nueva débil se rechaza sin gastar un intento', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      const weak = await post('/api/auth/email/revert', { email: data.email, code: revertCode, password: 'corta' });
+      expect(errorOf(weak)).toEqual({ code: 'weak_password', reason: 'length' });
+      const ok = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(ok.statusCode).toBe(204);
+    });
+
+    it('encadenar cambios no anula el código del dueño, y al usarlo se anulan los de los cambios posteriores', async () => {
+      const { data, cookie } = await signUp();
+      const first = await hijack(data, cookie);
+      // Segundo cambio, desde el correo ajeno a otro; su código llega al correo ajeno.
+      at(61);
+      const second = `otro.${data.email}`;
+      await post('/api/auth/email/request', { password: data.password, newEmail: second }, cookie);
+      await post('/api/auth/email/confirm', { code: lastCode() }, cookie);
+      const attackerCode = lastCode();
+      const res = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: first.revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(res.statusCode).toBe(204);
+      const back = await post('/api/auth/email/revert', {
+        email: first.newEmail,
+        code: attackerCode,
+        password: 'Ajena8$Clave',
+      });
+      expect(errorOf(back)).toEqual({ code: 'invalid_code' });
+      expect((await post('/api/auth/login', { email: data.email, password: 'Glaciar8$Nuevo' })).statusCode).toBe(200);
+    });
+
+    it('una cuenta sin verificar que ocupe el correo anterior no bloquea la restauración', async () => {
+      const { data, cookie } = await signUp();
+      const { revertCode } = await hijack(data, cookie);
+      // Alguien registra el correo liberado; no puede verificarlo porque el código le llega al dueño.
+      await register({ ...fresh(), email: data.email });
+      const res = await post('/api/auth/email/revert', {
+        email: data.email,
+        code: revertCode,
+        password: 'Glaciar8$Nuevo',
+      });
+      expect(res.statusCode).toBe(204);
+      expect(await ctx.database.db.select().from(users).where(eq(users.email, data.email))).toHaveLength(1);
+      expect((await post('/api/auth/login', { email: data.email, password: 'Glaciar8$Nuevo' })).statusCode).toBe(200);
+    });
+
+    it('el aviso con el código sale aunque la dirección anterior ya haya llegado a su límite de correos', async () => {
+      const { data, cookie } = await signUp();
+      for (let i = 0; i < 3; i++) {
+        at(61 * (i + 1));
+        await post('/api/auth/recover/request', { email: data.email });
+      }
+      const before = sent.length;
+      await post('/api/auth/recover/request', { email: data.email });
+      expect(sent.length).toBe(before);
+      await hijack(data, cookie);
+      expect(sent.at(-1)?.to).toBe(data.email);
+      expect(sent.at(-1)?.subject).toBe('El correo de tu cuenta de Ventisca cambió');
+    });
+  });
+
   it('con sesión, confirmar el correo nuevo sí dice cuántos intentos quedan: no hay nada que delatar', async () => {
     const { data, cookie } = await signUp();
     await post('/api/auth/email/request', { password: data.password, newEmail: `nuevo2.${data.email}` }, cookie);

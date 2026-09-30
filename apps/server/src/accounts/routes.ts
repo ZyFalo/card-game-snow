@@ -10,10 +10,11 @@ import {
   recoverRequestSchema,
   registerSchema,
   resendSchema,
+  revertEmailSchema,
   type Session,
   verifySchema,
 } from '@ventisca/protocol';
-import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, ne, or } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db';
@@ -65,6 +66,8 @@ const SESSION_DAYS = 30;
 export const CODE_MINUTES = 15;
 export const CODE_ATTEMPTS = 5;
 export const CODE_COOLDOWN_SECONDS = 60;
+/** R-50: el código que deshace un cambio de correo vale 7 días. */
+export const REVERT_DAYS = 7;
 
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
@@ -117,6 +120,20 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
   /** Envía sin revelar el resultado: un fallo se registra sin datos de la persona. */
   async function sendQuietly(mail: Mail, req: FastifyRequest) {
     if (!allowMail(mail.to)) return;
+    await deliver(mail, req);
+  }
+
+  /**
+   * Avisos de seguridad (contraseña o correo cambiados): salen aunque la dirección haya llegado a su
+   * límite. Solo los dispara quien tiene la contraseña o un código, así que no sirven para molestar, y
+   * alguien que gastara el límite antes de cambiar el correo no debe poder callar el aviso (R-50).
+   */
+  async function sendSecurityNotice(mail: Mail, req: FastifyRequest) {
+    limits.mailByAddress.hit(mail.to);
+    await deliver(mail, req);
+  }
+
+  async function deliver(mail: Mail, req: FastifyRequest) {
     try {
       await mailer.send(mail);
     } catch (err) {
@@ -126,20 +143,32 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
 
   /* ---------- Códigos (R-43) ---------- */
 
-  /** Crea un código nuevo e invalida los anteriores del mismo propósito. */
-  async function issueCode(tx: Executor, userId: string, purpose: Purpose, newEmail?: string): Promise<string> {
+  /**
+   * Crea un código nuevo e invalida los anteriores del mismo propósito. Los de deshacer un cambio de
+   * correo no se invalidan: cada uno devuelve un correo distinto, y encadenar cambios no debe anular el
+   * que recibió el dueño (R-50).
+   */
+  async function issueCode(
+    tx: Executor,
+    userId: string,
+    purpose: Purpose,
+    newEmail?: string,
+    minutes = CODE_MINUTES,
+  ): Promise<string> {
     const at = now();
-    await tx
-      .update(emailCodes)
-      .set({ usedAt: at })
-      .where(and(eq(emailCodes.userId, userId), eq(emailCodes.purpose, purpose), isNull(emailCodes.usedAt)));
+    if (purpose !== 'revert_email') {
+      await tx
+        .update(emailCodes)
+        .set({ usedAt: at })
+        .where(and(eq(emailCodes.userId, userId), eq(emailCodes.purpose, purpose), isNull(emailCodes.usedAt)));
+    }
     const code = newCode();
     await tx.insert(emailCodes).values({
       userId,
       purpose,
       codeHash: fingerprint(secret, `code:${purpose}:${userId}`, code),
       newEmail: newEmail ?? null,
-      expiresAt: new Date(at.getTime() + CODE_MINUTES * MINUTE),
+      expiresAt: new Date(at.getTime() + minutes * MINUTE),
       createdAt: at,
     });
     return code;
@@ -170,16 +199,26 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
   }
 
   type CodeResult =
-    | { ok: true; newEmail: string | null }
+    | { ok: true; newEmail: string | null; createdAt: Date }
     | { ok: false; error: 'invalid_code' | 'code_expired' | 'too_many_attempts'; attemptsLeft?: number };
 
-  /** Comprueba y gasta un código: un solo uso, 15 min y 5 intentos. Bloquea la fila mientras tanto. */
-  async function consumeCode(userId: string, purpose: Purpose, code: string): Promise<CodeResult> {
+  /**
+   * Comprueba y gasta un código: un solo uso, con su vencimiento y 5 intentos. Bloquea la fila mientras
+   * tanto. `forEmail` elige, entre los de deshacer, el que devuelve ese correo.
+   */
+  async function consumeCode(userId: string, purpose: Purpose, code: string, forEmail?: string): Promise<CodeResult> {
     return db.transaction(async (tx) => {
       const [row] = await tx
         .select()
         .from(emailCodes)
-        .where(and(eq(emailCodes.userId, userId), eq(emailCodes.purpose, purpose), isNull(emailCodes.usedAt)))
+        .where(
+          and(
+            eq(emailCodes.userId, userId),
+            eq(emailCodes.purpose, purpose),
+            isNull(emailCodes.usedAt),
+            forEmail === undefined ? undefined : eq(emailCodes.newEmail, forEmail),
+          ),
+        )
         .orderBy(desc(emailCodes.createdAt))
         .limit(1)
         .for('update');
@@ -188,7 +227,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
       if (row.expiresAt.getTime() <= now().getTime()) return { ok: false, error: 'code_expired' };
       if (sameFingerprint(row.codeHash, fingerprint(secret, `code:${purpose}:${userId}`, code))) {
         await tx.update(emailCodes).set({ usedAt: now() }).where(eq(emailCodes.id, row.id));
-        return { ok: true, newEmail: row.newEmail };
+        return { ok: true, newEmail: row.newEmail, createdAt: row.createdAt };
       }
       const attempts = row.attempts + 1;
       await tx.update(emailCodes).set({ attempts }).where(eq(emailCodes.id, row.id));
@@ -200,9 +239,9 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
   }
 
   /**
-   * Sin sesión (verificar, recuperar), un código que no sirve responde siempre lo mismo: equivocado,
-   * vencido o agotado. Decir cuántos intentos quedan delataría que el correo tiene una cuenta con un
-   * código pendiente (D-59). Los límites de R-43 se aplican igual.
+   * Sin sesión (verificar, recuperar, deshacer), un código que no sirve responde siempre lo mismo:
+   * equivocado, vencido o agotado. Decir cuántos intentos quedan delataría que el correo tiene una cuenta
+   * con un código pendiente (D-59). Los límites de R-43 se aplican igual.
    */
   const hiddenCodeError = (reply: FastifyReply) => reply.code(400).send(apiError('invalid_code'));
 
@@ -411,7 +450,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     await db.delete(sessions).where(eq(sessions.userId, user.id));
     await startSession(reply, user.id);
     limits.loginByAccount.reset(user.email);
-    await sendQuietly(passwordChangedMail(user.email, appUrl), req);
+    await sendSecurityNotice(passwordChangedMail(user.email, appUrl), req);
     const body: Session = { user: publicUser(updated as UserRow) };
     return body;
   });
@@ -435,7 +474,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
     // Se cierran las demás sesiones; la actual sigue abierta.
     await db.delete(sessions).where(and(eq(sessions.userId, user.id), ne(sessions.id, current.sessionId)));
-    await sendQuietly(passwordChangedMail(user.email, appUrl), req);
+    await sendSecurityNotice(passwordChangedMail(user.email, appUrl), req);
     return reply.code(204).send();
   });
 
@@ -483,10 +522,72 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
       if (isUniqueViolation(err, 'users_email_unique')) return reply.code(409).send(apiError('email_taken'));
       throw err;
     }
-    // Hasta aquí la cuenta seguía con el correo anterior; ahora ese correo recibe el aviso.
-    await sendQuietly(emailChangedMail(user.email, appUrl), req);
+    // Hasta aquí la cuenta seguía con el correo anterior; ahora ese correo recibe el aviso, con el código
+    // que deshace el cambio durante 7 días (R-50).
+    const revertCode = await issueCode(db, user.id, 'revert_email', user.email, REVERT_DAYS * 24 * 60);
+    await sendSecurityNotice(emailChangedMail(user.email, revertCode, appUrl), req);
     const body: Session = { user: publicUser(updated as UserRow) };
     return body;
+  });
+
+  /* ---------- R-50: deshacer un cambio de correo ---------- */
+
+  app.post('/api/auth/email/revert', async (req, reply) => {
+    const parsed = revertEmailSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send(apiError('bad_request'));
+    const oldEmail = normalizeEmail(parsed.data.email);
+    // La cuenta se encuentra por su código pendiente para ese correo; sin él, el mismo error que un código
+    // equivocado (D-59).
+    const [pending] = await db
+      .select({ userId: emailCodes.userId })
+      .from(emailCodes)
+      .where(and(eq(emailCodes.purpose, 'revert_email'), eq(emailCodes.newEmail, oldEmail), isNull(emailCodes.usedAt)))
+      .orderBy(desc(emailCodes.createdAt))
+      .limit(1);
+    const owner = pending
+      ? ((await db.select().from(users).where(eq(users.id, pending.userId)).limit(1))[0] ?? null)
+      : null;
+    // La contraseña nueva se revisa antes que el código, para no gastar un intento.
+    const problem = checkPassword(parsed.data.password, { email: oldEmail, displayName: owner?.displayName ?? '' });
+    if (problem) return reply.code(400).send(apiError('weak_password', { reason: problem }));
+    if (!owner) return reply.code(400).send(apiError('invalid_code'));
+    const result = await consumeCode(owner.id, 'revert_email', parsed.data.code, oldEmail);
+    if (!result.ok) return hiddenCodeError(reply);
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    const taken = await db.transaction(async (tx) => {
+      // Una cuenta sin verificar que ocupe el correo anterior no puede ser de nadie más que de su dueño,
+      // que es quien deshace el cambio: se borra. Verificada, solo pudo crearla él mismo.
+      const [other] = await tx
+        .select()
+        .from(users)
+        .where(and(eq(users.email, oldEmail), ne(users.id, owner.id)))
+        .limit(1);
+      if (other?.emailVerifiedAt) return true;
+      if (other) await tx.delete(users).where(eq(users.id, other.id));
+      await tx
+        .update(users)
+        .set({ email: oldEmail, passwordHash, emailVerifiedAt: now() })
+        .where(eq(users.id, owner.id));
+      // Se anulan los códigos pendientes, salvo los de deshacer cambios anteriores a este: un cambio
+      // posterior (del atacante) no puede anular el código que recibió el dueño.
+      await tx
+        .update(emailCodes)
+        .set({ usedAt: now() })
+        .where(
+          and(
+            eq(emailCodes.userId, owner.id),
+            isNull(emailCodes.usedAt),
+            or(ne(emailCodes.purpose, 'revert_email'), gt(emailCodes.createdAt, result.createdAt)),
+          ),
+        );
+      // Se cierran todas las sesiones: quien hizo el cambio conocía la contraseña anterior.
+      await tx.delete(sessions).where(eq(sessions.userId, owner.id));
+      return false;
+    });
+    if (taken) return reply.code(409).send(apiError('email_taken'));
+    limits.loginByAccount.reset(oldEmail);
+    return reply.code(204).send();
   });
 
   /* ---------- R-49: borrar la cuenta ---------- */

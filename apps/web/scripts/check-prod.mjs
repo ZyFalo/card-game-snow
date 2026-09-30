@@ -121,7 +121,8 @@ await check('Un turno jugado en Chromium, sin errores ni peticiones a otros domi
       if (!/^(data|blob):/.test(url) && new URL(url).host !== base.host) foreign.add(new URL(url).origin);
     });
     await page.goto(new URL('/?speed=0.3', base).toString());
-    await page.getByRole('button', { name: 'Jugar', exact: true }).click();
+    // "Jugar" hasta el PR 7; desde entonces, "Jugar sin cuenta".
+    await page.getByRole('button', { name: /^Jugar( sin cuenta)?$/ }).click();
     await page.getByRole('heading', { name: 'Tu equipo' }).waitFor();
     await page.getByRole('button', { name: 'Comenzar partida' }).click();
     await page.getByRole('button', { name: /Confirmar turno/ }).waitFor({ timeout: 60_000 });

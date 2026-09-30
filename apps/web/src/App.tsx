@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { audio } from './audio/audio';
 import { STAGE_H, STAGE_W } from './game/layout';
 import { PhaserStage, phaserRef } from './game/PhaserStage';
+import { initAccount } from './state/account';
 import {
   confirmTurn,
   cycleNinja,
@@ -14,6 +15,7 @@ import {
 } from './state/actions';
 import { sceneReady } from './state/bridge';
 import { type Screen, store, useApp } from './state/store';
+import { AccountScreen } from './ui/Account';
 import { BattleHud } from './ui/BattleHud';
 import { CardFlights } from './ui/CardFlights';
 import { HelpModal, PauseMenu } from './ui/Menus';
@@ -179,6 +181,11 @@ export function App() {
   useKeyboard();
   useRenderLoopByScreen();
 
+  // ¿Hay servidor y sesión? Sin servidor (build de un solo archivo) se juega sin cuenta.
+  useEffect(() => {
+    void initAccount();
+  }, []);
+
   useEffect(() => {
     const { settings } = store.getState();
     audio.setSfx(settings.sfx);
@@ -213,6 +220,7 @@ export function App() {
           {screen === 'team' ? <TeamScreen /> : null}
           {screen === 'loading' ? <LoadingScreen /> : null}
           {screen === 'results' ? <ResultsScreen /> : null}
+          {screen === 'account' ? <AccountScreen /> : null}
           <ScreenWipe />
           {webglMissing ? <NoWebGLScreen /> : null}
           {paused && screen === 'battle' ? <PauseMenu /> : null}

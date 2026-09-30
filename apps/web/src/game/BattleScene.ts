@@ -175,12 +175,13 @@ export class BattleScene extends Phaser.Scene {
 
   /** Detiene cualquier animación en curso (reinicio o salida al menú). */
   abort(): void {
-    this.fx?.setBaseTimeScale(1);
     this.generation += 1;
     for (const done of [...this.pending]) done();
     this.pending.clear();
     this.tweens.killAll();
     this.time.removeAllEvents();
+    // Los efectos se destruían al terminar sus animaciones, que acaban de morir.
+    this.fx?.clear();
     if (this.scene.isPaused()) this.scene.resume();
     store.setState({ overlay: null, flights: [], incoming: [], arrived: [] });
   }
@@ -233,6 +234,7 @@ export class BattleScene extends Phaser.Scene {
       barColor: hex(ELEMENT_COLORS[id].base),
       speed: this.speed,
       calm: this.calm(),
+      track: (obj) => this.fx.track(obj),
     });
     this.units.set(id, u);
     return u;
@@ -257,6 +259,7 @@ export class BattleScene extends Phaser.Scene {
       barColor: hex(ICE.deep),
       speed: this.speed,
       calm: this.calm(),
+      track: (obj) => this.fx.track(obj),
     });
     this.units.set(id, u);
     return u;
@@ -801,7 +804,7 @@ export class BattleScene extends Phaser.Scene {
     },
   ): Promise<void> {
     return new Promise((resolve) => {
-      const img = this.add.image(from.x, from.y, texture).setDepth(2000);
+      const img = this.fx.track(this.add.image(from.x, from.y, texture)).setDepth(2000);
       img.setDisplaySize(opts.size[0], opts.size[1]);
       const stopTrail = opts.trail ? this.fx.trail(img, opts.trail.texture, opts.trail.colors) : null;
       const done = () => {
@@ -851,7 +854,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private pulse(u: UnitSprite, color: number): void {
-    const ring = this.add.image(u.container.x, u.centerY, 'fx-ring').setTint(color).setDepth(1990);
+    const ring = this.fx
+      .track(this.add.image(u.container.x, u.centerY, 'fx-ring'))
+      .setTint(color)
+      .setDepth(1990);
     ring.setDisplaySize(40, 40);
     this.tweens.add({
       targets: ring,
@@ -1065,7 +1071,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (el === 'fire') {
       // El fénix cruza el área y detrás cae una lluvia de dardos de fuego.
-      const bird = this.add.image(left - 40, center.y + 30, 'fx-phoenix').setDepth(2050);
+      const bird = this.fx.track(this.add.image(left - 40, center.y + 30, 'fx-phoenix')).setDepth(2050);
       bird.setDisplaySize(150, 112);
       void this.tween({ targets: bird, x: right + 30, y: center.y - 50, duration: 560, ease: 'Sine.easeInOut' }).then(
         () => {
@@ -1091,8 +1097,8 @@ export class BattleScene extends Phaser.Scene {
       await Promise.all(falls);
     } else if (el === 'water') {
       // Una ola grande barre el área y salpica cada casilla.
-      const wave = this.add
-        .image(left - 70, bottom - 64, 'fx-wave')
+      const wave = this.fx
+        .track(this.add.image(left - 70, bottom - 64, 'fx-wave'))
         .setDepth(2050)
         .setAlpha(0);
       wave.setDisplaySize(right - left + 80, 170);
@@ -1114,7 +1120,7 @@ export class BattleScene extends Phaser.Scene {
       await this.wait(order.length * TIMING.card.water.stagger);
     } else {
       // Un copo gigante baja girando y desata una ventisca.
-      const flake = this.add.image(center.x, center.y - 170, 'fx-flake').setDepth(2050);
+      const flake = this.fx.track(this.add.image(center.x, center.y - 170, 'fx-flake')).setDepth(2050);
       flake.setDisplaySize(56, 56);
       const target = flake.scale * 2.6;
       this.fx.blizzard(e.area, [0xffffff, hex(c.accent), hex(c.light)], 700);
@@ -1209,7 +1215,11 @@ export class BattleScene extends Phaser.Scene {
     const cy = cs.reduce((sum, c) => sum + c.y, 0) / cs.length;
     const first = area[0];
     const vertical = area.every((t) => t.x === first?.x);
-    const img = this.add.image(cx, cy, 'fx-swipe').setDepth(2080).setTint(hex(ICE.light)).setAlpha(0.95);
+    const img = this.fx
+      .track(this.add.image(cx, cy, 'fx-swipe'))
+      .setDepth(2080)
+      .setTint(hex(ICE.light))
+      .setAlpha(0.95);
     img.setDisplaySize(vertical ? 2.7 * TH : 2.8 * TW, 70);
     if (vertical) img.setAngle(-90);
     const sx = img.scaleX;

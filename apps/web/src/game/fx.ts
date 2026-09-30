@@ -43,11 +43,32 @@ export class Fx {
   private listening = false;
   /** Escala de tiempo de base: 1, o más mientras se acelera la resolución. */
   private base = 1;
+  /**
+   * Objetos pasajeros que siguen en la escena. Cada efecto se destruye al terminar su
+   * animación, pero si la partida se interrumpe (reiniciar o salir) esas animaciones
+   * mueren antes: clear() destruye lo que quede.
+   */
+  private readonly live = new Set<Phaser.GameObjects.GameObject>();
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly opts: { speed(): number; calm(): boolean },
   ) {}
+
+  /** Registra un objeto pasajero; sale del registro al destruirse. */
+  track<T extends Phaser.GameObjects.GameObject>(obj: T): T {
+    this.live.add(obj);
+    obj.once(Phaser.GameObjects.Events.DESTROY, () => this.live.delete(obj));
+    return obj;
+  }
+
+  /** Al interrumpir la partida: destruye todos los efectos vivos y devuelve el tiempo a la normalidad. */
+  clear(): void {
+    for (const obj of [...this.live]) obj.destroy();
+    this.live.clear();
+    this.base = 1;
+    this.resetTime();
+  }
 
   private get speed(): number {
     return this.opts.speed();
@@ -126,17 +147,19 @@ export class Fx {
     const n = this.calm ? Math.ceil(count / 2) : count;
     const v = o.speed ?? 1;
     const lifespan = o.lifespan ?? 560;
-    const em = this.scene.add.particles(at.x, at.y, texture, {
-      speed: { min: 70 * v, max: 230 * v },
-      angle: o.up ? { min: 215, max: 325 } : { min: 0, max: 360 },
-      lifespan,
-      gravityY: o.gravity ?? 0,
-      scale: { start: o.scale ?? 0.5, end: 0.06 },
-      alpha: { start: 1, end: 0 },
-      rotate: { min: 0, max: 360 },
-      tint: colors,
-      emitting: false,
-    });
+    const em = this.track(
+      this.scene.add.particles(at.x, at.y, texture, {
+        speed: { min: 70 * v, max: 230 * v },
+        angle: o.up ? { min: 215, max: 325 } : { min: 0, max: 360 },
+        lifespan,
+        gravityY: o.gravity ?? 0,
+        scale: { start: o.scale ?? 0.5, end: 0.06 },
+        alpha: { start: 1, end: 0 },
+        rotate: { min: 0, max: 360 },
+        tint: colors,
+        emitting: false,
+      }),
+    );
     em.setDepth(o.depth ?? 2100);
     em.explode(n);
     this.scene.time.delayedCall(lifespan + 400, () => em.destroy());
@@ -145,7 +168,9 @@ export class Fx {
   /** Estallido de papel en el punto de impacto. */
   impact(at: Pt, color: number, size = 64): void {
     const s = this.speed;
-    const ring = this.scene.add.image(at.x, at.y, 'fx-impact').setDepth(2200).setTint(color);
+    const ring = this.track(this.scene.add.image(at.x, at.y, 'fx-impact'))
+      .setDepth(2200)
+      .setTint(color);
     ring.setDisplaySize(size * 0.35, size * 0.35).setAngle(Math.random() * 45);
     const base = ring.scale;
     this.scene.tweens.add({
@@ -157,7 +182,7 @@ export class Fx {
       ease: 'Cubic.easeOut',
       onComplete: () => ring.destroy(),
     });
-    const core = this.scene.add.image(at.x, at.y, 'fx-impact').setDepth(2201);
+    const core = this.track(this.scene.add.image(at.x, at.y, 'fx-impact')).setDepth(2201);
     core.setDisplaySize(size * 0.26, size * 0.26);
     const cb = core.scale;
     this.scene.tweens.add({
@@ -173,15 +198,17 @@ export class Fx {
   /** Estela de partículas que sigue a un proyectil. Devuelve la función que la apaga. */
   trail(target: Phaser.GameObjects.Image, texture: string, colors: number[]): () => void {
     if (this.calm) return () => undefined;
-    const em = this.scene.add.particles(0, 0, texture, {
-      frequency: 16,
-      lifespan: 340,
-      speed: { min: 4, max: 30 },
-      scale: { start: 0.34, end: 0 },
-      alpha: { start: 0.9, end: 0 },
-      rotate: { min: 0, max: 360 },
-      tint: colors,
-    });
+    const em = this.track(
+      this.scene.add.particles(0, 0, texture, {
+        frequency: 16,
+        lifespan: 340,
+        speed: { min: 4, max: 30 },
+        scale: { start: 0.34, end: 0 },
+        alpha: { start: 0.9, end: 0 },
+        rotate: { min: 0, max: 360 },
+        tint: colors,
+      }),
+    );
     em.setDepth(1990);
     em.startFollow(target);
     return () => {
@@ -193,15 +220,16 @@ export class Fx {
   /** Números que saltan con rebote y luego suben. */
   number(u: UnitSprite, text: string, color: string, big = false): void {
     const size = big ? 29 : 21;
-    const t = this.scene.add
-      .text(u.container.x + (Math.random() * 18 - 9), u.headY - 2, text, {
+    const t = this.track(
+      this.scene.add.text(u.container.x + (Math.random() * 18 - 9), u.headY - 2, text, {
         fontFamily: '"Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif',
         fontSize: `${size}px`,
         color,
         stroke: PALETTE.ink,
         strokeThickness: big ? 7 : 5,
         resolution: 3,
-      })
+      }),
+    )
       .setOrigin(0.5, 1)
       .setDepth(3000)
       .setScale(1.9)
@@ -234,7 +262,7 @@ export class Fx {
     for (const t of tiles) {
       const d = Math.max(Math.abs(t.x - origin.x), Math.abs(t.y - origin.y));
       const r = tileRect(t);
-      const g = this.scene.add.graphics().setDepth(-4.5);
+      const g = this.track(this.scene.add.graphics()).setDepth(-4.5);
       g.fillStyle(color, o.alpha ?? 0.42);
       g.fillRoundedRect(-r.w / 2 + 4, -r.h / 2 + 4, r.w - 8, r.h - 8, 8);
       g.lineStyle(3, color, 0.95);
@@ -266,7 +294,7 @@ export class Fx {
     const s = this.speed;
     for (const t of tiles) {
       const c = tileCenter(t);
-      const g = this.scene.add.graphics().setDepth(-4.4);
+      const g = this.track(this.scene.add.graphics()).setDepth(-4.4);
       g.lineStyle(3, color, 0.9);
       g.strokeCircle(0, 0, 26);
       g.lineStyle(2, color, 0.55);
@@ -291,7 +319,7 @@ export class Fx {
     const s = this.speed;
     for (let i = 0; i < count; i++) {
       const dir = i - (count - 1) / 2;
-      const p = this.scene.add.image(at.x + dir * 10, at.y - 2, 'fx-puff').setDepth(at.y - 1);
+      const p = this.track(this.scene.add.image(at.x + dir * 10, at.y - 2, 'fx-puff')).setDepth(at.y - 1);
       p.setDisplaySize(22, 15).setAlpha(0.9);
       const b = p.scale;
       this.scene.tweens.add({
@@ -309,8 +337,7 @@ export class Fx {
 
   /** Anillo que se expande en el suelo (aparición, curación, reanimación). */
   groundRing(fp: Pt, color: number, width = 96): void {
-    const img = this.scene.add
-      .image(fp.x, fp.y, 'fx-ring')
+    const img = this.track(this.scene.add.image(fp.x, fp.y, 'fx-ring'))
       .setDepth(fp.y - 2)
       .setTint(color);
     img.setDisplaySize(width * 0.5, width * 0.18);
@@ -339,7 +366,7 @@ export class Fx {
     const by0 = BOARD_Y - 12;
     const bx1 = BOARD_X + 9 * TW + 12;
     const by1 = BOARD_Y + 5 * TH + 12;
-    const g = this.scene.add.graphics().setDepth(-4.8).setAlpha(0);
+    const g = this.track(this.scene.add.graphics()).setDepth(-4.8).setAlpha(0);
     g.fillStyle(hex(PALETTE.ink), 0.26);
     g.fillRect(bx0, by0, bx1 - bx0, y0 - by0);
     g.fillRect(bx0, y1, bx1 - bx0, by1 - y1);
@@ -352,7 +379,10 @@ export class Fx {
 
   /** Sello de papel recortado que gira bajo el área de la carta. */
   sigil(center: Pt, color: number, holdMs: number): void {
-    const img = this.scene.add.image(center.x, center.y, 'fx-sigil').setDepth(-4.6).setTint(color).setAlpha(0);
+    const img = this.track(this.scene.add.image(center.x, center.y, 'fx-sigil'))
+      .setDepth(-4.6)
+      .setTint(color)
+      .setAlpha(0);
     img.setDisplaySize(300, 300);
     const b = img.scale;
     img.setScale(b * 0.5);
@@ -370,8 +400,7 @@ export class Fx {
 
   /** Haz de luz que baja sobre una casilla (reanimación). */
   beam(fp: Pt, color: number): void {
-    const img = this.scene.add
-      .image(fp.x, fp.y + 4, 'fx-beam')
+    const img = this.track(this.scene.add.image(fp.x, fp.y + 4, 'fx-beam'))
       .setOrigin(0.5, 1)
       .setDepth(1995)
       .setTint(color);
@@ -398,8 +427,7 @@ export class Fx {
   ): Promise<void> {
     return new Promise((resolve) => {
       const s = this.speed;
-      const img = this.scene.add
-        .image(to.x + o.dx, to.y - o.height, texture)
+      const img = this.track(this.scene.add.image(to.x + o.dx, to.y - o.height, texture))
         .setDepth(2050)
         .setAlpha(0);
       img.setDisplaySize(o.size[0], o.size[1]);
@@ -427,18 +455,20 @@ export class Fx {
     const x0 = Math.min(...xs);
     const x1 = Math.max(...xs) + TW;
     const y0 = Math.min(...ys);
-    const em = this.scene.add.particles(0, 0, 'fx-flake-small', {
-      x: { min: x0 - 20, max: x1 + 20 },
-      y: { min: y0 - 70, max: y0 - 10 },
-      speedX: { min: -70, max: 70 },
-      speedY: { min: 90, max: 200 },
-      lifespan: 900,
-      frequency: this.calm ? 60 : 22,
-      scale: { start: 0.55, end: 0.2 },
-      alpha: { start: 1, end: 0 },
-      rotate: { min: 0, max: 360 },
-      tint: colors,
-    });
+    const em = this.track(
+      this.scene.add.particles(0, 0, 'fx-flake-small', {
+        x: { min: x0 - 20, max: x1 + 20 },
+        y: { min: y0 - 70, max: y0 - 10 },
+        speedX: { min: -70, max: 70 },
+        speedY: { min: 90, max: 200 },
+        lifespan: 900,
+        frequency: this.calm ? 60 : 22,
+        scale: { start: 0.55, end: 0.2 },
+        alpha: { start: 1, end: 0 },
+        rotate: { min: 0, max: 360 },
+        tint: colors,
+      }),
+    );
     em.setDepth(2060);
     this.scene.time.delayedCall(ms * this.speed, () => em.stop());
     this.scene.time.delayedCall(ms * this.speed + 1000, () => em.destroy());

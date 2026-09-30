@@ -25,6 +25,8 @@ export interface UnitSpriteOptions {
   speed: number;
   /** Sin bucles de reposo (animaciones reducidas). */
   calm: boolean;
+  /** Registra los efectos que quedan fuera del contenedor, para destruirlos si se interrumpe la partida. */
+  track?: <T extends Phaser.GameObjects.GameObject>(obj: T) => T;
 }
 
 /** Una unidad en el tablero: esqueleto articulado, sombra, vida e íconos de estado. */
@@ -45,6 +47,7 @@ export class UnitSprite {
   private stunFx: { stars: Phaser.GameObjects.Image[]; tween: Phaser.Tweens.Tween } | null = null;
   private burnFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private readonly barColor: number;
+  private readonly track: <T extends Phaser.GameObjects.GameObject>(obj: T) => T;
   private actSeq = 0;
   private busy = false;
   hp: number;
@@ -62,6 +65,7 @@ export class UnitSprite {
     this.size = o.size;
     this.clips = o.clips;
     this.barColor = o.barColor;
+    this.track = o.track ?? ((obj) => obj);
     this.hp = o.hp;
     this.maxHp = o.maxHp;
     this.shownHp = o.hp;
@@ -319,16 +323,18 @@ export class UnitSprite {
     if (!b) return;
     b.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     this.scene.time.delayedCall(80, () => b.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0x4fc9b8));
-    const em = this.scene.add.particles(this.container.x, this.centerY, 'fx-bit', {
-      speed: { min: 80, max: 200 },
-      angle: { min: 0, max: 360 },
-      lifespan: 450,
-      scale: { start: 0.45, end: 0.05 },
-      alpha: { start: 1, end: 0 },
-      rotate: { min: 0, max: 360 },
-      tint: [0x4fc9b8, 0xd9f4ef, 0xffffff],
-      emitting: false,
-    });
+    const em = this.track(
+      this.scene.add.particles(this.container.x, this.centerY, 'fx-bit', {
+        speed: { min: 80, max: 200 },
+        angle: { min: 0, max: 360 },
+        lifespan: 450,
+        scale: { start: 0.45, end: 0.05 },
+        alpha: { start: 1, end: 0 },
+        rotate: { min: 0, max: 360 },
+        tint: [0x4fc9b8, 0xd9f4ef, 0xffffff],
+        emitting: false,
+      }),
+    );
     em.setDepth(2100);
     em.explode(12);
     this.scene.time.delayedCall(900, () => em.destroy());

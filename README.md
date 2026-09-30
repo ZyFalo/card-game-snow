@@ -16,12 +16,12 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 
 **Controles:** clic para seleccionar, moverse y elegir objetivos · clic derecho o Esc para deshacer · Tab para cambiar de ninja · 1 a 4 para las cartas · Espacio para confirmar (y mantenerlo para acelerar la resolución) · S para sugerir una jugada · P para pausar.
 
-## Estado (v0.9.2)
+## Estado (v0.9.3)
 
 - Jugable de punta a punta: 3 rondas + bonus, cartas, combos, caídas y reanimación, 2 dificultades, 3 ritmos de reloj, consejos, logros, pausa y ayuda.
 - Progresión: carta de camino, colección de 60 cartas, tienda de cajas y monedas por ronda (PRD §18).
 - Animación: ninjas y gólems articulados por piezas, con estados de ataque, golpe, caída, reanimación, aturdido, aparición y celebración, más efectos de impacto, cinemáticas de carta, efectos de estado, coreografía medida con metas de ritmo e interfaz animada (PRD §10.2).
-- 54 pruebas unitarias y 7 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
+- 64 pruebas unitarias y 10 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
 - Pendiente: playtest con personas, QA manual en Firefox y Safari (las e2e de v0.9.1 ya pasan en WebKit y Firefox), táctil, despliegue en Cloudflare (faltan los secretos del repositorio), multijugador (v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
 
 ## Stack

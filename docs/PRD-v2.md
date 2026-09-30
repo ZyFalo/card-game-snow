@@ -208,7 +208,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 - [ ] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49)
 - [ ] Progreso en la cuenta: carta de camino, monedas, cajas y colección (R-25 a R-32 resueltos en el servidor)
 - [ ] Sandbox con el mazo fijo (D-50) y sin progreso
-- [ ] `GameHost` asíncrono, con el sandbox funcionando igual que hoy
+- [x] `GameHost` asíncrono, con el sandbox funcionando igual que hoy
 - [ ] Pruebas del servidor (cuentas y economía sin cobros duplicados) y e2e de registro e inicio de sesión
 
 **M8: Partida en línea**

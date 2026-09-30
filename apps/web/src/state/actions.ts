@@ -16,6 +16,7 @@ import {
   isThreatened,
   key,
   livingNinjas,
+  type MatchState,
   ninjaAt,
   openBox,
   type Plan,
@@ -28,6 +29,7 @@ import {
 } from '@ventisca/core';
 import { audio } from '../audio/audio';
 import { URL_SPEED } from '../game/speed';
+import type { GameHost, HostMessage } from '../host/GameHost';
 import { LocalHost } from '../host/LocalHost';
 import { NINJA_TEXT, NOTICE, TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
@@ -39,7 +41,7 @@ import { type CardFlight, type Screen, store } from './store';
 
 /* Flujo de la partida y acciones del jugador. La UI (React y Phaser) solo llama a estas funciones. */
 
-let host = new LocalHost();
+let host: GameHost = new LocalHost();
 let noticeKey = 0;
 
 const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
@@ -116,23 +118,43 @@ function recordResults(): void {
 
 /* ---------- Partida ---------- */
 
+/**
+ * Cambia de host: el anterior se cierra y sus mensajes se descartan. Los mensajes del nuevo
+ * se muestran de a uno y en orden: cada uno espera a que termine de animarse el anterior.
+ */
+function attachHost(next: GameHost): void {
+  host.close();
+  host = next;
+  let shown = Promise.resolve();
+  next.subscribe((msg) => {
+    shown = shown.then(() => (host === next ? show(msg) : undefined)).catch(reportError);
+  });
+}
+
+function show(msg: HostMessage): Promise<void> {
+  return msg.type === 'matchStart' ? showMatchStart(msg.state, msg.events) : showTurn(msg.state, msg.events);
+}
+
 export async function startMatch(): Promise<void> {
-  const { settings } = store.getState();
-  host.stopTimer();
-  host = new LocalHost();
+  const { settings, profile } = store.getState();
+  attachHost(new LocalHost());
   reward = { lines: [], base: 0, doubled: false, total: 0 };
   const seed = Math.floor(Math.random() * 2 ** 32) >>> 0;
-  const { profile } = store.getState();
   // R-26: cada ninja lleva toda su colección (con repetidas) como reserva.
   const decks = profile.camino ? reservesFor(profile.collection) : undefined;
-  const created = host.start({ seed, difficulty: settings.difficulty, ...(decks ? { decks } : {}) });
+  await host.start({ seed, difficulty: settings.difficulty, ...(decks ? { decks } : {}) });
+}
+
+/** La partida está lista (mensaje `matchStart`): pantalla de carga, entrada y primer turno. */
+async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<void> {
+  const { settings } = store.getState();
   const tip = TIPS[Math.floor(Math.random() * TIPS.length)] ?? '';
   store.setState({
     screen: 'loading',
     loadingTip: tip,
     phase: 'intro',
-    match: created.state,
-    view: beforeIntro(created.state),
+    match: state,
+    view: beforeIntro(state),
     plans: {},
     active: null,
     pendingCard: null,
@@ -140,17 +162,17 @@ export async function startMatch(): Promise<void> {
     overlay: null,
     paused: false,
     results: null,
-    seed,
+    seed: state.seed,
     timer: { deadline: null, remaining: null, total: null },
   });
   const scene = await sceneReady;
-  const generation = scene.setupMatch(beforeIntro(created.state));
+  const generation = scene.setupMatch(beforeIntro(state));
   await sleep((settings.reducedMotion ? 900 : 1800) * URL_SPEED);
   if (!scene.isCurrent(generation)) return;
   store.setState({ screen: 'battle' });
-  await scene.playEvents(created.events, onEvent, generation);
+  await scene.playEvents(events, onEvent, generation);
   if (!scene.isCurrent(generation)) return;
-  store.setState({ view: created.state });
+  store.setState({ view: state });
   beginPlanning();
 }
 
@@ -178,32 +200,43 @@ export function beginPlanning(): void {
   });
 }
 
-export async function confirmTurn(fromTimeout = false): Promise<void> {
-  const st = store.getState();
-  if (st.phase !== 'planning' || (st.paused && !fromTimeout)) return;
-  const scene = bridge.scene;
+/** Fin de la planificación: sin planes, selección ni reloj. */
+function closePlanning(): void {
   host.stopTimer();
-  audio.play('confirm');
-  const result = host.submit(plansArray(st.plans));
   store.setState({
     phase: 'resolving',
     resolveStep: 'ninjas',
-    match: result.state,
     plans: {},
     pendingCard: null,
     active: null,
     hover: null,
     timer: { deadline: null, remaining: null, total: null },
   });
+}
+
+export async function confirmTurn(fromTimeout = false): Promise<void> {
+  const st = store.getState();
+  if (st.phase !== 'planning' || (st.paused && !fromTimeout)) return;
+  audio.play('confirm');
+  closePlanning();
+  await host.submit(plansArray(st.plans));
+}
+
+/** Un turno resuelto (mensaje `turnResult`): se anima y sigue la partida o llegan los resultados. */
+async function showTurn(state: MatchState, events: GameEvent[]): Promise<void> {
+  // En línea, el reloj del servidor también puede cerrar el turno sin que este cliente confirme.
+  if (store.getState().phase === 'planning') closePlanning();
+  store.setState({ match: state });
+  const scene = bridge.scene;
   if (scene) {
     const generation = scene.currentGeneration();
-    await scene.playEvents(result.events, onEvent, generation);
+    await scene.playEvents(events, onEvent, generation);
     if (!scene.isCurrent(generation)) return;
   } else {
-    for (const e of result.events) onEvent(e);
+    for (const e of events) onEvent(e);
   }
-  store.setState({ view: result.state });
-  if (result.state.status !== 'playing') {
+  store.setState({ view: state });
+  if (state.status !== 'playing') {
     finishMatch();
     return;
   }

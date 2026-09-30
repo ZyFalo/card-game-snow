@@ -662,7 +662,7 @@ Investigado en septiembre de 2026 (fuentes en el Apéndice B). Las versiones son
 2. **El reloj vive en el host, no en el motor:** en v1 lo lleva el navegador; en v2, el servidor fija la hora límite de cada turno (D-46).
 3. **El render es un reproductor de eventos:** el cliente no decide reglas; anima la lista de eventos que devuelve el motor.
 4. **Estado presentado:** el animador reproduce los eventos en orden y, a medida que avanza, publica en el store el estado que se ve (HP, medidores, estados, manos). Phaser y React muestran ese estado, así las barras y los paneles cambian al ritmo de los golpes y no saltan al resultado final.
-5. **Host intercambiable:** la UI habla con una interfaz `GameHost`. En v1 la implementa `LocalHost`; en v2, `NetworkHost`. La UI no cambia.
+5. **Host intercambiable y asíncrono:** la UI habla con una interfaz `GameHost`. En el sandbox la implementa `LocalHost`; en línea, `NetworkHost`. Pedir una partida y enviar los planes devuelven una promesa; el estado inicial y cada turno resuelto llegan después como mensajes (`matchStart` y `turnResult`), y la UI los muestra de a uno y en orden. Así la UI no cambia al cambiar de host.
 6. **Balance como datos:** todos los números del Apéndice A viven en `balance.json`.
 
 ```mermaid
@@ -1035,7 +1035,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
-| 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos |
+| 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes |
 | 0.10.0 | 2026-09-29 | Integra el PRD de v2 aprobado (`docs/PRD-v2.md`, versión 1.0), que manda en todo lo del modo en línea. R-04 en línea da 15 s por turno (D-46). Se agregan las decisiones D-34 a D-50 y las preguntas P-19 a P-24. Cloudflare pasa a Railway (D-37) en D-03, D-09, §11.1, §11.3, §11.4, §11.7 (que ahora remite al PRD de v2), §11.10, §15, M6 y P-02. Los hitos M7 a M9 son los del PRD de v2. R-25 a R-32 pasan a la cuenta en v2 (D-34) |
 | 0.9.5 | 2026-09-29 | Pendientes de v1 que no dependen de v2. Deshacer ya no deja planes vacíos que bloqueaban la pausa. Los ajustes guardados se validan campo por campo. Sin WebGL, un mensaje explica por qué no se puede jugar. R-04, R-10 y R-14 tienen pruebas propias. Los textos de la interfaz pasan a `i18n/es.ts`, salvo la de progresión (`Progression.tsx` y `CardFace.tsx`), que cambia en v2. Biome usa `preset` en lugar de `recommended`. R-04 aclara que el reloj da 10 s por ninja en pie (30 s con los tres), porque un caído no tiene nada que planificar; la pantalla de equipo lo dice igual |
 | 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md`. Las repeticiones pasan a la versión 2 por D-33: `runReplay` rechaza las de otra versión con un mensaje claro |

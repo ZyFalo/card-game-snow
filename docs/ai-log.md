@@ -8,6 +8,8 @@ Registro del proceso de recrear el juego con asistencia de IA (requisito de la c
 | 2 | 2026-09-29 | Elegir la mejor tecnología web | Comparó motores, backends y herramientas de 2026. Propuso Phaser 4 + React + Vite 8, con Cloudflare para publicar y para v2 | Aprobó el stack (D-09) | Versiones verificadas en npm y en los anuncios oficiales |
 | 3 | 2026-09-29 | Construir el proyecto completo | Monorepo, motor puro con 33 pruebas por regla, bot, simulador y balance (se descubrió que el juego era trivial y se creó Tormenta) | Aceptó la dificultad Tormenta (D-13) | `pnpm test` y 8.000 partidas simuladas |
 | 4 | 2026-09-29 | Continuar la construcción | Cliente web: arte y audio generados en código, escena de Phaser, HUD en React, pantallas, logros y pausa | — | Capturas en Chromium; partida completa jugada por la interfaz |
+| 15 | 2026-09-29 | Subir el proyecto a GitHub y corregir lo encontrado | Recuperó del zip `.gitignore` y los workflows (Finder los había perdido) e hizo el primer commit. Corrigió mantener Espacio (turnos vacíos), los efectos que sobrevivían al reiniciar, los eventos que una animación interrumpida aplicaba a la partida nueva y el redondeo de la vida en Tormenta (D-31). Agregó colecciones al simulador y rehízo el reporte de balance | Pidió cada arreglo en su commit y con una prueba que reprodujera el problema antes de corregirlo | Cada prueba falló antes y pasó después; `pnpm ci`, e2e y CI de GitHub en verde |
+| 14 | 2026-09-29 | Analizar el proyecto, su estado y el PRD (Claude Code) | Instaló en una copia aislada y verificó lint, tipos, pruebas, e2e en Chromium, WebKit y Firefox, simulación, ritmo y cobertura (94 % del motor). Encontró la falta de dotfiles, bugs de teclado y de reinicio, y que el reporte de balance medía con un mazo que el juego ya no usa | Priorizó los arreglos y dejó 6, 7 y 9 para decisiones de producto | Pruebas en ejecución que reprodujeron cada bug grave |
 | 13 | 2026-09-29 | Preparar el traspaso a Claude Code | `CLAUDE.md`, guía de traspaso con primer mensaje, script de ritmo y verificación del zip desde una instalación limpia | Decidió construir el multijugador en Claude Code tras definir su PRD aquí | Instalación limpia desde el zip: `pnpm ci` en verde |
 | 12 | 2026-09-29 | Fase 4 de animación: interfaz | Cartas que vuelan a la mano, medidor vivo, rastro de vida, transiciones entre pantallas y resultados que cuentan. Verificó congelando cada animación en un punto exacto | Aprobó la fase | 49 pruebas; e2e; capturas congeladas; partida completa con robos reales |
 | 11 | 2026-09-29 | Fase 3 de animación: coreografía | Creó la tabla de tiempos y un estimador de ritmo sobre partidas del bot. Midió que un turno con combo duraba 11 s y lo bajó a 6,6 s encadenando las cartas del combo; agregó animaciones rápidas y aceleración con Espacio | Aprobó la fase | 49 pruebas (3 de metas de ritmo); e2e; partida completa |
@@ -26,6 +28,11 @@ Registro del proceso de recrear el juego con asistencia de IA (requisito de la c
 - **Juego demasiado fácil con los valores originales** (reporte de balance): se detectó con simulación antes de cualquier playtest.
 - **Reloj que mostraba 36 s durante un cuadro**: se detectó en una captura y se corrigió calculando el tiempo en cada render.
 - **Botón de ayuda duplicado para lectores de pantalla bajo los modales**: se corrigió con `inert` en el HUD.
+
+- **Mantener Espacio confirmaba turnos vacíos** (v0.9.2): la autorrepetición del teclado llegaba ya en la planificación. Una prueba e2e que mantiene la tecla lo reprodujo (7 turnos vacíos) y ahora vigila el arreglo.
+- **Efectos que sobrevivían al reinicio** (v0.9.2): se destruían al terminar su animación, pero reiniciar mataba esas animaciones. Ahora los efectos llevan un registro y se destruyen al interrumpir la partida.
+- **Vida de 62 en vez de 63** (v0.9.2): 45 × 1,4 da 62,999… en coma flotante. Se redondea (D-31) y se documentó qué repeticiones cambian.
+- **Archivos ocultos perdidos en el traspaso** (v0.9.2): copiar el zip con Finder dejó fuera `.gitignore` y `.github/`.
 
 ## Reglas que seguimos con la IA
 

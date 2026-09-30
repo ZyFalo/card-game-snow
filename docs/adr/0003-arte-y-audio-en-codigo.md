@@ -1,6 +1,6 @@
 # ADR 0003 · Arte y audio generados en código
 
-- Estado: aceptada (D-14, D-15) · Fecha: 2026-09-29
+- Estado: aceptada (D-14, D-15), con su límite de animación reemplazado por D-27 · Fecha: 2026-09-29
 
 ## Contexto
 D-01 prohíbe usar assets del original. Hacía falta arte coherente sin depender de generadores de imágenes, con licencias claras y un peso mínimo.
@@ -12,4 +12,4 @@ D-01 prohíbe usar assets del original. Hacía falta arte coherente sin depender
 ## Consecuencias
 - Cero peticiones de red para assets. El juego cabe en un solo HTML de 1,6 MB, donde la mayor parte es Phaser.
 - La estética "papel plegado" encaja con polígonos planos. Iterar el arte es editar coordenadas.
-- Límite: no hay animación por huesos. Las animaciones son tweens de código (P-13 resuelta).
+- ~~Límite: no hay animación por huesos. Las animaciones son tweens de código (P-13 resuelta).~~ **Reemplazado por D-27 (v0.6):** ninjas y gólems son esqueletos de recorte, con piezas SVG articuladas y clips de poses con marcadores. El arte y el audio siguen generándose en código.

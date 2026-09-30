@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.5 |
+| Versión | 0.10.0 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -21,13 +21,14 @@
 - [x] Dirección de arte: Propuesta A "Pliegues", generada en código (P-04, D-15)
 - [x] M0 a M5: motor, combate, rondas, cartas y combos, bonus, bot, balance y presentación
 - [x] Versión jugable publicada como página (privada hasta que decidas compartirla): https://claude.ai/artifact/5ybgwXexsxGhdbZvSoYxrV
-- [ ] M6: playtest con personas, QA en Firefox y Safari, táctil, Cloudflare e itch.io, video
+- [ ] M6: playtest con personas, QA en Firefox y Safari, táctil, Railway e itch.io, video
 - [x] Diseño de la progresión (§18): monedas, cajas, colección e inventario inicial, respaldado con datos del original y simulación
 - [x] Progresión implementada (§18): carta de camino, colección, tienda con cajas y monedas por ronda
 - [x] Animación fase 1 (§10.2): esqueletos articulados de papel con 10 estados por ninja y 7 por gólem
 - [x] Animación fase 2 (§10.2): efectos de impacto, cinemáticas de carta, ataques de gólems con aviso y efectos de estado persistentes
 - [x] Animación fase 3 (§10.2): coreografía medida con metas de ritmo, animaciones rápidas y aceleración manteniendo Espacio
 - [x] Animación fase 4 (§10.2): cartas que vuelan a la mano, medidor y vida animados, transiciones entre pantallas y resultados que cuentan. Plan de animación completo
+- [x] PRD de v2 aprobado: modo en línea con cuentas, multijugador y progreso en el servidor (`docs/PRD-v2.md`, versión 1.0). Hitos M7 a M9
 
 ### Estado de implementación (v0.9.5)
 
@@ -77,7 +78,7 @@ Tres ninjas elementales (Fuego, Agua y Nieve) defienden una cima nevada en un ta
 | Fase | Qué | Para quién |
 |---|---|---|
 | v1 | Single player en el navegador, controlando a los 3 ninjas | Entrega de la clase |
-| v2 | Multijugador con amigos (salas privadas de 1 a 3 personas) | Tú y tus amigos |
+| v2 | Modo en línea con cuentas: salas con código y emparejamiento, de 2 a 3 personas (`docs/PRD-v2.md`) | Tú, tus amigos y el público |
 | v3 | Jefe final, mentor aliado y progresión | Versión "completa" |
 
 **Decisión estructural desde el día 1:** las reglas viven en un módulo puro y determinista, separado del render. En v1 corre en el navegador; en v2 corre sin cambios en el servidor. Así el multijugador es un cambio de transporte y no una reescritura.
@@ -306,7 +307,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 | Fase | Contenido | Hitos |
 |---|---|---|
 | **v1 — Single player** (entrega de clase) | Reglas completas de §7, control de los 3 ninjas con ritmos de reloj, IA enemiga, 3 rondas + bonus, pantallas de §9, arte y audio originales | M0 a M6 |
-| **v2 — Multijugador** | Salas privadas con código para 1 a 3 personas; cada una controla uno o más ninjas; reconexión; bots opcionales | M7 a M9 |
+| **v2 — En línea** | Cuentas, salas con código y emparejamiento para 2 o 3 personas, un ninja cada una y el bot en el ninja libre, con el progreso en la cuenta (`docs/PRD-v2.md`) | M7 a M9 |
 | **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes | M10+ |
 
 ### 6.1 Alcance de v1 — ✅ D-08
@@ -339,7 +340,7 @@ Los valores numéricos viven en configuración (Apéndice A) para poder balancea
 
 ### Turno
 
-- **R-04 Planificación y ritmo.** El reloj del turno da 10 s por cada ninja en pie que controla una misma persona 🧪 (D-11): un ninja caído no tiene nada que planificar, así que no suma tiempo. En v1, donde el jugador controla a los 3, son 10 s por ninja en pie (30 s con los tres); en multijugador, 10 s con un ninja por persona, como el original. En single player se elige ritmo: *Relajado* (sin reloj), *Normal* (10 s por ninja en pie, 30 s con los tres; por defecto) o *Experto* (5 s por ninja en pie, 15 s con los tres). Cada ninja en pie recibe como máximo un movimiento y una acción; la acción se calcula desde su casilla planificada. Los planes se pueden cambiar hasta confirmar el turno; cuando todos los jugadores confirman (en v1, el único), el reloj termina. A los 3 s restantes se avisa. Al llegar a 0 se ejecuta lo elegido, las selecciones incompletas se descartan y un ninja sin plan no hace nada. Todos los fantasmas y objetivos son visibles en tiempo real.
+- **R-04 Planificación y ritmo.** El reloj del turno da 10 s por cada ninja en pie que controla una misma persona 🧪 (D-11): un ninja caído no tiene nada que planificar, así que no suma tiempo. En v1, donde el jugador controla a los 3, son 10 s por ninja en pie (30 s con los tres); en línea, el servidor da 15 s por turno a todos, sin pausa (D-46; el original usaba 10 s). En single player se elige ritmo: *Relajado* (sin reloj), *Normal* (10 s por ninja en pie, 30 s con los tres; por defecto) o *Experto* (5 s por ninja en pie, 15 s con los tres). Cada ninja en pie recibe como máximo un movimiento y una acción; la acción se calcula desde su casilla planificada. Los planes se pueden cambiar hasta confirmar el turno; cuando todos los jugadores confirman (en v1, el único), el reloj termina. A los 3 s restantes se avisa. Al llegar a 0 se ejecuta lo elegido, las selecciones incompletas se descartan y un ninja sin plan no hace nada. Todos los fantasmas y objetivos son visibles en tiempo real.
 - **R-05 Movimiento.** El destino debe estar a una distancia de camino no mayor al movimiento de la clase, calculada con BFS en 4 direcciones. Cada bando puede atravesar a sus aliados pero no a sus rivales ni a las rocas. El destino debe estar libre al inicio del turno y no puede estar reservado por el fantasma de otro aliado (el primero en reservar gana). Moverse es opcional.
 - **R-06 Acciones.** Una por turno y opcional: atacar, curar (solo Nieve), revivir o jugar carta. Si al resolverse el objetivo ya no es válido (por ejemplo, otro ninja lo derrotó), la acción se pierde sin efecto.
 - **R-07 Ataque básico.** Objetivo: un enemigo a distancia no mayor al alcance desde la casilla planificada. Daño igual al daño de la clase, ×1,5 con Potencia. No requiere línea de visión.
@@ -637,8 +638,8 @@ Investigado en septiembre de 2026 (fuentes en el Apéndice B). Las versiones son
 | Tests | Vitest; Playwright para pruebas de humo | — | Vitest reutiliza la configuración de Vite; Playwright abre el juego real en el navegador |
 | Lint y formato | Biome v2 | 2.x | Una sola herramienta, con reglas que usan información de tipos, sin depender de la API programática que TypeScript 7 todavía no publica (typescript-eslint la necesita) |
 | Runtime de herramientas | Node.js LTS vigente | — | Scripts, tests y desarrollo local del servidor en v2 |
-| Publicación de v1 | Cloudflare (Workers Static Assets) + itch.io | Plan gratuito | Enlace público para la clase e itch.io para compartir con amigos. Es la misma plataforma del servidor de v2 |
-| Multijugador (v2) | Cloudflare Workers + Durable Objects, con PartyServer | Plan gratuito | Un Durable Object por sala: autoritativo, con alarmas para el reloj del turno, WebSockets y el mismo `core` en TypeScript |
+| Publicación | Railway con Docker (D-37), en ventisca.wpena.dev (D-40), más itch.io | Pago por uso | Una sola imagen sirve el juego y, en v2, el servidor. itch.io para compartir el build de un solo archivo |
+| Multijugador (v2) | Servidor Node autoritativo con WebSocket y Postgres, en Railway (D-37) | Pago por uso | El mismo `core` en TypeScript; salas en memoria y estado por turno en Postgres (D-49). Ver `docs/PRD-v2.md` |
 
 **Punto de partida:** `npm create @phaserjs/game@latest` (plantilla oficial de Vite + TypeScript) para `apps/web`, adaptada al monorepo y actualizada a Vite 8 (la plantilla trae una versión anterior). Las plantillas oficiales incluyen un `log.js` que envía a Phaser datos anónimos de uso (plantilla, modo y versión); se puede quitar.
 
@@ -658,7 +659,7 @@ Investigado en septiembre de 2026 (fuentes en el Apéndice B). Las versiones son
 ### 11.3 Principios — ✅ D-02
 
 1. **Motor de reglas puro:** sin DOM, sin temporizadores, sin `Math.random` ni `Date`. Recibe estado + planes y devuelve estado nuevo + lista de eventos.
-2. **El reloj vive en el host, no en el motor:** en v1 lo lleva el navegador; en v2, la alarma del Durable Object de la sala.
+2. **El reloj vive en el host, no en el motor:** en v1 lo lleva el navegador; en v2, el servidor fija la hora límite de cada turno (D-46).
 3. **El render es un reproductor de eventos:** el cliente no decide reglas; anima la lista de eventos que devuelve el motor.
 4. **Estado presentado:** el animador reproduce los eventos en orden y, a medida que avanza, publica en el store el estado que se ve (HP, medidores, estados, manos). Phaser y React muestran ese estado, así las barras y los paneles cambian al ritmo de los golpes y no saltan al resultado final.
 5. **Host intercambiable:** la UI habla con una interfaz `GameHost`. En v1 la implementa `LocalHost`; en v2, `NetworkHost`. La UI no cambia.
@@ -689,7 +690,7 @@ flowchart LR
 │  └─ protocol/    (v2) Tipos de mensajes compartidos
 ├─ apps/
 │  ├─ web/         Vite + Phaser 4 (tablero, animador, VFX) + React (HUD y menús) + Zustand
-│  └─ server/      (v2) Cloudflare Worker con un Durable Object por sala
+│  └─ server/      (v2) Servidor Node: API, salas y progreso, en Railway (D-37)
 ├─ assets-src/     Fuentes editables de arte y audio (SVG, capas, prompts)
 └─ docs/
    ├─ PRD.md       Este documento
@@ -771,18 +772,17 @@ export function resolveTurn(prev: MatchState, plans: Plan[]): TurnResult {
 }
 ```
 
-### 11.7 Multijugador (v2) — 📌 D-03
+### 11.7 Multijugador (v2) — ✅ ver `docs/PRD-v2.md`
 
-- **Servidor autoritativo:** un Durable Object por sala en Cloudflare Workers, direccionado por el código de sala. Guarda el estado (en memoria y en su almacenamiento para reconexiones) y corre el mismo paquete `core`.
-- **Reloj del turno:** con la alarma del Durable Object; la planificación termina con la alarma o cuando todos confirmaron.
-- **Salas privadas** con código de 6 caracteres, para 1 a 3 personas. Los ninjas se reparten entre los jugadores; con 2 personas, una controla dos ninjas y su reloj es de 20 s (R-04). Bots opcionales (§8).
-- **Mensajes** (borrador):
-  - Cliente → servidor: `join`, `claimNinja`, `plan.update` (fantasma en vivo), `plan.confirm`.
-  - Servidor → cliente: `room.state`, `phase.planning {deadline}`, `plan.peer`, `turn.resolved {events, hash}`, `match.end`.
-- **Validación:** el servidor verifica cada plan contra las reglas y descarta los inválidos.
-- **Reconexión:** el cliente reconecta solo (PartySocket) y recibe una instantánea del estado.
-- **Costo:** el plan gratuito alcanza para jugar entre amigos (según un proyecto de ejemplo: 100 000 solicitudes y 13 000 GB-s de duración por día; los mensajes entrantes de WebSocket cuentan como una solicitud cada 20). Un juego por turnos envía pocos mensajes. Verificar los límites vigentes al implementar.
-- **Alternativa:** Colyseus 0.18 si más adelante hace falta matchmaking público.
+El modo en línea se especifica en `docs/PRD-v2.md` (versión 1.0, aprobado), que manda sobre este documento en todo lo del modo en línea. En resumen:
+
+- **Servidor autoritativo:** Node en Railway con Postgres (D-37). Valida cada plan, resuelve el turno con `packages/core` sin cambios y envía los eventos con su hash.
+- **Partidas:** de 2 o 3 personas, un ninja cada una. El bot toma el ninja libre o el de quien se desconecta (D-35, D-45).
+- **Entrada:** salas con código y emparejamiento público, desde el inicio (D-36, D-43, D-44).
+- **Reloj del servidor:** 15 s por turno, sin pausa (D-46).
+- **Persistencia:** el estado de cada partida se guarda en Postgres al final de cada turno (D-49).
+
+Reemplaza el plan anterior de un Durable Object de Cloudflare por sala (D-03).
 
 ### 11.8 Rendimiento y peso
 
@@ -798,8 +798,8 @@ export function resolveTurn(prev: MatchState, plans: Plan[]): TurnResult {
 
 ### 11.10 Integración continua y publicación
 
-- GitHub Actions: Biome, `tsc --noEmit`, Vitest y build en cada push; Playwright en la rama principal.
-- Despliegue automático de la rama principal a Cloudflare; publicación manual de versiones en itch.io.
+- GitHub Actions: Biome, tipos, Vitest, build y las e2e de humo de Playwright en cada push.
+- Despliegue en Railway con una imagen de Docker (D-37), que se configura en el hito M7. Publicación manual de versiones en itch.io.
 
 ---
 
@@ -861,14 +861,30 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 - [x] QA automatizado en Chromium: e2e, escalado a 3 tamaños de ventana y partida completa
 - [ ] QA manual en Firefox y Safari; táctil básico (los eventos de puntero ya funcionan, falta probar en dispositivos)
 - [x] Página jugable publicada (un solo HTML)
-- [ ] Cloudflare e itch.io, video de demo
+- [ ] Railway (D-37, con el M7) e itch.io, video de demo
 - [x] Bitácora de IA (`docs/ai-log.md`)
 - **Listo cuando:** la clase puede jugar desde un enlace. → **v1**
 
-### M7 a M9 — Multijugador (v2), resumen
-- [ ] M7: Worker con un Durable Object por sala, reloj con alarmas y `NetworkHost`
-- [ ] M8: reparto de ninjas entre jugadores, fantasmas en vivo, reconexión y bots opcionales
-- [ ] M9: pruebas con amigos y ajustes
+### M7 a M9 — Modo en línea (v2)
+
+Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas y donde se marcan. Cada uno es publicable por sí solo y termina con `pnpm ci` y `pnpm e2e` en verde.
+
+- [ ] **M7: Cuentas y servidor** (todavía sin multijugador):
+  - imagen de Docker en Railway, con Postgres, en ventisca.wpena.dev;
+  - registro, verificación, inicio de sesión, recuperación y borrado de cuenta;
+  - progreso en la cuenta (R-25 a R-32 resueltos en el servidor);
+  - sandbox con el mazo fijo (D-50) y `GameHost` asíncrono.
+- [ ] **M8: Partida en línea:**
+  - medir P-20 antes de programar las partidas;
+  - salas con código para 2 o 3 personas, con el bot en el ninja libre;
+  - reloj del servidor de 15 s (D-46) y fantasmas compartidos;
+  - cobro por ronda solo para quien estaba conectado (D-31, D-48);
+  - desconexión, reconexión y recuperación tras un reinicio.
+- [ ] **M9: Emparejamiento y estadísticas:**
+  - cola por dificultad y ninja (D-43);
+  - empezar con un bot a los 30 s si ambas personas aceptan (D-44);
+  - estadísticas privadas por persona (R-42);
+  - aviso de privacidad y pruebas con personas.
 
 ### M10+ — Jefe y progresión (v3), resumen
 - [ ] Jefe y mentora (§4.9 adaptado a la identidad propia)
@@ -878,6 +894,17 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 ---
 
 ## 14. Preguntas abiertas
+
+**Del PRD de v2 (`docs/PRD-v2.md`)**
+
+| ID | Pregunta | Estado |
+|---|---|---|
+| P-19 | Edad mínima | ✅ Resuelta para v2: sin límite de edad ni autorización de adultos (D-38). El riesgo legal queda anotado en el PRD de v2 |
+| P-20 | Curva de dificultad en línea con equipos de colecciones mezcladas | ❓ Abierta: se mide en el simulador antes del M8 y la curva se decide con esos números |
+| P-21 | Visibilidad de las estadísticas | ✅ Resuelta: privadas, solo las ve cada jugador (D-39) |
+| P-22 | Castigo por abandono | ❓ Abierta: sin castigo en v2 (R-39). Se decide con datos de uso una vez abierto el emparejamiento |
+| P-23 | Mazo del sandbox | ✅ Resuelta: el mazo de referencia, igual que el bot (D-47, D-50) |
+| P-24 | Jugar en línea en solitario | ✅ Resuelta: no. Hacen falta al menos dos personas, y quien está solo juega el sandbox (D-35) |
 
 **Nuevas en v0.4 (con valor por defecto)**
 
@@ -904,7 +931,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | ID | Pregunta | Respuesta |
 |---|---|---|
 | P-01 | ¿Cómo se controla el equipo en single player? | ✅ El jugador controla a los 3 ninjas (D-08) |
-| P-02 | ¿Qué tecnología? | ✅ TypeScript + Phaser 4 + React, con Vite 8; Cloudflare para publicar y para v2 (D-09) |
+| P-02 | ¿Qué tecnología? | ✅ TypeScript + Phaser 4 + React, con Vite 8; Railway para publicar y para v2 (D-09, D-37) |
 | P-03 | ¿Fecha de entrega? | ✅ Sin fecha fija; hitos con caja de tiempo y demos intermedias (D-10) |
 
 **Con valor por defecto (si no dices nada, se asume el defecto)**
@@ -937,7 +964,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | Phaser 4 es reciente (abril de 2026) y hay menos ejemplos de v4 que de v3 | Media | Bajo | Skills oficiales de Phaser 4 y guía de migración; la API se mantuvo casi igual |
 | React y Phaser muestran estados distintos | Media | Medio | Un solo store y estado presentado publicado por el animador (§11.3) |
 | Valores del original inciertos | Alta | Bajo | Todo en configuración; se decide con simulación y playtest |
-| Multijugador más complejo de lo esperado | Baja | Medio | Motor compartido desde M0, Durable Object por sala y reloj en el host |
+| Multijugador más complejo de lo esperado | Baja | Medio | Motor compartido desde M0, servidor autoritativo en Railway (D-37), reloj en el servidor (D-46) e hitos publicables por separado (`docs/PRD-v2.md`) |
 
 ---
 
@@ -947,15 +974,15 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 |---|---|---|---|
 | D-01 | Mecánica fiel; nombre, personajes, arte, audio y textos originales; cero assets del original | ✅ | 2026-09-29 |
 | D-02 | Motor de reglas puro y determinista, separado del render | ✅ | 2026-09-29 |
-| D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | 📌 Propuesta | 2026-09-29 |
+| D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | Reemplazada por D-35 a D-37 (`docs/PRD-v2.md`) | 2026-09-29 |
 | D-04 | Movimiento por camino (BFS) con bloqueo entre bandos | 🧪 | 2026-09-29 |
 | D-05 | Ningún ataque requiere línea de visión | 📌 | 2026-09-29 |
 | D-06 | Los valores dudosos del original se resuelven en el Apéndice A | 🧪 | 2026-09-29 |
 | D-07 | Mazo finito de 6 cartas por clase, fiel al original | 🧪 | 2026-09-29 |
 | D-08 | En single player el jugador controla a los 3 ninjas | ✅ | 2026-09-29 |
-| D-09 | Stack: TypeScript + Phaser 4 + React + Zustand + Vite 8 + pnpm + Vitest + Biome; publicación en Cloudflare; v2 con Durable Objects | ✅ | 2026-09-29 |
+| D-09 | Stack: TypeScript + Phaser 4 + React + Zustand + Vite 8 + pnpm + Vitest + Biome; publicación y v2 en Railway (D-37; antes, Cloudflare) | ✅ | 2026-09-29 |
 | D-10 | Sin fecha fija: hitos con caja de tiempo y demos intermedias | ✅ | 2026-09-29 |
-| D-11 | Reloj de 10 s por ninja que controla una misma persona; ritmos Relajado, Normal y Experto en single player | 🧪 | 2026-09-29 |
+| D-11 | Reloj de 10 s por ninja que controla una misma persona; ritmos Relajado, Normal y Experto en single player. En línea, 15 s por turno (D-46) | 🧪 | 2026-09-29 |
 | D-12 | La condición "contra reloj" del bonus se mide en turnos: 13 en Clásica y 18 en Tormenta | ✅ Calibrada con simulación | 2026-09-29 |
 | D-13 | Dificultad Tormenta junto a la Clásica (ADR 0005) | ✅ | 2026-09-29 |
 | D-14 | Audio sintetizado con WebAudio (efectos y música generativa), sin archivos | ✅ | 2026-09-29 |
@@ -970,6 +997,23 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-50 | Sandbox con el mazo de referencia del balance (8, 9, 10, 10, 11 y 12) para cada ninja (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-48 | Recompensas individuales: cada persona cobra sus rondas si estaba conectada al terminarlas; el bot no cobra (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-47 | El bot juega con el mazo de referencia de su elemento (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-46 | Reloj del servidor, sin pausa: 15 s por turno para todos. Enmienda R-04 en el modo en línea (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-45 | Si alguien se desconecta, el bot toma su ninja hasta que vuelva (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-44 | El emparejamiento espera 30 s a un tercero; después, las dos personas pueden empezar con un bot si ambas aceptan (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-43 | Cada persona elige su ninja antes de la cola, y el emparejamiento solo junta ninjas distintos (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-42 | Sin comunicación, ni chat ni señales: cada persona ve en tiempo real el plan de sus compañeros (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-41 | Público abierto en internet (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-40 | Dominio ventisca.wpena.dev, con un registro CNAME hacia Railway (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-39 | Estadísticas de combate solo en línea, calculadas en el servidor y privadas (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-38 | Cuentas con correo y contraseña; verificación y recuperación con Resend; sin límite de edad en v2 (P-19) (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-37 | Todo en Railway con Docker: servidor Node autoritativo y Postgres. Reemplaza a Cloudflare (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-36 | Salas con código y emparejamiento público, desde el inicio (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-35 | Partidas en línea de 2 o 3 personas, un ninja cada una; con 2, el bot controla el tercero (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-34 | Dos modos: sandbox sin cuenta ni progreso, y en línea con cuenta. La progresión de R-25 a R-32 pasa del navegador a la cuenta (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
 | D-33 | La vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano (R-24). Se registró primero como D-31; se renumeró porque D-31 y D-32 ya estaban aprobadas para otras decisiones. Truncar dejaba a Granizo con 62 en vez de 63, porque en coma flotante 45 × 1,4 da 62,999…. Cambia el hash de las repeticiones de Tormenta en las que aparece un Granizo. Por eso las repeticiones pasan a la versión 2 (`REPLAY_VERSION`) y las de versión 1 se rechazan con un mensaje claro en vez de reproducirse distinto | ✅ | 2026-09-29 |
 | D-32 | Los números de orden muestran el orden real de R-11 según los planes del momento: primero acciones básicas y luego cartas, ambas en orden Fuego, Agua, Nieve; sin acción no hay número (§9) | ✅ | 2026-09-29 |
 | D-31 | Cobro por ronda: cada ronda superada se acredita al instante; resultados y logros se guardan en el evento de fin de partida, antes de la celebración; abandonar antes solo pierde los logros de esa partida (enmienda R-29) | ✅ | 2026-09-29 |
@@ -985,6 +1029,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.0 | 2026-09-29 | Integra el PRD de v2 aprobado (`docs/PRD-v2.md`, versión 1.0), que manda en todo lo del modo en línea. R-04 en línea da 15 s por turno (D-46). Se agregan las decisiones D-34 a D-50 y las preguntas P-19 a P-24. Cloudflare pasa a Railway (D-37) en D-03, D-09, §11.1, §11.3, §11.4, §11.7 (que ahora remite al PRD de v2), §11.10, §15, M6 y P-02. Los hitos M7 a M9 son los del PRD de v2. R-25 a R-32 pasan a la cuenta en v2 (D-34) |
 | 0.9.5 | 2026-09-29 | Pendientes de v1 que no dependen de v2. Deshacer ya no deja planes vacíos que bloqueaban la pausa. Los ajustes guardados se validan campo por campo. Sin WebGL, un mensaje explica por qué no se puede jugar. R-04, R-10 y R-14 tienen pruebas propias. Los textos de la interfaz pasan a `i18n/es.ts`, salvo la de progresión (`Progression.tsx` y `CardFace.tsx`), que cambia en v2. Biome usa `preset` en lugar de `recommended`. R-04 aclara que el reloj da 10 s por ninja en pie (30 s con los tres), porque un caído no tiene nada que planificar; la pantalla de equipo lo dice igual |
 | 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md`. Las repeticiones pasan a la versión 2 por D-33: `runReplay` rechaza las de otra versión con un mensaje claro |
 | 0.9.3 | 2026-09-29 | Decisiones aprobadas: D-31 (cobro al instante por ronda; resultados y logros en el evento de fin de partida; enmienda R-29) y D-32 (los números de orden siguen el orden real de R-11; nuevo punto 6 del §9.3). Implementadas con sus pruebas, junto con el texto del bonus contra el reloj de R-21: "Turno t de N · quedan N − t + 1" en la ficha y en el cartel de ronda |
@@ -1020,6 +1065,8 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **Monedas por ronda superada:** 60, 120 y 120, más 120 por ganar el bonus. Se cobraban al final y se conservaban aunque se perdiera después. Con todas las estampillas del juego, las monedas se duplicaban. Aparte, la experiencia por ronda subía el rango (hasta 24).
 
 ### 18.2 Reglas (R-25 a R-32)
+
+> En v2 esta progresión pasa del navegador a la cuenta (D-34): la resuelve el servidor y el sandbox no da progreso. Ver `docs/PRD-v2.md`.
 
 - **R-25 Colección.** Cada elemento tiene un banco de 20 cartas distintas (60 en total). El jugador puede tener de 0 a 20 cartas distintas por elemento (20 = colección completa) y además copias repetidas de cualquiera (D-21).
 - **R-26 Reserva en batalla.** La reserva de cada ninja es toda la colección de su elemento, con repetidas (D-20). Al llenarse el medidor sale una carta al azar, sin reposición dentro de la partida (R-15 no cambia). Si la reserva se agota, el medidor sigue cargando sin dar cartas.
@@ -1090,7 +1137,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 | Clave de configuración | Valor | Fuente | Nota |
 |---|---|---|---|
 | `grid` | 9 × 5 | Wiki y reimplementación | |
-| `planSecondsPerNinja` | 10 por ninja en pie que controla una misma persona (30 con los tres en v1; Relajado sin reloj; Experto ×0,5) | Reimplementación (10 s por jugador) + propuesta | 🧪 Aviso de confirmar a los 3 s |
+| `planSecondsPerNinja` | 10 por ninja en pie que controla una misma persona (30 con los tres en v1; Relajado sin reloj; Experto ×0,5). En línea, 15 s por turno (D-46) | Reimplementación (10 s por jugador) + propuesta | 🧪 Aviso de confirmar a los 3 s |
 | `ninja.water` | HP 40 · daño 10 · alcance 1 · mov. 2 | Wiki y reimplementación | Coinciden |
 | `ninja.fire` | HP 30 · daño 8 · alcance 2 · mov. 2 | Wiki y reimplementación | Coinciden |
 | `ninja.snow` | HP 25 · daño 6 · alcance 3 · mov. 3 · cura 6 | Wiki y reimplementación | Coinciden |

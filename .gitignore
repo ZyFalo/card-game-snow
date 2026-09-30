@@ -11,3 +11,6 @@ playwright-report/
 .env
 .env.*
 !.env.example
+
+# Correos que el servidor guarda durante las e2e (nunca en producción).
+apps/web/.e2e-outbox/

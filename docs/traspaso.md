@@ -9,6 +9,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - Sin cuenta ni progreso (D-34).
   - Dificultades Clásica y Tormenta, tres ritmos de reloj, pausa y ayuda.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
+- **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
 - **Servidor (`apps/server`):**
   - Fastify con Postgres (Drizzle).
   - Sirve el juego y `/api/health`, y aplica las migraciones al arrancar.
@@ -41,6 +42,31 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   2. Corre `pnpm db:generate`.
   3. Sube la migración nueva de `apps/server/drizzle/` junto con el cambio. El servidor la aplica al arrancar.
 
+## Despliegue (Railway)
+
+- **Dónde:** https://ventisca.wpena.dev, en Railway (plan Hobby, región EE. UU. Este), con su Postgres. La base no tiene copias de seguridad: es un riesgo aceptado, a revisar antes de que el proyecto crezca.
+- **Cómo se despliega:** con cada push a `main`, es decir, al fusionar un PR.
+  - Railway espera a que pase la CI ("Wait for CI") y construye la imagen del Dockerfile.
+  - `railway.json` manda sobre el panel. Fija el comando de arranque, la comprobación de salud (`/api/health`), los reinicios, la región y qué cambios redespliegan (los de documentación no).
+- **Migraciones:** el servidor las aplica al arrancar. Si fallan, el despliegue nuevo no pasa la comprobación de salud y sigue sirviendo el anterior.
+- **Variables:** se cargan en el panel del servicio (Variables), nunca en el repositorio.
+  - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`.
+  - `PORT` = `3000`.
+  - `LOG_LEVEL` = `info`.
+  - Las de cuentas y correo llegan con los PRs 5 y 6.
+- **DNS (D-58):** en wpena.dev hay dos registros: el CNAME `ventisca`, que apunta a Railway, y el TXT de verificación. El CNAME va en **"Solo DNS"** (nube gris en Cloudflare), nunca con el proxy. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad.
+- **Comprobar un despliegue:** `pnpm check:prod`. Revisa:
+  - el DNS sin el proxy;
+  - el certificado de Let's Encrypt;
+  - las cabeceras sin Cloudflare;
+  - la redirección de HTTP a HTTPS;
+  - la salud y el 404;
+  - un turno jugado en Chromium sin pedir nada a otros dominios.
+
+  Sale con código 1 si algo falla.
+- **Registros:** en el panel de Railway, en cada despliegue; se pueden consultar 7 días. Los del servidor no guardan IPs; los de acceso de Railway sí, y el aviso de privacidad lo declara.
+- **Volver atrás:** en Deployments, "Rollback" sobre un despliegue anterior.
+
 ## Herramientas útiles
 
 - `?speed=0.2` en la URL acelera las animaciones (pruebas y demos).
@@ -50,7 +76,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 
 ## Pendiente, según los PRD
 
-- **M7, en pasos pequeños (PRD de v2):** despliegue en Railway (ventisca.wpena.dev), cuentas en el servidor y en el cliente, y progreso en la cuenta.
+- **M7, en pasos pequeños (PRD de v2):** cuentas en el servidor y en el cliente, y progreso en la cuenta. El despliegue ya está hecho.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

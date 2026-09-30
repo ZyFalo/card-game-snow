@@ -1,7 +1,10 @@
 name: CI
 
+# En main corre en cada push (Railway espera este resultado antes de desplegar: "Wait for CI");
+# en las demás ramas, a través de su pull request, para no correr todo dos veces.
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:

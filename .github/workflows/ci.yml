@@ -67,7 +67,9 @@ jobs:
       - name: La imagen arranca, migra y responde
         run: |
           docker run -d --name app --network host \
-            -e DATABASE_URL=postgres://ventisca:ventisca@localhost:5432/ventisca -e PORT=3000 ventisca
+            -e DATABASE_URL=postgres://ventisca:ventisca@localhost:5432/ventisca -e PORT=3000 \
+            -e NODE_ENV=production -e APP_URL=http://localhost:3000 \
+            -e SESSION_SECRET=solo-para-probar-la-imagen-en-la-ci-no-es-un-secreto ventisca
           for i in $(seq 1 30); do curl -fsS localhost:3000/api/health && break; sleep 1; done
           curl -fsS localhost:3000/api/health | grep -q '"db":"ok"'
           curl -fsS localhost:3000/ | grep -q '<title>Ventisca</title>'

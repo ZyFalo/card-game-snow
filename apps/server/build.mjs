@@ -10,8 +10,9 @@ await build({
   target: 'node22',
   format: 'esm',
   sourcemap: true,
-  // pg solo lo carga si se pide el modo nativo, que no usamos.
-  external: ['pg-native'],
+  // pg solo lo carga si se pide el modo nativo, que no usamos. Argon2 es un binario nativo por
+  // plataforma: la imagen lo instala aparte (ver el Dockerfile).
+  external: ['pg-native', '@node-rs/argon2'],
   // Varias dependencias son CommonJS y llaman a require; en un módulo ES hay que dárselo.
   banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
   logLevel: 'info',

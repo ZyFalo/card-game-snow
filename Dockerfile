@@ -18,6 +18,10 @@ RUN pnpm --filter @ventisca/web build && pnpm --filter @ventisca/server build
 FROM node:22-slim
 ENV NODE_ENV=production
 WORKDIR /srv
+# Argon2 (D-54) es nativo: se instala para la plataforma de la imagen, con la misma versión exacta que
+# apps/server/package.json (deploy.test.ts lo comprueba). Todo lo demás va dentro de server.mjs.
+RUN cd /srv && mkdir -p apps/server && cd apps/server \
+  && npm install --no-save --no-package-lock --omit=dev --no-audit --no-fund @node-rs/argon2@2.2.1
 COPY --from=build /repo/apps/server/dist apps/server/dist
 COPY --from=build /repo/apps/server/drizzle apps/server/drizzle
 COPY --from=build /repo/apps/web/dist apps/web/dist

@@ -29,7 +29,7 @@ import {
 import { audio } from '../audio/audio';
 import { URL_SPEED } from '../game/speed';
 import { LocalHost } from '../host/LocalHost';
-import { NINJA_TEXT, TIPS } from '../i18n/es';
+import { NINJA_TEXT, NOTICE, TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveAchievements, saveSettings } from './persist';
 import { activeInfo, nextPlannable, plansArray, turnClockMs } from './planning';
@@ -326,7 +326,7 @@ export function clickTile(v: Vec): void {
       selectNinja(occupant.id);
       return;
     }
-    reject('Esa casilla queda fuera del alcance de la carta.');
+    reject(NOTICE.cardOutOfRange);
     return;
   }
 
@@ -339,7 +339,7 @@ export function clickTile(v: Vec): void {
       setAction(ninja.id, plan, { type: 'revive', targetId: occupant.id });
       // R-09 (D-18): se levanta con 1 de vida antes del turno de los gólems.
       if (isThreatened(m, occupant.pos)) {
-        notify(`Ojo: ${NINJA_TEXT[occupant.id].name} volverá con 1 de vida y ahí lo pueden alcanzar.`);
+        notify(NOTICE.exposedRevive(NINJA_TEXT[occupant.id].name));
       }
       return;
     }
@@ -347,7 +347,7 @@ export function clickTile(v: Vec): void {
       selectNinja(occupant.id);
       return;
     }
-    reject(`Para revivir a ${NINJA_TEXT[occupant.id].name}, planea terminar en una casilla vecina.`);
+    reject(NOTICE.reviveFromNeighbor(NINJA_TEXT[occupant.id].name));
     return;
   }
 
@@ -367,7 +367,7 @@ export function clickTile(v: Vec): void {
       setAction(ninja.id, plan, { type: 'attack', targetId: enemy.id });
       return;
     }
-    reject('Ese gólem está fuera de alcance desde la casilla planeada.');
+    reject(NOTICE.enemyOutOfRange);
     return;
   }
 
@@ -375,15 +375,15 @@ export function clickTile(v: Vec): void {
   if (info.moves.has(key(v))) {
     const next: Plan = { ninjaId: ninja.id, moveTo: v };
     if (plan.action && isActionValid(m, ninja.id, v, plan.action)) next.action = plan.action;
-    else if (plan.action) notify('La acción anterior ya no alcanza desde aquí: elige otra.');
+    else if (plan.action) notify(NOTICE.actionLost);
     setPlan(ninja.id, next);
     audio.play('select');
     return;
   }
   const reservedBy = plansArray(st.plans).find((p) => p.ninjaId !== ninja.id && p.moveTo && eq(p.moveTo, v));
-  if (reservedBy) reject(`Esa casilla ya la reservó ${NINJA_TEXT[reservedBy.ninjaId].name}.`);
-  else if (isRock(m, v)) reject('Ahí hay una roca.');
-  else reject(`${NINJA_TEXT[ninja.id].name} no llega hasta ahí este turno.`);
+  if (reservedBy) reject(NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name));
+  else if (isRock(m, v)) reject(NOTICE.rock);
+  else reject(NOTICE.outOfReach(NINJA_TEXT[ninja.id].name));
 }
 
 export function undo(): void {

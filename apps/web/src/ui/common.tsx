@@ -1,5 +1,6 @@
 import type { ElementKind } from '@ventisca/core';
 import { type ReactNode, useEffect, useState } from 'react';
+import { ES } from '../i18n/es';
 
 const INK = '#1F2440';
 
@@ -224,7 +225,7 @@ export function Modal({
     >
       <div className={`modal paper ${className}`} role="dialog" aria-modal="true" aria-label={label}>
         {onClose ? (
-          <button type="button" className="icon-btn close" onClick={onClose} aria-label="Cerrar">
+          <button type="button" className="icon-btn close" onClick={onClose} aria-label={ES.close}>
             <Icon name="close" />
           </button>
         ) : null}

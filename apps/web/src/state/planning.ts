@@ -19,7 +19,7 @@ import {
   reviveTargets,
   type Vec,
 } from '@ventisca/core';
-import { ENEMY_TEXT, ES, NINJA_TEXT, type Pace } from '../i18n/es';
+import { BONUS_PROGRESS, ENEMY_TEXT, ES, NINJA_TEXT, type Pace, PLAN_TEXT, TIP_TEXT } from '../i18n/es';
 import type { AppState } from './store';
 
 /** R-04: el reloj da 10 s por ninja en pie que controla el jugador, según el ritmo; Relajado no tiene reloj. */
@@ -101,22 +101,22 @@ export function planLabel(plan: Plan | undefined, ninja: Ninja, m: MatchState): 
   const action = plan?.action;
   switch (status) {
     case 'ko':
-      return 'Caído';
+      return PLAN_TEXT.ko;
     case 'none':
-      return 'Sin plan';
+      return PLAN_TEXT.none;
     case 'move':
-      return 'Solo moverse';
+      return PLAN_TEXT.move;
     case 'attack': {
       const e = action?.type === 'attack' ? getEnemy(m, action.targetId) : undefined;
-      return e ? `Atacar a ${ENEMY_TEXT[e.kind].name}` : 'Atacar';
+      return PLAN_TEXT.attack(e ? ENEMY_TEXT[e.kind].name : undefined);
     }
     case 'heal':
-      return action?.type === 'heal' ? `Curar a ${NINJA_TEXT[action.targetId as ElementKind].name}` : 'Curar';
+      return PLAN_TEXT.heal(action?.type === 'heal' ? NINJA_TEXT[action.targetId as ElementKind].name : undefined);
     case 'revive':
-      return action?.type === 'revive' ? `Revivir a ${NINJA_TEXT[action.targetId as ElementKind].name}` : 'Revivir';
+      return PLAN_TEXT.revive(action?.type === 'revive' ? NINJA_TEXT[action.targetId as ElementKind].name : undefined);
     case 'card': {
       const card = action?.type === 'card' ? ninja.hand.find((c) => c.id === action.cardId) : undefined;
-      return card ? `Carta ${card.value}` : 'Carta';
+      return PLAN_TEXT.card(card?.value);
     }
   }
 }
@@ -129,48 +129,48 @@ export const tileKey = key;
 /** Consejo contextual para la barra superior (§9.5). */
 export function contextualTip(s: AppState): string | null {
   const m = s.match;
-  if (s.phase === 'intro') return 'Los gólems bajan de la montaña.';
+  if (s.phase === 'intro') return TIP_TEXT.intro;
   if (s.phase === 'resolving') {
-    const hint = s.boosting ? 'Acelerando…' : 'Mantén Espacio para acelerar.';
-    if (s.resolveStep === 'enemies') return `Responden los gólems, uno por uno. ${hint}`;
-    if (s.resolveStep === 'end') return `Final del turno: quemaduras y cierre de ronda. ${hint}`;
-    return `Actúan tus ninjas: Brasa, Marea y Escarcha, en ese orden. ${hint}`;
+    const hint = s.boosting ? ES.accelerating : TIP_TEXT.holdToBoost;
+    if (s.resolveStep === 'enemies') return TIP_TEXT.enemies(hint);
+    if (s.resolveStep === 'end') return TIP_TEXT.end(hint);
+    return TIP_TEXT.ninjas(hint);
   }
   if (s.phase !== 'planning' || !m) return null;
   if (s.hover) {
     const e = enemyAt(m, s.hover);
     if (e && !s.pendingCard) {
       const t = ENEMY_TEXT[e.kind];
-      return `${t.name}, ${t.role.toLowerCase()} (${e.hp}/${e.maxHp}). ${t.tip}`;
+      return TIP_TEXT.enemy(t.name, t.role, e.hp, e.maxHp, t.tip);
     }
   }
   const info = activeInfo(s);
-  if (!info) return 'Confirma el turno.';
+  if (!info) return TIP_TEXT.confirm;
   const name = NINJA_TEXT[info.ninja.id].name;
-  if (s.pendingCard) return `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`;
-  if (!info.plan.moveTo && !info.plan.action) return `${name}: elige a dónde moverte, un objetivo o una carta.`;
-  if (!info.plan.action) return `${name}: elige un objetivo desde la nueva casilla o juega una carta.`;
+  if (s.pendingCard) return TIP_TEXT.placeCard(name);
+  if (!info.plan.moveTo && !info.plan.action) return TIP_TEXT.start(name);
+  if (!info.plan.action) return TIP_TEXT.action(name);
   const pending = ELEMENTS.filter((id) => {
     const n = getNinja(m, id);
     return n && n.hp > 0 && !s.plans[id]?.action;
   });
   if (pending.length > 0) {
-    return `Tab pasa al siguiente ninja. Falta planear a ${pending.map((id) => NINJA_TEXT[id].name).join(' y ')}.`;
+    return TIP_TEXT.pending(pending.map((id) => NINJA_TEXT[id].name));
   }
-  return 'Todo listo. Confirma el turno con Espacio.';
+  return TIP_TEXT.ready;
 }
 
 /** Progreso de la condición del bonus (R-21) para la ficha de ronda del HUD. */
 export function bonusProgress(v: MatchState): { text: string; cls: string } {
-  if (v.round === 'bonus') return { text: 'Desbloqueado', cls: 'ok' };
+  if (v.round === 'bonus') return { text: BONUS_PROGRESS.unlocked, cls: 'ok' };
   switch (v.bonusCondition) {
     case 'noKo': {
       const ok = !v.ninjas.some((n) => n.everKo);
-      return { text: ok ? 'Nadie ha caído' : 'Alguien cayó', cls: ok ? 'ok' : 'bad' };
+      return { text: ok ? BONUS_PROGRESS.noKoOk : BONUS_PROGRESS.noKoBad, cls: ok ? 'ok' : 'bad' };
     }
     case 'fullHealth': {
       const full = v.ninjas.every((n) => n.hp === n.maxHp);
-      return { text: full ? 'Todos a tope' : 'Hay heridos', cls: full ? 'ok' : 'bad' };
+      return { text: full ? BONUS_PROGRESS.fullOk : BONUS_PROGRESS.fullBad, cls: full ? 'ok' : 'bad' };
     }
     case 'turnLimit': {
       const n = difficultyConfig(v.difficulty).bonusTurnLimit;

@@ -1,7 +1,7 @@
 import { BALANCE, ELEMENTS, ENEMY_KINDS } from '@ventisca/core';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { art } from '../art';
-import { ENEMY_TEXT, ES, NINJA_TEXT } from '../i18n/es';
+import { ENEMY_TEXT, ES, HELP, NINJA_TEXT } from '../i18n/es';
 import { quitToMenu, replayJson, restartMatch, setHelp, togglePause, updateSettings } from '../state/actions';
 import { store, useApp } from '../state/store';
 import { Icon, Modal, Toggle } from './common';
@@ -55,7 +55,7 @@ export function PauseMenu() {
           />
           <Toggle label={ES.tipsMode} checked={settings.tips} onChange={(tips) => updateSettings({ tips })} />
           <Toggle
-            label="Pasar al siguiente ninja"
+            label={ES.autoAdvance}
             checked={settings.autoAdvance}
             onChange={(autoAdvance) => updateSettings({ autoAdvance })}
           />
@@ -95,26 +95,16 @@ export function HelpModal() {
   return (
     <Modal label={ES.howToPlay} className="help" onClose={close}>
       <h2 className="display">{ES.howToPlay}</h2>
-      <p>
-        Tres aprendices de papel contra gólems de escarcha en un tablero de 9×5. Supera tres rondas y, si cumples la
-        condición de bonus, una cuarta. Pierdes si caen los tres a la vez.
-      </p>
+      <p>{HELP.intro}</p>
 
-      <h3>Cada turno</h3>
+      <h3>{HELP.turnTitle}</h3>
       <ul>
-        <li>Planea a cada ninja: primero a dónde se mueve (casillas azules) y luego qué hace.</li>
-        <li>
-          Haz clic en un gólem para atacarlo, en un aliado para curarlo (Escarcha) o revivirlo, o elige una carta y su
-          casilla central.
-        </li>
-        <li>
-          Confirma el turno. Se resuelve en orden: Brasa, Marea y Escarcha; después actúan los gólems, que siempre
-          atacan si pueden.
-        </li>
-        <li>El reloj da 10 segundos por ninja. Si se acaba, se juega lo que hayas planeado.</li>
+        {HELP.turn.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
       </ul>
 
-      <h3>Tu equipo</h3>
+      <h3>{HELP.teamTitle}</h3>
       <div className="help-cols">
         {ELEMENTS.map((el) => {
           const st = BALANCE.ninjas[el];
@@ -125,14 +115,14 @@ export function HelpModal() {
                 <b>
                   {NINJA_TEXT[el].name} · {NINJA_TEXT[el].element}
                 </b>
-                Vida {st.hp}, daño {st.attack}, alcance {st.range}, paso {st.move}. {NINJA_TEXT[el].card}
+                {HELP.ninjaStats(st.hp, st.attack, st.range, st.move)} {NINJA_TEXT[el].card}
               </div>
             </div>
           );
         })}
       </div>
 
-      <h3>Los gólems</h3>
+      <h3>{HELP.golemsTitle}</h3>
       <div className="help-cols">
         {ENEMY_KINDS.map((k) => {
           const st = BALANCE.enemies[k];
@@ -143,68 +133,46 @@ export function HelpModal() {
                 <b>
                   {ENEMY_TEXT[k].name} · {ENEMY_TEXT[k].role}
                 </b>
-                Vida {st.hp}, alcance {st.range}, paso {st.move}. {ENEMY_TEXT[k].tip}
+                {HELP.golemStats(st.hp, st.range, st.move)} {ENEMY_TEXT[k].tip}
               </div>
             </div>
           );
         })}
       </div>
 
-      <h3>Cartas y combos</h3>
+      <h3>{HELP.cardsTitle}</h3>
       <ul>
-        <li>El medidor sube con cada movimiento, acción o golpe recibido. Al llenarse, ganas una carta (máximo 4).</li>
-        <li>Las cartas afectan un área de 3×3 y se colocan dentro del alcance de movimiento del ninja.</li>
-        <li>
-          Si dos o tres ninjas juegan carta el mismo turno, hay combo: Fuego quema, Agua da Potencia y Nieve da Escudo.
-        </li>
+        {HELP.cards.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
       </ul>
 
-      <h3>Caer y revivir</h3>
+      <h3>{HELP.koTitle}</h3>
       <ul>
-        <li>Un ninja caído no actúa, pero puede ser revivido desde una casilla vecina (también en diagonal).</li>
-        <li>
-          Revivir ocupa la acción. El caído se levanta al instante con 1 de vida, antes de que actúen los gólems: si lo
-          alcanzan, puede volver a caer ese mismo turno.
-        </li>
+        {HELP.ko.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
       </ul>
 
-      <h3>Monedas, cajas y colección</h3>
+      <h3>{HELP.coinsTitle}</h3>
       <ul>
-        <li>
-          Cada ronda superada paga al instante: 60, 120 y 120, más 120 si ganas el bonus. Lo cobrado no se pierde aunque
-          después caigas o salgas. Con los 9 logros, las monedas se duplican.
-        </li>
-        <li>
-          Con monedas compras cajas de 1, 2 o 3 cartas del elemento que elijas. Los números altos son menos comunes.
-        </li>
-        <li>
-          Tu reserva en cada partida es toda tu colección de ese elemento, con repetidas: al llenarse el medidor sale
-          una al azar. Más cartas, más combos.
-        </li>
+        {HELP.coins.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
       </ul>
 
-      <h3>Controles</h3>
+      <h3>{HELP.keysTitle}</h3>
       <div className="keys">
-        <span className="kbd">Clic</span>
-        <span>Seleccionar ninja, casilla u objetivo</span>
-        <span className="kbd">Clic derecho · Esc</span>
-        <span>Deshacer el último paso del plan</span>
-        <span className="kbd">Tab</span>
-        <span>Siguiente ninja (Shift + Tab: anterior)</span>
-        <span className="kbd">1 a 4</span>
-        <span>Elegir carta</span>
-        <span className="kbd">Espacio</span>
-        <span>Confirmar turno</span>
-        <span className="kbd">S</span>
-        <span>Sugerir jugada para el ninja activo</span>
-        <span className="kbd">Mantén Espacio</span>
-        <span>Acelerar la resolución del turno</span>
-        <span className="kbd">P</span>
-        <span>Pausa</span>
+        {HELP.keys.map(([key, what]) => (
+          <Fragment key={key}>
+            <span className="kbd">{key}</span>
+            <span>{what}</span>
+          </Fragment>
+        ))}
       </div>
       <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-primary" onClick={close}>
-          {inBattle ? 'Volver a la pausa' : ES.close}
+          {inBattle ? HELP.backToPause : ES.close}
         </button>
       </div>
     </Modal>

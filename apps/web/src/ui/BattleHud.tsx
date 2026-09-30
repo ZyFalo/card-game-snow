@@ -1,8 +1,8 @@
-import { type ElementKind, type Ninja, resolutionOrder } from '@ventisca/core';
+import { BALANCE, type ElementKind, type Ninja, resolutionOrder } from '@ventisca/core';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { BONUS_SHORT, ES, NINJA_TEXT } from '../i18n/es';
+import { BONUS_SHORT, ES, HUD, NINJA_TEXT } from '../i18n/es';
 import { confirmTurn, selectCard, selectNinja, setBoost, setHelp, suggest, togglePause } from '../state/actions';
 import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
@@ -279,11 +279,11 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
       className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''}`}
       onClick={() => selectNinja(n.id)}
       aria-pressed={isActive}
-      aria-label={`${t.name}, ${n.hp} de ${n.maxHp} de vida. ${label}`}
+      aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, label)}
     >
       <span ref={inner} className="np-inner">
         {order ? (
-          <span className="np-order" title="Orden de resolución">
+          <span className="np-order" title={HUD.orderTitle}>
             {order}
           </span>
         ) : null}
@@ -307,7 +307,7 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
           <div
             ref={meter}
             className={`meter ${charged ? 'charged' : ''}`}
-            title={charged ? 'Medidor lleno: juega una carta para robar otra' : `Medidor ${n.meter} de 10`}
+            title={charged ? HUD.meterFull : HUD.meter(n.meter, BALANCE.meter.max)}
           >
             {METER_SEGMENTS.map((seg, i) => (
               <i key={seg} className={i < filled ? 'on' : ''} />
@@ -324,10 +324,8 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
             <span />
           )}
           <span className="np-status">
-            {n.shield ? <img src={art.icon('shield')} alt="Escudo" title="Escudo: anula el siguiente golpe" /> : null}
-            {n.boost ? (
-              <img src={art.icon('boost')} alt="Potencia" title="Potencia: +50 % en el siguiente golpe o cura" />
-            ) : null}
+            {n.shield ? <img src={art.icon('shield')} alt={HUD.shield} title={HUD.shieldTitle} /> : null}
+            {n.boost ? <img src={art.icon('boost')} alt={HUD.boost} title={HUD.boostTitle} /> : null}
           </span>
         </div>
       </span>
@@ -371,7 +369,7 @@ function Hand() {
     <div className={`hand interactive el-${shown}`}>
       <div className="hand-head">
         {ES.hand(NINJA_TEXT[shown].name)}
-        <span>Teclas 1 a 4 · clic derecho o Esc deshace</span>
+        <span>{HUD.handHint}</span>
       </div>
       <div className="cards">
         {HAND_SLOTS.map((slot, i) => {
@@ -393,7 +391,7 @@ function Hand() {
               disabled={!usable}
               onClick={() => selectCard(card.id)}
               aria-pressed={pendingCard === card.id || placed === card.id}
-              aria-label={`Carta de ${t.element} de valor ${card.value}`}
+              aria-label={HUD.card(t.element, card.value)}
               title={t.card}
             >
               <span className="band">

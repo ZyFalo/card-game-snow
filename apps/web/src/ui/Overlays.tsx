@@ -1,19 +1,12 @@
-import type { ElementKind } from '@ventisca/core';
 import { art } from '../art';
-import { BONUS_TEXT, ES, NINJA_TEXT } from '../i18n/es';
+import { BONUS_TEXT, COMBO_EFFECT, ES, NINJA_TEXT, OVERLAY_TEXT } from '../i18n/es';
 import { type Overlay, useApp } from '../state/store';
-
-const COMBO_EFFECT: Record<ElementKind, string> = {
-  fire: 'Quemadura: 3 de daño por turno durante 3 turnos',
-  water: 'Potencia para todo el equipo',
-  snow: 'Escudo para todo el equipo',
-};
 
 function RoundBanner({ o }: { o: Extract<NonNullable<Overlay>, { kind: 'round' }> }) {
   const steps: (1 | 2 | 3 | 'bonus')[] = [1, 2, 3, 'bonus'];
   const idx = steps.indexOf(o.round);
   let detail: string;
-  if (o.round === 'bonus') detail = 'Última oleada. Pase lo que pase, la victoria ya es suya.';
+  if (o.round === 'bonus') detail = OVERLAY_TEXT.bonusRound;
   else if (o.round === 1) detail = BONUS_TEXT[o.condition](o.turnLimit);
   else if (o.condition === 'turnLimit') detail = ES.turnLimitProgress(o.turn, o.turnLimit);
   else detail = BONUS_TEXT[o.condition](o.turnLimit);
@@ -55,8 +48,8 @@ function BonusBanner({ o }: { o: Extract<NonNullable<Overlay>, { kind: 'bonus' }
   return (
     <div className="overlay">
       <div className="banner paper" role="status" style={{ animationDuration: `${o.ms}ms` }}>
-        <h2 className="display">{o.met ? '¡Bonus desbloqueado!' : 'Sin ronda bonus'}</h2>
-        <p>{o.met ? 'Llega una última oleada de gólems.' : 'No se cumplió la condición. Será para la próxima.'}</p>
+        <h2 className="display">{o.met ? OVERLAY_TEXT.bonusMet : OVERLAY_TEXT.bonusMissed}</h2>
+        <p>{o.met ? OVERLAY_TEXT.bonusMetDetail : OVERLAY_TEXT.bonusMissedDetail}</p>
       </div>
     </div>
   );

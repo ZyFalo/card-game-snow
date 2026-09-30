@@ -21,6 +21,7 @@ import {
   PACES,
   type Pace,
   PROGRESSION,
+  SCREEN_TEXT,
   STAT_LABELS,
 } from '../i18n/es';
 import { dismissWelcome, enterGame, goto, openCollection, setHelp, startMatch, updateSettings } from '../state/actions';
@@ -35,7 +36,7 @@ export function TitleScreen() {
       <img className="bg" src={art.background('cumbre')} alt="" />
       <div className="veil" />
       <div className="title-block">
-        <div className="title-kicker">Tácticas por turnos · 1 jugador</div>
+        <div className="title-kicker">{SCREEN_TEXT.kicker}</div>
         <h1 className="title-word display">{ES.title}</h1>
         <p className="title-tagline">{ES.tagline}</p>
         <div className="title-actions">
@@ -52,7 +53,7 @@ export function TitleScreen() {
           </button>
           {profile.camino ? (
             <button type="button" className="btn btn-lg" onClick={() => openCollection('title')}>
-              <Icon name="cards" /> Colección
+              <Icon name="cards" /> {SCREEN_TEXT.collection}
             </button>
           ) : null}
           <button type="button" className="btn btn-lg" onClick={() => setHelp(true)}>
@@ -71,7 +72,7 @@ export function TitleScreen() {
           <img key={el} src={art.ninja(el)} alt="" />
         ))}
       </div>
-      <div className="title-foot">Proyecto de clase. Arte, sonido y música generados en código.</div>
+      <div className="title-foot">{SCREEN_TEXT.credits}</div>
     </div>
   );
 }
@@ -91,8 +92,10 @@ export function TeamScreen() {
         <h1 className="display">{ES.team}</h1>
         {welcome ? (
           <p className="welcome">
-            Bienvenida al {CAMINO_TITLE[welcome]}: recibiste{' '}
-            {welcomeCard ? `${welcomeCard.name} (12)` : 'tu carta de camino'} y un 9 de cada elemento.
+            {SCREEN_TEXT.welcome(
+              CAMINO_TITLE[welcome],
+              welcomeCard ? `${welcomeCard.name} (${welcomeCard.value})` : undefined,
+            )}
           </p>
         ) : (
           <p>{ES.teamIntro}</p>
@@ -104,7 +107,7 @@ export function TeamScreen() {
           const st = BALANCE.ninjas[el];
           return (
             <section key={el} className={`class-card paper el-${el}`}>
-              <span className="reserve-chip" title="Cartas de tu reserva para esta partida">
+              <span className="reserve-chip" title={SCREEN_TEXT.reserveTitle}>
                 <Icon name="cards" /> {PROGRESSION.reserve(reserveOf(el))}
               </span>
               <header>
@@ -118,27 +121,27 @@ export function TeamScreen() {
               </header>
               <p>{t.basic}</p>
               <p>
-                <b>Carta:</b> {t.card}
+                <b>{SCREEN_TEXT.cardLabel}</b> {t.card}
               </p>
               <p>
-                <b>Combo:</b> {t.combo.replace('En combo, ', '')}
+                <b>{SCREEN_TEXT.comboLabel}</b> {t.comboShort}
               </p>
               <div className="stats">
                 <div>
                   <b>{st.hp}</b>
-                  <span>Vida</span>
+                  <span>{SCREEN_TEXT.stats.hp}</span>
                 </div>
                 <div>
                   <b>{st.attack}</b>
-                  <span>Daño</span>
+                  <span>{SCREEN_TEXT.stats.attack}</span>
                 </div>
                 <div>
                   <b>{st.range}</b>
-                  <span>Alcance</span>
+                  <span>{SCREEN_TEXT.stats.range}</span>
                 </div>
                 <div>
                   <b>{st.move}</b>
-                  <span>Paso</span>
+                  <span>{SCREEN_TEXT.stats.move}</span>
                 </div>
               </div>
             </section>
@@ -178,10 +181,10 @@ export function TeamScreen() {
           ) : null}
         </div>
         <div>
-          <h3 className="opt-title">Ayudas</h3>
+          <h3 className="opt-title">{SCREEN_TEXT.aids}</h3>
           <Toggle label={ES.tipsMode} checked={settings.tips} onChange={(tips) => updateSettings({ tips })} />
           <Toggle
-            label="Pasar al siguiente ninja"
+            label={ES.autoAdvance}
             checked={settings.autoAdvance}
             onChange={(autoAdvance) => updateSettings({ autoAdvance })}
           />
@@ -249,7 +252,7 @@ export function LoadingScreen() {
           <i />
         </div>
         <h2 className="display">{ES.loading}</h2>
-        <div className="tip-label">Consejo</div>
+        <div className="tip-label">{SCREEN_TEXT.tip}</div>
         <p>{tip}</p>
       </div>
     </div>
@@ -276,10 +279,7 @@ export function ResultsScreen() {
       <div className="screen-head">
         <h1 className={`result-word display ${win ? 'win' : 'lose'}`}>{win ? ES.victory : ES.defeat}</h1>
         <p>
-          {win
-            ? 'Los tres aprendices resistieron la tormenta.'
-            : 'La escarcha cubrió a los tres. Revisa el orden de acciones y vuelve a intentarlo.'}{' '}
-          {outcome}
+          {win ? SCREEN_TEXT.victory : SCREEN_TEXT.defeat} {outcome}
         </p>
       </div>
       <div className="results-body">
@@ -299,7 +299,7 @@ export function ResultsScreen() {
               <ul className="coin-lines">
                 {reward.lines.map((l) => (
                   <li key={String(l.round)}>
-                    <span>{l.round === 'bonus' ? 'Bonus' : `Ronda ${l.round}`}</span>
+                    <span>{SCREEN_TEXT.coinLine(l.round)}</span>
                     <b>+{l.coins}</b>
                   </li>
                 ))}
@@ -313,23 +313,21 @@ export function ResultsScreen() {
             )}
             <div className="coin-total">
               <span>
-                Total <b>+{shownTotal}</b>
+                {SCREEN_TEXT.total} <b>+{shownTotal}</b>
               </span>
               <span className="coin-balance">
-                Ahora tienes <CoinChip amount={shownBalance} />
+                {SCREEN_TEXT.balance} <CoinChip amount={shownBalance} />
               </span>
             </div>
             <div className="coin-meta">
-              Dificultad {DIFFICULTIES[state.difficulty].label.toLowerCase()}, mapa {MAP_NAMES[state.mapId]}.{' '}
-              {state.stats.turnsToClearMain !== null ? `Rondas 1 a 3 en ${state.stats.turnsToClearMain} turnos. ` : ''}
+              {SCREEN_TEXT.matchMeta(DIFFICULTIES[state.difficulty].label.toLowerCase(), MAP_NAMES[state.mapId])}{' '}
+              {state.stats.turnsToClearMain !== null ? `${SCREEN_TEXT.clearedIn(state.stats.turnsToClearMain)} ` : ''}
               {BONUS_SHORT[state.bonusCondition]}.
             </div>
           </section>
         </div>
         <section className="paper ach-list">
-          <h2 className="display">
-            {ES.achievements} · {unlockedCount} de {ACHIEVEMENT_IDS.length}
-          </h2>
+          <h2 className="display">{ES.achievementsProgress(unlockedCount, ACHIEVEMENT_IDS.length)}</h2>
           {ACHIEVEMENT_IDS.map((id, i) => {
             const got = earned.includes(id);
             const ever = !!unlocked[id];

@@ -36,4 +36,8 @@ describe('Reloj del turno (R-04)', () => {
     expect(turnClockMs('expert', 3)).toBe(15_000);
     expect(turnClockMs('relaxed', 3)).toBeNull();
   });
+
+  it('R-04: con un ninja caído el turno dura 20 s, porque el reloj cuenta solo los ninjas en pie', () => {
+    expect(turnClockMs('normal', 2)).toBe(20_000);
+  });
 });

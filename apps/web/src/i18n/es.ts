@@ -67,8 +67,8 @@ export const ES = {
 
 export const PACES: Record<Pace, { label: string; detail: string }> = {
   relaxed: { label: 'Relajado', detail: 'Sin reloj. Piensa cada turno con calma.' },
-  normal: { label: 'Normal', detail: '10 s por ninja: 30 s por turno.' },
-  expert: { label: 'Experto', detail: '5 s por ninja: 15 s por turno.' },
+  normal: { label: 'Normal', detail: '10 s por ninja en pie (30 s con los tres).' },
+  expert: { label: 'Experto', detail: '5 s por ninja en pie (15 s con los tres).' },
 };
 
 export const DIFFICULTIES: Record<Difficulty, { label: string; detail: string }> = {

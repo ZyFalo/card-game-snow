@@ -8,6 +8,12 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - Las reglas R-01 a R-24, con los tres ninjas y el mazo de referencia (D-50).
   - Sin cuenta ni progreso (D-34).
   - Dificultades Clásica y Tormenta, tres ritmos de reloj, pausa y ayuda.
+- **Cuenta en el cliente (`apps/web/src/state/account.ts` y `ui/Account.tsx`):**
+  - La portada ofrece "Jugar sin cuenta" y "Entrar"; con sesión, "Mi cuenta".
+  - Pantallas de registro con el aviso de privacidad, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (contraseña, correo, cierre de sesión y borrado).
+  - Los resultados del sandbox invitan a crear una cuenta.
+  - El script de Turnstile se carga solo en la vista de registro, como promete el aviso de privacidad.
+  - Sin servidor (por ejemplo, con `pnpm dev` solo), la portada no muestra la cuenta y se juega igual.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
 - **Servidor (`apps/server`):**
@@ -40,12 +46,16 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 ## Día a día
 
 - **Jugar el sandbox:** `pnpm dev` y abre http://localhost:5173. No necesita el servidor.
+- **Probar las cuentas en el navegador:** además de `pnpm dev`, corre `pnpm dev:server`. Vite pasa `/api` al puerto 3000 y el código de cada correo aparece en la consola del servidor.
 - **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Sirve la API y, si antes corriste `pnpm build`, también el juego.
 - **Correos en desarrollo:** sin `RESEND_API_KEY`, el servidor no los envía: los muestra en su consola, con el código. El captcha usa las claves de prueba públicas de Turnstile de `.env.example`, que siempre pasan.
 - **Todo como en producción:** `docker compose up --build` y abre http://localhost:3000. Es la misma imagen que se despliega.
 - **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
   - En pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada.
 - **Pruebas en el navegador:** instala el navegador una vez con `pnpm --filter @ventisca/web exec playwright install chromium`, y después corre `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
+  - Necesitan Postgres (`docker compose up -d db`): levantan Vite en el puerto 5174 y el servidor de verdad en el 3100.
+  - El servidor de las e2e usa su propia base, `ventisca_e2e`, que recrea en cada corrida en el Postgres de `DATABASE_URL_TEST`. La base de desarrollo no se toca.
+  - Los correos no se envían: el servidor los guarda en `apps/web/.e2e-outbox/` (ignorada por git y vaciada en cada corrida), y de ahí las pruebas leen los códigos. El script de Turnstile se reemplaza por uno falso.
 - **Cambiar la base de datos:**
   1. Edita `apps/server/src/schema.ts`.
   2. Corre `pnpm db:generate`.
@@ -90,7 +100,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 
 ## Pendiente, según los PRD
 
-- **M7, en pasos pequeños (PRD de v2):** cuentas en el servidor y en el cliente, y progreso en la cuenta. El despliegue ya está hecho.
+- **M7, en pasos pequeños (PRD de v2):** falta el progreso en la cuenta, en el servidor (PR 8) y en el cliente (PR 9). El despliegue y las cuentas ya están hechos.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

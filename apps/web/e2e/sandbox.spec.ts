@@ -34,7 +34,7 @@ test('D-55: al abrir el juego se descarta el progreso de v1 guardado en el naveg
     localStorage.setItem('ventisca:settings:v1', JSON.stringify({ pace: 'expert' }));
   });
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Jugar', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Jugar sin cuenta', exact: true })).toBeVisible();
   const stored = await page.evaluate(() => ({
     profile: localStorage.getItem('ventisca:profile:v1'),
     achievements: localStorage.getItem('ventisca:achievements:v1'),
@@ -45,9 +45,9 @@ test('D-55: al abrir el juego se descarta el progreso de v1 guardado en el naveg
 
 test('D-34: el sandbox no da progreso: sin camino, sin monedas y sin colección', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Jugar', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Jugar sin cuenta', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Colección/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Jugar', exact: true }).click();
+  await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
   // Sin elegir camino: directo a la pantalla de equipo.
   await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Colección/ })).toHaveCount(0);

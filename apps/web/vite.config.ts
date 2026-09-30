@@ -9,5 +9,6 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 2000,
   },
-  server: { port: 5173 },
+  // En desarrollo, /api va al servidor (pnpm dev:server); las e2e lo apuntan al suyo con VENTISCA_API.
+  server: { port: 5173, proxy: { '/api': process.env.VENTISCA_API ?? 'http://localhost:3000' } },
 });

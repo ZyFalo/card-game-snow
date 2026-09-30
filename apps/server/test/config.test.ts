@@ -15,6 +15,7 @@ describe('Configuración del servidor', () => {
       sessionSecret: base.SESSION_SECRET,
       appUrl: base.APP_URL,
       resendApiKey: null,
+      mailOutboxDir: null,
       turnstileSecretKey: null,
       turnstileSiteKey: null,
       commit: null,
@@ -46,6 +47,13 @@ describe('Configuración del servidor', () => {
   it('las claves vacías cuentan como ausentes', () => {
     const config = loadConfig({ ...base, RESEND_API_KEY: '', TURNSTILE_SECRET_KEY: '', TURNSTILE_SITE_KEY: '' });
     expect([config.resendApiKey, config.turnstileSecretKey, config.turnstileSiteKey]).toEqual([null, null, null]);
+  });
+
+  it('la carpeta de correos de las e2e no se acepta en producción', () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', MAIL_OUTBOX_DIR: '/tmp/correos' })).toThrow(
+      /MAIL_OUTBOX_DIR/,
+    );
+    expect(loadConfig({ ...base, MAIL_OUTBOX_DIR: '/tmp/correos' }).mailOutboxDir).toBe('/tmp/correos');
   });
 
   it('SESSION_SECRET necesita al menos 32 caracteres', () => {

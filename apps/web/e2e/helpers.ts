@@ -23,7 +23,7 @@ export const phase = (page: Page) => page.evaluate(() => (window as unknown as T
 /** Abre el juego, entra al sandbox y espera a que empiece la planificación. */
 export async function startMatch(page: Page, speed = 0.3) {
   await page.goto(`/?speed=${speed}`);
-  await page.getByRole('button', { name: 'Jugar', exact: true }).click();
+  await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
   await page.getByRole('button', { name: 'Comenzar partida' }).click();
   await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');

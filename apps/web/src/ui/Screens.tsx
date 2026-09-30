@@ -2,6 +2,7 @@ import { BALANCE, type Difficulty, ELEMENTS } from '@ventisca/core';
 import { art } from '../art';
 import { audio } from '../audio/audio';
 import {
+  ACCOUNT_TEXT,
   BONUS_OUTCOME_TEXT,
   BONUS_SHORT,
   DIFFICULTIES,
@@ -13,11 +14,13 @@ import {
   SCREEN_TEXT,
   STAT_LABELS,
 } from '../i18n/es';
+import { openAccount } from '../state/account';
 import { goto, setHelp, startMatch, updateSettings } from '../state/actions';
 import { useApp } from '../state/store';
 import { Icon, Segmented, Toggle, useCountUp } from './common';
 
 export function TitleScreen() {
+  const account = useApp((s) => s.account);
   return (
     <div className="screen title-screen">
       <img className="bg" src={art.background('cumbre')} alt="" />
@@ -36,8 +39,13 @@ export function TitleScreen() {
               goto('team');
             }}
           >
-            <Icon name="play" /> {ES.play}
+            <Icon name="play" /> {ACCOUNT_TEXT.playSandbox}
           </button>
+          {account.status === 'ready' ? (
+            <button type="button" className="btn btn-lg" onClick={() => openAccount()}>
+              {account.user ? ACCOUNT_TEXT.myAccount : ACCOUNT_TEXT.enter}
+            </button>
+          ) : null}
           <button type="button" className="btn btn-lg" onClick={() => setHelp(true)}>
             {ES.howToPlay}
           </button>
@@ -48,7 +56,14 @@ export function TitleScreen() {
           <img key={el} src={art.ninja(el)} alt="" />
         ))}
       </div>
-      <div className="title-foot">{SCREEN_TEXT.credits}</div>
+      <div className="title-foot">
+        {SCREEN_TEXT.credits}
+        {account.status === 'ready' ? (
+          <button type="button" className="link" onClick={() => openAccount('privacy')}>
+            {ACCOUNT_TEXT.privacy}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -199,6 +214,7 @@ export function LoadingScreen() {
 
 export function ResultsScreen() {
   const results = useApp((s) => s.results);
+  const account = useApp((s) => s.account);
   const seed = useApp((s) => s.seed);
   const reduced = useApp((s) => s.settings.reducedMotion);
   if (!results) return null;
@@ -228,6 +244,15 @@ export function ResultsScreen() {
           </p>
         </section>
       </div>
+      {/* PRD de v2, sandbox: resultados sin monedas, con una invitación a crear una cuenta. */}
+      {account.status === 'ready' && !account.user ? (
+        <div className="paper results-invite">
+          <span>{ACCOUNT_TEXT.invite}</span>
+          <button type="button" className="btn btn-primary" onClick={() => openAccount('register')}>
+            {ACCOUNT_TEXT.inviteButton}
+          </button>
+        </div>
+      ) : null}
       <div className="results-seed">
         {ES.seed}: {seed} · {DIFFICULTIES[state.difficulty].label}
       </div>

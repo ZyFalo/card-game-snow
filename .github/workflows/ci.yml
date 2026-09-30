@@ -39,6 +39,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # Las e2e levantan el servidor de verdad (cuentas, PR 7), con su propia base en el Postgres del servicio.
       - name: Prueba de humo e2e
         run: |
           pnpm --filter @ventisca/web exec playwright install --with-deps chromium

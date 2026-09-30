@@ -1,10 +1,39 @@
 import type { BonusCondition, ElementKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
+import type { User } from '@ventisca/protocol';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { TIPS } from '../i18n/es';
 import { loadSettings, type Settings } from './persist';
 
-export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results';
+export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results' | 'account';
+
+/** Vistas de la pantalla de cuenta (modo en línea). */
+export type AccountView =
+  | 'login'
+  | 'register'
+  | 'verify'
+  | 'recover'
+  | 'recoverCode'
+  | 'revert'
+  | 'profile'
+  | 'privacy';
+
+export interface AccountState {
+  /** `offline`: no hay servidor (sin red, o el build de un solo archivo); se juega sin cuenta. */
+  status: 'unknown' | 'offline' | 'ready';
+  user: User | null;
+  view: AccountView;
+  /** A qué vista vuelve el aviso de privacidad. */
+  previous: AccountView;
+  /** Correo del registro o de la recuperación en curso, para el paso del código. */
+  email: string;
+  /** Correo nuevo pedido desde el perfil, a la espera de su código (R-48). */
+  pendingEmail: string | null;
+  turnstileSiteKey: string | null;
+  busy: boolean;
+  error: string | null;
+  info: string | null;
+}
 /** intro: aparición de la ronda; planning: el jugador planifica; resolving: se anima el turno. */
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
 
@@ -73,6 +102,7 @@ export interface AppState {
   arrived: string[];
   /** El navegador no tiene WebGL: el tablero no se puede dibujar. */
   webglMissing: boolean;
+  account: AccountState;
 }
 
 export const initialState = (): AppState => ({
@@ -99,6 +129,18 @@ export const initialState = (): AppState => ({
   incoming: [],
   arrived: [],
   webglMissing: false,
+  account: {
+    status: 'unknown',
+    user: null,
+    view: 'login',
+    previous: 'login',
+    email: '',
+    pendingEmail: null,
+    turnstileSiteKey: null,
+    busy: false,
+    error: null,
+    info: null,
+  },
 });
 
 export const store = createStore<AppState>()(() => initialState());

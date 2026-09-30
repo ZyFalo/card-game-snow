@@ -322,3 +322,194 @@ export const HELP = {
   ],
   backToPause: 'Volver a la pausa',
 } as const;
+
+/* ---------- Cuentas (modo en línea, PRD de v2) ---------- */
+
+export const ACCOUNT_TEXT = {
+  playSandbox: 'Jugar sin cuenta',
+  enter: 'Entrar',
+  myAccount: 'Mi cuenta',
+  privacy: 'Aviso de privacidad',
+  back: 'Volver',
+  email: 'Correo',
+  password: 'Contraseña',
+  passwordRepeat: 'Repite la contraseña',
+  newPassword: 'Contraseña nueva',
+  newPasswordRepeat: 'Repite la contraseña nueva',
+  currentPassword: 'Contraseña actual',
+  displayName: 'Nombre visible',
+  displayNameHint: 'De 3 a 16 caracteres. Lo ven las personas con quienes juegas.',
+  passwordHint: 'De 8 a 128 caracteres, con una mayúscula, un número y un símbolo.',
+  code: 'Código de 6 dígitos',
+  loginTitle: 'Entrar',
+  loginIntro: 'Con tu cuenta juegas en línea y tu progreso queda guardado.',
+  loginSubmit: 'Entrar',
+  toRegister: 'Crear una cuenta',
+  toRecover: 'Olvidé mi contraseña',
+  toRevert: 'Deshacer un cambio de correo',
+  registerTitle: 'Crear una cuenta',
+  registerSubmit: 'Crear cuenta',
+  acceptPrivacy: 'Leí y acepto el',
+  captchaWaiting: 'Comprobando que no eres un programa…',
+  verifyTitle: 'Verifica tu correo',
+  verifyIntro: (email: string) =>
+    `Revisa ${email}: si la cuenta es nueva, te llegó un código de 6 dígitos que vence en 15 minutos.`,
+  verifySubmit: 'Verificar',
+  resend: 'Pedir otro código',
+  resendWait: (s: number) => `Pedir otro código (${s} s)`,
+  resendDone:
+    'Si ese correo tiene una cuenta pendiente, te llega un código nuevo. Revisa también el correo no deseado.',
+  recoverTitle: 'Recuperar la contraseña',
+  recoverIntro: 'Te mandamos un código al correo de tu cuenta para crear una contraseña nueva.',
+  recoverSubmit: 'Enviar código',
+  recoverCodeIntro: (email: string) =>
+    `Si ${email} tiene una cuenta, te llegó un código. Escríbelo con tu contraseña nueva. Al terminar se cierran tus demás sesiones.`,
+  recoverCodeSubmit: 'Cambiar la contraseña',
+  revertTitle: 'Deshacer un cambio de correo',
+  revertIntro:
+    'Si alguien cambió el correo de tu cuenta, te llegó un aviso al correo anterior con un código que vale 7 días. Te pedimos una contraseña nueva porque quien hizo el cambio conocía la anterior.',
+  revertEmail: 'Correo anterior',
+  revertSubmit: 'Deshacer el cambio',
+  revertDone: 'Listo: tu cuenta volvió a su correo anterior. Entra con tu contraseña nueva.',
+  profileTitle: (name: string) => `Hola, ${name}`,
+  profileIntro: 'El juego en línea llega en las próximas versiones. Por ahora, aquí administras tu cuenta.',
+  changePassword: 'Cambiar la contraseña',
+  changePasswordDone: 'Tu contraseña cambió. Cerramos tus otras sesiones.',
+  changeEmail: 'Cambiar el correo',
+  newEmail: 'Correo nuevo',
+  changeEmailSent: 'Te mandamos un código al correo nuevo. Escríbelo aquí para confirmar el cambio.',
+  changeEmailSubmit: 'Confirmar el correo nuevo',
+  changeEmailDone: (email: string) => `Listo: tu correo ahora es ${email}.`,
+  logout: 'Cerrar sesión',
+  deleteAccount: 'Borrar la cuenta',
+  deleteWarning:
+    'Se borran tu cuenta, tus sesiones y tu progreso, y no se puede deshacer. En las partidas pasadas, tu lugar queda anónimo.',
+  deleteSubmit: 'Borrar mi cuenta',
+  deleteDone: 'Tu cuenta se borró.',
+  send: 'Enviar',
+  cancel: 'Cancelar',
+  invite: '¿Te gustó? Crea una cuenta para jugar en línea con más personas y guardar tu progreso.',
+  inviteButton: 'Crear una cuenta',
+  passwordsDiffer: 'Las dos contraseñas no coinciden.',
+} as const;
+
+/** Mensajes para cada error de la API (el servidor solo manda códigos). */
+export const ACCOUNT_ERRORS = {
+  offline: 'No hay conexión con el servidor. Inténtalo de nuevo en un rato.',
+  bad_request: 'Revisa los datos del formulario.',
+  badEmail: 'Revisa el correo: no parece una dirección válida.',
+  sameEmail: 'Ese ya es tu correo.',
+  privacy_not_accepted: 'Para crear la cuenta, acepta el aviso de privacidad.',
+  name_taken: 'Ese nombre ya está en uso. Prueba con otro.',
+  name: {
+    length: 'El nombre va de 3 a 16 caracteres.',
+    characters: 'El nombre solo puede tener letras, números, espacios, guiones y guiones bajos.',
+    spaces: 'El nombre no puede tener espacios dobles.',
+    offensive: 'Ese nombre no está permitido. Prueba con otro.',
+    reserved: 'Ese nombre está reservado. Prueba con otro.',
+  },
+  password: {
+    length: 'La contraseña va de 8 a 128 caracteres.',
+    newline: 'La contraseña no puede tener saltos de línea.',
+    uppercase: 'Agrega al menos una mayúscula.',
+    digit: 'Agrega al menos un número.',
+    symbol: 'Agrega al menos un símbolo, como # o !.',
+    common: 'Esa contraseña es muy común. Elige otra.',
+    personal: 'La contraseña no puede contener tu correo ni tu nombre.',
+  },
+  invalid_code: 'El código no es válido o ya venció. Revísalo o pide uno nuevo.',
+  attemptsLeft: (n: number) => (n === 1 ? 'Te queda 1 intento.' : `Te quedan ${n} intentos.`),
+  code_expired: 'El código venció. Pide uno nuevo.',
+  too_many_attempts: 'Ese código ya no sirve. Pide uno nuevo.',
+  invalid_credentials: 'Correo o contraseña incorrectos.',
+  email_not_verified: 'Falta verificar tu correo. Escribe el código que te enviamos o pide uno nuevo.',
+  too_many_requests: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
+  captcha_failed: 'No pudimos comprobar que no eres un programa. Inténtalo de nuevo.',
+  captcha_unavailable: 'El registro no está disponible en este momento.',
+  email_unavailable: 'No podemos enviar correos en este momento. Inténtalo más tarde.',
+  email_taken: 'Ese correo ya tiene otra cuenta.',
+  unauthorized: 'Tu sesión terminó. Vuelve a entrar.',
+  generic: 'Algo falló en el servidor. Inténtalo de nuevo.',
+} as const;
+
+/*
+ * Aviso de privacidad, aprobado por el dueño de producto el 2026-09-30. La frase de Resend se actualizó
+ * con la región de envío (São Paulo) y se aprueba en el PR 7.
+ */
+export const PRIVACY_NOTICE = {
+  title: 'Aviso de privacidad de Ventisca',
+  since: 'Vigente desde el 30 de septiembre de 2026',
+  sections: [
+    {
+      title: '',
+      body: [
+        'Ventisca es un proyecto de clase sin fines comerciales. Su responsable es William Andres Peña Vargas. Para cualquier tema de este aviso, escribe a williamandres1603@gmail.com.',
+      ],
+    },
+    {
+      title: 'Al abrir el juego',
+      body: [
+        'Como en cualquier página web, al abrir Ventisca tu navegador se conecta a nuestro servidor. Railway, la empresa que lo aloja, anota en cada visita tu dirección IP, tu navegador y la página pedida. Nosotros podemos consultar esas anotaciones durante 7 días y solo las usamos para resolver fallas. Jugar sin cuenta no envía nada más, ni a nosotros ni a otras empresas.',
+      ],
+    },
+    {
+      title: 'Si creas una cuenta, guardamos',
+      items: [
+        'Tu correo, para verificar tu cuenta, recuperarla y avisarte de cambios en ella o en este aviso.',
+        'Una huella de tu contraseña (Argon2id), que no permite recuperarla. Tu contraseña nunca se guarda.',
+        'Tu nombre visible, que ven las personas con quienes juegas.',
+        'Tu progreso: carta de camino, monedas, cajas abiertas, colección y logros.',
+        'Tus estadísticas de combate. Solo las ves tú.',
+        'Las partidas en línea que jugaste: con qué ninja, cuándo entraste y cuándo saliste.',
+        'Una cookie necesaria para mantener tu sesión abierta.',
+      ],
+      body: [
+        'Para frenar abusos, como intentos repetidos de entrar a una cuenta, el servidor recuerda tu IP durante 15 minutos, solo en memoria. No la guardamos en la base de datos.',
+        'No pedimos tu edad, tu nombre real ni tu ubicación. No hay pagos ni chat.',
+      ],
+    },
+    {
+      title: 'Para qué los usamos',
+      body: [
+        'Solo para que el juego funcione: tu cuenta, tu progreso, las partidas en línea y la protección contra abusos. No los vendemos. No hay publicidad ni analítica.',
+      ],
+    },
+    {
+      title: 'Quién más los procesa',
+      body: [],
+      items: [
+        'Railway aloja el servidor y la base de datos en Estados Unidos.',
+        'Resend envía los correos con tus códigos y avisos desde São Paulo (Brasil), y guarda cada correo (dirección, asunto y contenido) durante 30 días en Estados Unidos. No medimos si abres los correos ni en qué enlaces haces clic.',
+        'Cloudflare Turnstile, solo en la página de registro, comprueba que no seas un programa automático. Recibe tu IP y datos técnicos de tu navegador, y los usa para detectar programas automáticos y para mejorar esa detección. Cloudflare no publica cuánto tiempo los guarda y dice que no los usa para publicidad.',
+      ],
+    },
+    {
+      title: 'Cuánto tiempo los guardamos',
+      body: [
+        'Mientras tengas la cuenta. Las sesiones vencen a los 30 días, y los códigos que enviamos por correo, a los 15 minutos.',
+      ],
+    },
+    {
+      title: 'Borrar tu cuenta',
+      body: [
+        'Desde tu perfil, confirmando con tu contraseña. Al instante se borran tu cuenta, tus sesiones, tus códigos, tu progreso y tus estadísticas. En las partidas pasadas, tu lugar queda anónimo, como el del bot. Los correos que ya te enviamos siguen en Resend hasta cumplir sus 30 días.',
+      ],
+    },
+    {
+      title: 'Tus derechos',
+      body: [
+        'Puedes conocer, actualizar, corregir y borrar tus datos. También puedes retirar tu autorización borrando la cuenta. Para ejercerlos, escribe a williamandres1603@gmail.com. En Colombia, estos derechos los reconoce la Ley 1581 de 2012; si no te respondemos, puedes acudir a la Superintendencia de Industria y Comercio.',
+      ],
+    },
+    {
+      title: 'Menores de edad',
+      body: [
+        'El juego es para todo el mundo y no pedimos la edad. Si eres menor de edad, lee este aviso con un adulto responsable antes de crear tu cuenta.',
+      ],
+    },
+    {
+      title: 'Cambios',
+      body: ['Si cambia este aviso, lo avisaremos en el juego y por correo antes de que rija.'],
+    },
+  ],
+} as const;

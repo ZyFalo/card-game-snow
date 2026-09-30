@@ -1,0 +1,16 @@
+{
+  "name": "@ventisca/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Esquemas de Zod compartidos por el cliente y el servidor: API HTTP y mensajes del juego en línea (D-53).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}

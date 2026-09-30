@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.1 |
+| Versión | 0.10.2 |
 | Última actualización | 30 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -1036,6 +1036,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.2 | 2026-09-30 | Sandbox del M7: cada ninja juega con el mazo de referencia (D-50) y no hay monedas, cartas ni logros (D-34). Lo que v1 guardó en el navegador se descarta al abrir el juego; los ajustes se conservan (D-55). Las fuentes se alojan en el propio juego, sin Google Fonts. La documentación dice `pnpm run ci`, porque en pnpm 12 `pnpm ci` es una instalación limpia |
 | 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes. Se registra también D-57, la gestión de la cuenta del PRD de v2 (versión 1.1, R-43 a R-49) |
 | 0.10.0 | 2026-09-29 | Integra el PRD de v2 aprobado (`docs/PRD-v2.md`, versión 1.0), que manda en todo lo del modo en línea. R-04 en línea da 15 s por turno (D-46). Se agregan las decisiones D-34 a D-50 y las preguntas P-19 a P-24. Cloudflare pasa a Railway (D-37) en D-03, D-09, §11.1, §11.3, §11.4, §11.7 (que ahora remite al PRD de v2), §11.10, §15, M6 y P-02. Los hitos M7 a M9 son los del PRD de v2. R-25 a R-32 pasan a la cuenta en v2 (D-34) |
 | 0.9.5 | 2026-09-29 | Pendientes de v1 que no dependen de v2. Deshacer ya no deja planes vacíos que bloqueaban la pausa. Los ajustes guardados se validan campo por campo. Sin WebGL, un mensaje explica por qué no se puede jugar. R-04, R-10 y R-14 tienen pruebas propias. Los textos de la interfaz pasan a `i18n/es.ts`, salvo la de progresión (`Progression.tsx` y `CardFace.tsx`), que cambia en v2. Biome usa `preset` en lugar de `recommended`. R-04 aclara que el reloj da 10 s por ninja en pie (30 s con los tres), porque un caído no tiene nada que planificar; la pantalla de equipo lo dice igual |
@@ -1058,7 +1059,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 ## 18. Progresión: monedas, cajas y colección (v3)
 
-> Estado: ✅ implementada en v0.5. P-14 a P-17 usan su valor por defecto; rangos y experiencia (P-18) quedan para después. El mazo fijo de 6 cartas (8 a 12) solo se usa en simulaciones y pruebas sin colección.
+> Estado: ✅ implementada en v0.5. P-14 a P-17 usan su valor por defecto; rangos y experiencia (P-18) quedan para después. Desde v0.10.2 el sandbox no tiene progresión (D-34, D-55) y juega con el mazo de referencia de 6 cartas (D-50); en v2 la progresión vive en la cuenta en línea.
 
 **Principio (D-19).** La magia de Card-Jitsu está en su simplicidad: todas las cartas de un elemento hacen lo mismo (R-17) y solo cambia el número. No hay cartas con efectos distintos.
 
@@ -1137,7 +1138,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 - `balance.json` suma un bloque `economy` (monedas por ronda, precios y banco) y otro `starter`. El motor sigue puro.
 - `createMatch` recibe la reserva de cada ninja (`decks`) en lugar de leer el mazo fijo, y `ReplayData` la guarda para que las repeticiones sigan siendo deterministas (R-23).
 - Las cajas se sortean con un RNG propio, fuera de la partida. En v2 lo hará el servidor, para evitar trampas.
-- **Implementado en:** `packages/core/src/cards.ts` y `economy.ts` (puros, con pruebas), `apps/web/src/state/profile.ts` (perfil en el navegador) y `apps/web/src/ui/Progression.tsx` (camino, colección, tienda y revelado).
+- **Implementado en:** `packages/core/src/cards.ts` y `economy.ts` (puros, con pruebas). Hasta v0.10.1, el perfil vivía en el navegador (`apps/web/src/state/profile.ts`) y la interfaz en `apps/web/src/ui/Progression.tsx` (camino, colección, tienda y revelado). En v0.10.2 salieron del sandbox, y en el M7 vuelven conectados a la cuenta.
 - Hace falta un logro-contador en la interfaz ("3 de 9 logros: completa los 9 para ganar monedas dobles") y una pantalla de colección con las 20 cartas por elemento (las que no tienes, en silueta).
 
 ## Apéndice A — Balance: valores y fuentes

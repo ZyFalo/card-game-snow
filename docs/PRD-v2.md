@@ -1,0 +1,228 @@
+# Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
+
+Versión 1.0: aprobada para implementar · 29 de septiembre de 2026 · William Andres Peña Vargas
+
+> Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
+
+## Resumen y alcance
+
+Ventisca v2 agrega un modo en línea con cuentas: de 2 a 3 personas juegan juntas, cada una con un ninja, y solo ese modo da progreso.
+
+- **Sandbox (modo solo):** siempre disponible y sin cuenta. Una persona controla a los tres ninjas con un mazo fijo. No da monedas, cartas, logros ni estadísticas.
+- **En línea:** requiere cuenta con correo y contraseña. Hay salas con código para jugar con amigos y emparejamiento público. Monedas, cajas, colección, logros y estadísticas viven en la cuenta.
+- **Dónde:** en ventisca.wpena.dev, todo alojado en Railway (Docker, servidor Node y Postgres), con correos por Resend.
+
+Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y los rangos siguen en v3. El motor de reglas no cambia: el servidor usa el mismo `packages/core`.
+
+## Decisiones
+
+Las diecisiete decisiones están cerradas: ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. La columna de estado queda como registro de cómo se decidió cada una.
+
+| ID | Decisión | Estado |
+| --- | --- | --- |
+| D-34 | Dos modos: sandbox sin cuenta ni progreso, y en línea con cuenta, el único que da progreso. La progresión de R-25 a R-32 pasa del navegador a la cuenta. | Tomada |
+| D-35 | Partidas en línea de 2 o 3 personas, un ninja cada una. Con 2, el bot controla el tercero. Nunca una sola persona: sin compañero no hay partida en línea (P-24). | Tomada |
+| D-36 | Salas con código y emparejamiento público, las dos desde el inicio. | Tomada |
+| D-37 | Todo en Railway con Docker: servidor Node autoritativo en el monorepo y Postgres. Reemplaza el plan de Cloudflare Durable Objects (§11) y el workflow de despliegue a Cloudflare. | Tomada |
+| D-38 | Cuentas con correo y contraseña. Verificación y recuperación por correo con Resend. Sin límite de edad: el juego es para todo el mundo, sin verificación de edad ni autorización de adultos en v2 (P-19). | Tomada |
+| D-39 | Estadísticas de combate solo del modo en línea, calculadas en el servidor. Son privadas: solo las ve cada jugador (P-21). | Tomada |
+| D-40 | Dominio ventisca.wpena.dev, con un registro CNAME hacia Railway. | Tomada |
+| D-41 | Público abierto en internet. | Tomada |
+| D-42 | Sin comunicación, como el original: ni chat ni señales. Cada persona ve en tiempo real el plan de sus compañeros (R-35). | Aprobada |
+| D-43 | Elección de ninja, como el original: cada persona elige su ninja antes de entrar a la cola, y el emparejamiento solo junta personas con ninjas distintos. En una sala, cada quien elige sin repetir. | Aprobada |
+| D-44 | El emparejamiento espera 30 s a un tercer jugador. Después, las dos personas pueden empezar con un bot si ambas aceptan; mientras tanto, la búsqueda sigue. | Aprobada |
+| D-45 | Si alguien se desconecta, el bot toma su ninja hasta que vuelva. | Aprobada |
+| D-46 | Reloj del servidor, sin pausa: todos planifican a la vez, con 15 s por turno (el original usaba 10 s). Enmienda R-04 para el modo en línea. | Aprobada |
+| D-47 | El bot juega con el mazo de referencia de su elemento: 8, 9, 10, 10, 11 y 12. | Aprobada |
+| D-48 | Recompensas individuales: cada persona cobra sus rondas (D-31) y gana sus logros. Solo cobra una ronda quien estaba conectado al terminarla; el bot no cobra. | Aprobada |
+| D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio. | Aprobada |
+| D-50 | El sandbox usa por ninja el mazo de referencia del balance (8, 9, 10, 10, 11 y 12). El mazo de una cuenta nueva, con un solo 9, apenas permite combos. | Aprobada |
+
+## Experiencia del jugador
+
+La portada ofrece dos puertas: jugar en el sandbox sin cuenta o entrar al modo en línea. Cada recorrido es una secuencia corta y sin desvíos.
+
+**Sandbox**
+
+1. En la portada elige "Jugar sin cuenta".
+2. Elige dificultad y ritmo del reloj, y juega con el mazo fijo (D-50).
+3. Ve sus resultados sin monedas, con una invitación a crear una cuenta.
+
+**Primera vez en línea**
+
+1. Se registra con correo, contraseña y nombre visible, y acepta el aviso de privacidad.
+2. Recibe un correo de verificación; el enlace activa la cuenta.
+3. Elige su carta de camino (D-25) y recibe el mazo inicial (R-30).
+4. Llega al inicio en línea: jugar, colección, tienda y estadísticas.
+
+**Partida con amigos (sala con código)**
+
+1. Crea una sala y elige la dificultad; recibe un código de 6 caracteres para compartir.
+2. Sus amigos entran con el código y cada quien elige su ninja, sin repetir.
+3. El anfitrión inicia con 2 o 3 personas; con 2, el bot toma el ninja libre.
+
+**Partida con desconocidos (emparejamiento)**
+
+1. Elige dificultad y su ninja, y entra a la cola.
+2. El servidor busca un equipo con ninjas distintos. Si a los 30 s solo hay dos personas, ambas pueden aceptar empezar con un bot. Con una sola persona, la búsqueda sigue hasta que llegue alguien o la cancele.
+3. Ve la pantalla de equipo y empieza la partida.
+
+Al terminar cada partida, cada persona ve sus propios resultados: monedas cobradas por ronda, logros y estadísticas actualizadas. Desde ahí puede volver a la sala o a la cola.
+
+## Reglas del modo en línea
+
+Las reglas de combate R-01 a R-24 no cambian; estas diez reglas nuevas cubren lo que agrega jugar en equipo.
+
+- **R-33 Equipo.** De 2 a 3 personas, un ninja cada una. Los tres elementos siempre están en juego: el ninja sin persona lo controla el bot (§8).
+- **R-34 Mazo de cada jugador.** Cada persona juega con su colección del elemento de su ninja (R-26 aplicado por jugador). Su carta de camino solo ayuda si juega ese elemento. El bot usa el mazo de referencia de su elemento (D-47).
+- **R-35 Planificación simultánea.** Todos planifican a la vez y cada persona ve en tiempo real los fantasmas de sus compañeros: movimiento, objetivo y carta. El orden de resolución no cambia (R-11, D-32).
+- **R-36 Reloj.** Lo lleva el servidor: 15 s por turno, sin pausa (D-46). Al vencer, cada ninja actúa con lo que su persona dejó planificado. Si todos confirman antes, el turno se resuelve de inmediato.
+- **R-37 Combos entre personas.** Las cartas de distintos jugadores combinan igual que en solo (R-18), como en el original.
+- **R-38 Desconexión.** El bot toma el ninja al instante y lo devuelve cuando la persona reconecta, en cualquier turno. Una sala sin personas conectadas durante 2 minutos se cierra.
+- **R-39 Abandono.** Salir conserva lo ya cobrado (D-31). En v2 no hay castigo por abandonar el emparejamiento (P-22).
+- **R-40 Recompensas.** Cada persona cobra sus rondas y el bonus (R-29) y gana sus propios logros. El bot no cobra ni suma estadísticas, y una persona cobra una ronda solo si estaba conectada al terminarla (D-48).
+- **R-41 Sin comunicación.** Como en el original, no hay chat ni señales: lo único que cada persona comparte es su plan en curso, que el equipo ve en tiempo real (R-35).
+- **R-42 Estadísticas.** Se registran por persona desde los eventos del servidor: partidas jugadas y ganadas, rondas superadas, bonus ganados, daño hecho (total y por tipo de gólem), gólems derrotados por tipo, cartas lanzadas por elemento, combos, vida curada a compañeros, reanimaciones hechas y caídas sufridas. Son privadas: solo las ve su dueño, en su perfil (P-21).
+
+## Cuentas, seguridad y privacidad
+
+Con público abierto, el servidor no confía en nada que llegue del cliente y guarda solo los datos necesarios.
+
+| Tema | Cómo se resuelve |
+| --- | --- |
+| Registro | Correo, contraseña de al menos 10 caracteres y nombre visible de 3 a 16 caracteres, único y con filtro de palabras. Incluye aceptar el aviso de privacidad. No se pide la edad (P-19). |
+| Contraseñas | Se guardan con Argon2id. Nunca se guardan ni se registran en claro. |
+| Verificación | Enlace de un solo uso que vence en 24 h. Sin verificar no se juega en línea. |
+| Recuperación | Enlace de un solo uso por correo que vence en 30 min. Al usarlo se cierran las demás sesiones. |
+| Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. |
+| Abuso | Hasta 5 intentos de inicio de sesión cada 15 min por cuenta y por IP, y hasta 3 correos por hora por dirección. Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
+| Mensajes del juego | Cada mensaje se valida con un esquema, y el servidor verifica cada plan con el motor antes de aceptarlo. |
+| Correo | Resend, con el dominio wpena.dev verificado mediante registros SPF y DKIM. Remitente no-responder@wpena.dev. |
+| Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil. |
+
+Riesgo aceptado para v2: sin límite de edad ni autorización de adultos (P-19). En Colombia, la Ley 1581 exige autorización del representante legal para tratar datos de menores de 18, y COPPA y el RGPD piden algo parecido para jugadores de otros países. Los datos mínimos, la falta de comunicación entre jugadores y las estadísticas privadas reducen el riesgo, pero no lo eliminan. Conviene revisarlo con alguien que sepa antes de que el proyecto crezca; esto no es asesoría legal.
+
+## Arquitectura técnica
+
+Un único servidor Node en Railway sirve el juego, la API y las partidas, y resuelve cada turno con el mismo motor puro del modo solo.
+
+```mermaid
+flowchart LR
+  nav["Navegador<br/>Cliente React + Phaser<br/>Sandbox: motor local<br/>En línea: WebSocket"]
+  resend["Resend<br/>Correos de verificación<br/>y de recuperación"]
+  subgraph railway["Railway · ventisca.wpena.dev"]
+    srv["Servidor Node (imagen de Docker)<br/>Sirve el juego y la API HTTP: cuentas, tienda y perfil<br/>Salas, reloj y emparejamiento por WebSocket<br/>Resuelve cada turno con packages/core, sin cambios"]
+    pg[("Postgres de Railway<br/>Cuentas, progreso, monedas y estadísticas<br/>Estado de cada partida al final de cada turno")]
+  end
+  nav <-->|HTTPS y WSS| srv
+  srv <-->|SQL| pg
+  srv --> resend
+```
+
+El sandbox no toca el servidor: su motor corre en el navegador, como hoy.
+
+- **`GameHost` asíncrono.** Enviar un plan devuelve una promesa y los resultados llegan como eventos, en el sandbox y en línea. Es el cambio que Claude Code señaló en su análisis.
+- **Servidor autoritativo.** El servidor valida cada plan, resuelve el turno con `resolveTurn` y envía los eventos con su hash; el cliente solo anima.
+- **Reloj por hora límite.** El servidor fija la hora límite de cada turno, y el cliente muestra la cuenta regresiva corrigiendo la diferencia de relojes.
+- **Una sola instancia al principio.** Las salas viven en memoria, y el estado por turno en Postgres permite reconstruirlas tras un reinicio (D-49). Escalar a varias instancias queda para después.
+- **Monorepo.** `packages/core` sin cambios, `packages/protocol` y `apps/server` nuevos, y `apps/web` con el `NetworkHost`.
+- **Configuración.** Variables de entorno en Railway: `DATABASE_URL`, `RESEND_API_KEY`, `SESSION_SECRET` y `APP_URL`.
+
+## Protocolo de mensajes (borrador)
+
+La partida viaja por WebSocket con mensajes tipados en un paquete compartido (`packages/protocol`); todo lo demás es una API HTTP. Cada mensaje lleva su tipo, la versión del protocolo y un número de secuencia.
+
+| Dirección | Mensaje | Contenido |
+| --- | --- | --- |
+| Cliente → servidor | `room.create` | Dificultad |
+| Cliente → servidor | `room.join` | Código de la sala |
+| Cliente → servidor | `queue.join` / `queue.leave` | Dificultad y ninja elegido |
+| Cliente → servidor | `queue.acceptBot` | Acepta empezar con un bot tras 30 s de espera |
+| Cliente → servidor | `lobby.pick` | Ninja elegido en la sala |
+| Cliente → servidor | `lobby.start` | Solo el anfitrión |
+| Cliente → servidor | `plan.update` | Plan en curso, para el fantasma que ven los compañeros |
+| Cliente → servidor | `plan.confirm` | Plan final del turno |
+| Servidor → cliente | `queue.state` | Ninjas que faltan y oferta de empezar con un bot |
+| Servidor → cliente | `lobby.state` | Personas, ninjas, código y dificultad |
+| Servidor → cliente | `match.start` | Estado inicial y ninja de cada persona |
+| Servidor → cliente | `turn.start` | Número de turno y hora límite del servidor |
+| Servidor → cliente | `team.plans` | Fantasmas de los compañeros |
+| Servidor → cliente | `turn.result` | Eventos del turno y hash del estado |
+| Servidor → cliente | `player.status` | Persona conectada o reemplazada por el bot |
+| Servidor → cliente | `match.end` | Resultados y monedas cobradas |
+| Servidor → cliente | `error` | Código de error |
+
+**API HTTP:** registro, inicio y cierre de sesión, verificación, recuperación y borrado de cuenta; perfil, colección, compra de cajas y estadísticas.
+
+El cliente anima los eventos de `turn.result` con la misma escena de hoy y compara el hash con el que calcula; si no coincide, pide el estado completo.
+
+## Modelo de datos en Postgres
+
+Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasan por un libro contable, para que un pago nunca se repita tras una reconexión o un reinicio.
+
+| Tabla | Campos clave | Para qué |
+| --- | --- | --- |
+| `users` | id, email único, password_hash, display_name único, email_verified_at, deleted_at | La cuenta |
+| `sessions` | id, user_id, expires_at | Sesiones con cookie |
+| `email_tokens` | hash del token, user_id, tipo (verificar o recuperar), expires_at, used_at | Enlaces de un solo uso |
+| `profiles` | user_id, coins, camino_element, boxes_opened | Estado del progreso |
+| `collection` | user_id, card_id, count | Cartas y duplicados (R-26) |
+| `coin_ledger` | user_id, match_id, round, amount; única por (user_id, match_id, round) | Cobro por ronda sin duplicados (D-31) |
+| `achievements` | user_id, achievement_id, unlocked_at | Logros |
+| `matches` | id, room_code, difficulty, seed, status, turn, state_snapshot (jsonb), hash | Partidas y su estado por turno (D-49) |
+| `match_players` | match_id, user_id (vacío para el bot), ninja, joined_at, left_at | Quién jugó qué ninja |
+| `player_stats` | user_id y un contador por cada estadística de R-42; los desgloses por gólem y por elemento en jsonb | Estadísticas en línea |
+
+Las migraciones viven en el repositorio y se aplican al desplegar. La herramienta (por ejemplo Drizzle o Kysely) la elige Claude Code al empezar el M7.
+
+## Hitos M7 a M9
+
+Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, luego la partida en línea y al final el emparejamiento. Un hito termina cuando su lista está completa y `pnpm ci` y `pnpm e2e` están en verde.
+
+**M7: Cuentas y servidor** (todavía sin multijugador)
+
+- [ ] Una imagen de Docker con cliente y servidor, desplegada en Railway con Postgres y servida en ventisca.wpena.dev con HTTPS
+- [ ] Registro, verificación, inicio de sesión, recuperación y borrado de cuenta
+- [ ] Progreso en la cuenta: carta de camino, monedas, cajas y colección (R-25 a R-32 resueltos en el servidor)
+- [ ] Sandbox con el mazo fijo (D-50) y sin progreso
+- [ ] `GameHost` asíncrono, con el sandbox funcionando igual que hoy
+- [ ] Pruebas del servidor (cuentas y economía sin cobros duplicados) y e2e de registro e inicio de sesión
+
+**M8: Partida en línea**
+
+- [ ] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas
+- [ ] Salas con código para 2 o 3 personas, con el bot en el ninja libre
+- [ ] Reloj del servidor de 15 s (D-46) y planificación simultánea con fantasmas compartidos
+- [ ] Cobro por ronda solo para quien estaba conectado (D-31 y D-48) y logros por persona
+- [ ] Desconexión y reconexión, estado guardado por turno y recuperación tras un reinicio
+- [ ] Pruebas con dos y tres clientes en local, reconexión y reinicio del servidor a mitad de partida
+
+**M9: Emparejamiento y estadísticas**
+
+- [ ] Cola por dificultad y ninja: solo junta personas con ninjas distintos y muestra qué ninjas faltan (D-43)
+- [ ] A los 30 s sin tercer jugador, las dos personas pueden aceptar empezar con un bot (D-44)
+- [ ] Estadísticas privadas por persona, en su perfil (R-42)
+- [ ] Aviso de privacidad publicado y pruebas con personas
+
+## Preguntas abiertas y riesgos
+
+P-19, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso. Solo sigue abierta P-20, la curva de dificultad con equipos de colecciones mezcladas, que Claude Code mide antes del M8.
+
+**Preguntas abiertas**
+
+- [x] **P-19 Edad mínima.** Resuelta para v2: sin límite de edad y sin autorización de adultos (D-38). El riesgo legal queda anotado en la sección de cuentas.
+- [ ] **P-20 Curva de dificultad en línea.** Un mismo equipo puede juntar una colección nueva con una completa. Claude Code extiende el simulador con equipos mezclados y lo mide antes del M8; la curva se decide con esos números.
+- [x] **P-21 Visibilidad de las estadísticas.** Resuelta: solo las ve cada jugador. En v2 no hay perfil público ni clasificación.
+- [ ] **P-22 Castigo por abandono.** En v2 no hay castigo. Se decide con datos de uso una vez abierto el emparejamiento.
+- [x] **P-23 Mazo del sandbox.** Resuelta: el bot y el sandbox usan el mismo mazo de referencia (D-47 y D-50).
+- [x] **P-24 Jugar en línea en solitario.** Resuelta: no. Hacen falta al menos dos personas; quien está solo juega el sandbox (D-35).
+
+**Riesgos**
+
+| Riesgo | Mitigación |
+| --- | --- |
+| Railway cobra por uso: servidor encendido todo el día más Postgres | Revisar el plan y el consumo antes de abrir el registro al público |
+| Registros masivos y uso del registro para enviar correo basura | Límites por IP y por dirección, captcha y verificación obligatoria |
+| Colas vacías o desparejas: pocos jugadores, o casi todos con el mismo ninja | Salas con código desde el inicio, un contador de personas buscando partida, la lista de ninjas que faltan y el sandbox siempre disponible |
+| Reinicios del servidor durante partidas | Estado guardado por turno y reconstrucción de salas (D-49) |
+| Alcance grande para un proyecto de clase | Hitos publicables por separado: el M7 ya aporta valor solo |

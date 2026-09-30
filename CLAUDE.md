@@ -8,7 +8,8 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 
 ## Documentos que mandan
 
-- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-30, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
+- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
+- `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-42, las decisiones D-34 a D-50 y los hitos M7 a M9. En todo lo del modo en línea manda sobre `docs/PRD.md`.
 - `docs/traspaso.md`: estado del proyecto, puesta en marcha y próximos pasos.
 - `docs/adr/`, `docs/balance-report.md` y `docs/ai-log.md`: decisiones de arquitectura, balance medido y bitácora del trabajo con IA.
 
@@ -22,6 +23,9 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 - **Motor puro (D-02):** `packages/core` no conoce el DOM, Phaser ni la red. El multijugador debe reutilizarlo tal cual en el servidor.
 - **Balance y ritmo se miden:** si cambias números, vuelve a correr `pnpm sim` o `pnpm pacing` y actualiza el reporte correspondiente.
 
-## Multijugador
+## Modo en línea (v2)
 
-Todavía **no está implementado**. Su especificación (PRD §11.7 y hitos M7 a M9) se está definiendo aparte. No lo implementes hasta que esa sección del PRD esté marcada como aprobada.
+Se implementa según `docs/PRD-v2.md` (aprobado), que manda sobre `docs/PRD.md` en todo lo del modo en línea.
+
+- **Por hitos (M7 a M9) y en PRs pequeños:** cada uno con sus pruebas y con la CI en verde. El dueño de producto revisa cada PR antes de fusionarlo.
+- **Nunca subas secretos al repositorio:** las variables de entorno se documentan en `.env.example`.

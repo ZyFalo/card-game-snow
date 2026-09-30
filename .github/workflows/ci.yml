@@ -7,6 +7,23 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Postgres para las pruebas del servidor: cada corrida crea y borra su propia base temporal.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ventisca
+          POSTGRES_PASSWORD: ventisca
+          POSTGRES_DB: ventisca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ventisca -d ventisca"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL_TEST: postgres://ventisca:ventisca@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -23,3 +40,34 @@ jobs:
         run: |
           pnpm --filter @ventisca/web exec playwright install --with-deps chromium
           PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --grep-invert @lento
+
+  # La misma imagen que se despliega en Railway: se construye, arranca, migra y sirve el juego.
+  docker:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ventisca
+          POSTGRES_PASSWORD: ventisca
+          POSTGRES_DB: ventisca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ventisca -d ventisca"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t ventisca .
+      - name: La imagen arranca, migra y responde
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL=postgres://ventisca:ventisca@localhost:5432/ventisca -e PORT=3000 ventisca
+          for i in $(seq 1 30); do curl -fsS localhost:3000/api/health && break; sleep 1; done
+          curl -fsS localhost:3000/api/health | grep -q '"db":"ok"'
+          curl -fsS localhost:3000/ | grep -q '<title>Ventisca</title>'
+      - name: Registros del contenedor
+        if: always()
+        run: docker logs app

@@ -16,7 +16,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las diecisiete decisiones están cerradas: ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una; D-57, la gestión de la cuenta, se aprobó después. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ La portada ofrece dos puertas: jugar en el sandbox sin cuenta o entrar al modo e
 **Primera vez en línea**
 
 1. Se registra con correo, contraseña y nombre visible, y acepta el aviso de privacidad.
-2. Recibe un correo de verificación; el enlace activa la cuenta.
+2. Recibe un correo con un código de verificación; al escribirlo, la cuenta queda verificada (R-44).
 3. Elige su carta de camino (D-25) y recibe el mazo inicial (R-30).
 4. Llega al inicio en línea: jugar, colección, tienda y estadísticas.
 

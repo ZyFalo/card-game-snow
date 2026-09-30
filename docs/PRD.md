@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.6 |
+| Versión | 0.10.7 |
 | Última actualización | 30 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -1040,6 +1040,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.7 | 2026-09-30 | Cuentas en el cliente (M7, paso 7): la portada ofrece "Jugar sin cuenta" y "Entrar", con pantallas de registro, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (R-43 a R-50). El aviso de privacidad se publica en el juego y Turnstile se carga solo en el registro. Los resultados del sandbox invitan a crear una cuenta. Las e2e corren contra el servidor de verdad, con Postgres, y leen los códigos de los correos guardados en una carpeta |
 | 0.10.6 | 2026-09-30 | Cuentas en el servidor, segunda parte (M7, paso 6): recuperación, cambio de contraseña y de correo, borrado y deshacer un cambio de correo (R-46 a R-50, D-60). El límite por IP sube a 50 (D-61). Límites de intentos por cuenta y por IP, y tope de correos por dirección, sin delatar qué correos existen (D-59). Turnstile en el registro y correos con Resend. `/api/health` informa el commit desplegado, `pnpm check:prod` lo compara con main y `/api/config` entrega solo valores públicos |
 | 0.10.5 | 2026-09-30 | Cuentas en el servidor, primera parte (M7, paso 5): registro, verificación con código de 6 dígitos, inicio y cierre de sesión, con R-43 a R-45, Argon2id y el filtro de nombres. D-59: las cuentas no revelan qué correos existen. `pnpm check:prod` exige un certificado válido con más de 14 días de vigencia y muestra el emisor solo como dato |
 | 0.10.4 | 2026-09-30 | El juego está desplegado en Railway y se sirve en https://ventisca.wpena.dev (M7, paso 4). `railway.json` fija el build, el comando de arranque, la salud, la región y cuándo se redespliega. Railway espera la CI de main antes de desplegar. D-58: el dominio va en "Solo DNS", sin el proxy de Cloudflare. `pnpm check:prod` comprueba el despliegue |

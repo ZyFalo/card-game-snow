@@ -5,7 +5,7 @@ Lee también `docs/PRD.md` (el mapa del proyecto) y `docs/adr/`.
 ## Comandos
 - `pnpm install`, luego `pnpm dev` (http://localhost:5173)
 - `pnpm test` (Vitest), `pnpm typecheck` (TypeScript 7), `pnpm lint` (Biome), `pnpm ci` (todo lo anterior + build)
-- `pnpm sim -- --matches 2000 --skill 1 [--storm]` para simular balance sin render
+- `pnpm sim -- --matches 2000 --skill 1 [--storm] [--collection starter|box|full]` para simular balance sin render. La reserva real es la colección del jugador (R-26): mide por etapa con `--collection`, porque sin esa opción se usa el mazo fijo de v1. `pnpm sim -- --table` reproduce la tabla del §18.3 del PRD
 - `pnpm e2e` (Playwright; `PW_SWIFTSHADER=1` en máquinas sin GPU)
 - `pnpm build:single` genera `apps/web/dist-single/index.html`, un solo archivo jugable
 - `?speed=0.2` en la URL acelera las animaciones (pruebas y demos)

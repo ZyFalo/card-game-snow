@@ -1,28 +1,23 @@
-import { ACHIEVEMENT_IDS, BALANCE, bankCard, CAMINO_CARDS, type Difficulty, ELEMENTS } from '@ventisca/core';
+import { BALANCE, type Difficulty, ELEMENTS } from '@ventisca/core';
 import { art } from '../art';
 import { audio } from '../audio/audio';
 import {
-  ACHIEVEMENT_TEXT,
   BONUS_OUTCOME_TEXT,
   BONUS_SHORT,
-  CAMINO_TITLE,
   DIFFICULTIES,
   ES,
   MAP_NAMES,
   NINJA_TEXT,
   PACES,
   type Pace,
-  PROGRESSION,
   SCREEN_TEXT,
   STAT_LABELS,
 } from '../i18n/es';
-import { dismissWelcome, enterGame, goto, openCollection, setHelp, startMatch, updateSettings } from '../state/actions';
+import { goto, setHelp, startMatch, updateSettings } from '../state/actions';
 import { useApp } from '../state/store';
-import { CoinChip } from './CardFace';
 import { Icon, Segmented, Toggle, useCountUp } from './common';
 
 export function TitleScreen() {
-  const profile = useApp((s) => s.profile);
   return (
     <div className="screen title-screen">
       <img className="bg" src={art.background('cumbre')} alt="" />
@@ -38,27 +33,16 @@ export function TitleScreen() {
             onClick={() => {
               audio.unlock();
               audio.play('confirm');
-              enterGame();
+              goto('team');
             }}
           >
             <Icon name="play" /> {ES.play}
           </button>
-          {profile.camino ? (
-            <button type="button" className="btn btn-lg" onClick={() => openCollection('title')}>
-              <Icon name="cards" /> {SCREEN_TEXT.collection}
-            </button>
-          ) : null}
           <button type="button" className="btn btn-lg" onClick={() => setHelp(true)}>
             {ES.howToPlay}
           </button>
         </div>
       </div>
-      {profile.camino ? (
-        <div className={`title-profile el-${profile.camino}`}>
-          <span>{CAMINO_TITLE[profile.camino]}</span>
-          <CoinChip amount={profile.coins} />
-        </div>
-      ) : null}
       <div className="title-ninjas" aria-hidden="true">
         {ELEMENTS.map((el) => (
           <img key={el} src={art.ninja(el)} alt="" />
@@ -71,23 +55,11 @@ export function TitleScreen() {
 
 export function TeamScreen() {
   const settings = useApp((s) => s.settings);
-  const profile = useApp((s) => s.profile);
-  const welcome = useApp((s) => s.welcome);
-  const welcomeCard = welcome ? bankCard(CAMINO_CARDS[welcome]) : undefined;
   return (
     <div className="screen team-screen">
       <div className="screen-head">
         <h1 className="display">{ES.team}</h1>
-        {welcome ? (
-          <p className="welcome">
-            {SCREEN_TEXT.welcome(
-              CAMINO_TITLE[welcome],
-              welcomeCard ? `${welcomeCard.name} (${welcomeCard.value})` : undefined,
-            )}
-          </p>
-        ) : (
-          <p>{ES.teamIntro}</p>
-        )}
+        <p>{ES.teamIntro}</p>
       </div>
       <div className="team-grid">
         {ELEMENTS.map((el) => {
@@ -175,21 +147,8 @@ export function TeamScreen() {
           />
         </div>
       </div>
-      <div className="team-left">
-        <CoinChip amount={profile.coins} />
-        <button type="button" className="btn" onClick={() => openCollection('team')}>
-          <Icon name="cards" /> {PROGRESSION.collection}
-        </button>
-      </div>
       <div className="team-actions">
-        <button
-          type="button"
-          className="btn btn-lg"
-          onClick={() => {
-            dismissWelcome();
-            goto('title');
-          }}
-        >
+        <button type="button" className="btn btn-lg" onClick={() => goto('title')}>
           {ES.back}
         </button>
         <button
@@ -198,7 +157,6 @@ export function TeamScreen() {
           onClick={() => {
             audio.unlock();
             audio.play('confirm');
-            dismissWelcome();
             void startMatch();
           }}
         >
@@ -241,19 +199,13 @@ export function LoadingScreen() {
 
 export function ResultsScreen() {
   const results = useApp((s) => s.results);
-  const unlocked = useApp((s) => s.unlocked);
   const seed = useApp((s) => s.seed);
   const reduced = useApp((s) => s.settings.reducedMotion);
-  const total = results?.reward.total ?? 0;
-  const endBalance = results?.balance ?? 0;
-  const shownTotal = useCountUp(total, { ms: 900, delay: 450, enabled: !reduced });
-  const shownBalance = useCountUp(endBalance, { from: endBalance - total, ms: 900, delay: 450, enabled: !reduced });
   if (!results) return null;
-  const { state, earned, fresh, reward } = results;
+  const { state } = results;
   const win = state.status === 'victory';
   const stats = state.stats;
   const outcome = BONUS_OUTCOME_TEXT[state.bonusOutcome];
-  const unlockedCount = Object.keys(unlocked).length;
   return (
     <div className="screen results-screen">
       <div className="screen-head">
@@ -263,72 +215,17 @@ export function ResultsScreen() {
         </p>
       </div>
       <div className="results-body">
-        <div className="results-left">
-          <section className="paper">
-            <div className="stat-grid">
-              {(Object.keys(STAT_LABELS) as (keyof typeof STAT_LABELS)[]).map((k, i) => (
-                <Stat key={k} label={STAT_LABELS[k]} value={stats[k]} delay={250 + i * 60} animate={!reduced} />
-              ))}
-            </div>
-          </section>
-          <section className="paper results-coins">
-            <h2 className="display">{PROGRESSION.coins}</h2>
-            {reward.lines.length === 0 ? (
-              <p className="coin-empty">{PROGRESSION.noCoins}</p>
-            ) : (
-              <ul className="coin-lines">
-                {reward.lines.map((l) => (
-                  <li key={String(l.round)}>
-                    <span>{SCREEN_TEXT.coinLine(l.round)}</span>
-                    <b>+{l.coins}</b>
-                  </li>
-                ))}
-                {reward.doubled ? (
-                  <li className="double">
-                    <span>{PROGRESSION.doubleCoins}</span>
-                    <b>×2</b>
-                  </li>
-                ) : null}
-              </ul>
-            )}
-            <div className="coin-total">
-              <span>
-                {SCREEN_TEXT.total} <b>+{shownTotal}</b>
-              </span>
-              <span className="coin-balance">
-                {SCREEN_TEXT.balance} <CoinChip amount={shownBalance} />
-              </span>
-            </div>
-            <div className="coin-meta">
-              {SCREEN_TEXT.matchMeta(DIFFICULTIES[state.difficulty].label.toLowerCase(), MAP_NAMES[state.mapId])}{' '}
-              {state.stats.turnsToClearMain !== null ? `${SCREEN_TEXT.clearedIn(state.stats.turnsToClearMain)} ` : ''}
-              {BONUS_SHORT[state.bonusCondition]}.
-            </div>
-          </section>
-        </div>
-        <section className="paper ach-list">
-          <h2 className="display">{ES.achievementsProgress(unlockedCount, ACHIEVEMENT_IDS.length)}</h2>
-          {ACHIEVEMENT_IDS.map((id, i) => {
-            const got = earned.includes(id);
-            const ever = !!unlocked[id];
-            const t = ACHIEVEMENT_TEXT[id];
-            return (
-              <div key={id} className={`ach ${ever ? 'got' : 'off'}`} style={{ animationDelay: `${0.4 + i * 0.05}s` }}>
-                <span className="medal">{ever ? <Icon name="check" /> : null}</span>
-                <span>
-                  <b>{t.name}</b>
-                  {t.detail}
-                </span>
-                {fresh.includes(id) ? (
-                  <span className="badge-new">{ES.newAchievement}</span>
-                ) : got ? (
-                  <span />
-                ) : (
-                  <span />
-                )}
-              </div>
-            );
-          })}
+        <section className="paper">
+          <div className="stat-grid">
+            {(Object.keys(STAT_LABELS) as (keyof typeof STAT_LABELS)[]).map((k, i) => (
+              <Stat key={k} label={STAT_LABELS[k]} value={stats[k]} delay={250 + i * 60} animate={!reduced} />
+            ))}
+          </div>
+          <p className="results-meta">
+            {SCREEN_TEXT.matchMeta(DIFFICULTIES[state.difficulty].label.toLowerCase(), MAP_NAMES[state.mapId])}{' '}
+            {state.stats.turnsToClearMain !== null ? `${SCREEN_TEXT.clearedIn(state.stats.turnsToClearMain)} ` : ''}
+            {BONUS_SHORT[state.bonusCondition]}.
+          </p>
         </section>
       </div>
       <div className="results-seed">
@@ -337,9 +234,6 @@ export function ResultsScreen() {
       <div className="results-actions">
         <button type="button" className="btn btn-lg" onClick={() => goto('title')}>
           {ES.menu}
-        </button>
-        <button type="button" className="btn btn-lg" onClick={() => openCollection('results')}>
-          <Icon name="cards" /> {PROGRESSION.collection}
         </button>
         <button type="button" className="btn btn-primary btn-lg" onClick={() => goto('team')}>
           {ES.playAgain}

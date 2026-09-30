@@ -1,16 +1,9 @@
 import {
-  type AchievementId,
-  addToCollection,
-  boxPrice,
-  type CoinReward,
-  coinsForRound,
   type ElementKind,
-  earnedAchievements,
   enemyAt,
   eq,
   type GameEvent,
   getNinja,
-  hasDoubleCoins,
   isActionValid,
   isRock,
   isThreatened,
@@ -18,11 +11,7 @@ import {
   livingNinjas,
   type MatchState,
   ninjaAt,
-  openBox,
   type Plan,
-  type Round,
-  rngFrom,
-  starterCollection,
   suggestPlan,
   type Vec,
 } from '@ventisca/core';
@@ -32,10 +21,9 @@ import type { GameHost, HostMessage } from '../host/GameHost';
 import { LocalHost } from '../host/LocalHost';
 import { NINJA_TEXT, NOTICE, TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
-import { type Settings, saveAchievements, saveSettings } from './persist';
+import { type Settings, saveSettings } from './persist';
 import { activeInfo, nextPlannable, plansArray, turnClockMs } from './planning';
 import { applyEvent, beforeIntro } from './present';
-import { saveProfile } from './profile';
 import { type CardFlight, type Screen, store } from './store';
 
 /* Flujo de la partida y acciones del jugador. La UI (React y Phaser) solo llama a estas funciones. */
@@ -71,50 +59,6 @@ function applyToView(e: GameEvent): void {
   if (v) store.setState({ view: applyEvent(v, e) });
 }
 
-/* ---------- Cobro (R-29, D-31) ---------- */
-
-/** Monedas que lleva cobradas la partida en curso, ronda por ronda. */
-let reward: CoinReward = { lines: [], base: 0, doubled: false, total: 0 };
-
-/**
- * Cada evento, al mostrarse: actualiza el estado presentado y, según D-31, acredita cada
- * ronda superada en el momento en que termina y guarda resultados y logros al terminar
- * la partida, antes de la celebración. Lo cobrado no se pierde aunque después salgas.
- */
-function onEvent(e: GameEvent): void {
-  applyToView(e);
-  if (e.t === 'roundEnd') creditRound(e.round);
-  else if (e.t === 'matchEnd') recordResults();
-}
-
-function creditRound(round: Round): void {
-  const st = store.getState();
-  const doubled = hasDoubleCoins(Object.keys(st.unlocked) as AchievementId[]);
-  const coins = coinsForRound(round, doubled);
-  const base = coinsForRound(round, false);
-  reward = {
-    lines: [...reward.lines, { round, coins: base }],
-    base: reward.base + base,
-    doubled,
-    total: reward.total + coins,
-  };
-  const profile = { ...st.profile, coins: st.profile.coins + coins };
-  saveProfile(profile);
-  store.setState({ profile });
-}
-
-function recordResults(): void {
-  const st = store.getState();
-  const state = st.match;
-  if (!state || st.results) return;
-  const earned = earnedAchievements(state);
-  const unlocked = { ...st.unlocked };
-  const fresh = earned.filter((id) => !unlocked[id]);
-  for (const id of fresh) unlocked[id] = new Date().toISOString();
-  saveAchievements(unlocked);
-  store.setState({ unlocked, results: { state, earned, fresh, reward, balance: st.profile.coins } });
-}
-
 /* ---------- Partida ---------- */
 
 /**
@@ -137,7 +81,6 @@ function show(msg: HostMessage): Promise<void> {
 export async function startMatch(): Promise<void> {
   const { settings } = store.getState();
   attachHost(new LocalHost());
-  reward = { lines: [], base: 0, doubled: false, total: 0 };
   const seed = Math.floor(Math.random() * 2 ** 32) >>> 0;
   // D-50: sin reserva, cada ninja juega con el mazo de referencia del balance (8, 9, 10, 10, 11 y 12).
   await host.start({ seed, difficulty: settings.difficulty });
@@ -168,7 +111,7 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
   await sleep((settings.reducedMotion ? 900 : 1800) * URL_SPEED);
   if (!scene.isCurrent(generation)) return;
   store.setState({ screen: 'battle' });
-  await scene.playEvents(events, onEvent, generation);
+  await scene.playEvents(events, applyToView, generation);
   if (!scene.isCurrent(generation)) return;
   store.setState({ view: state });
   beginPlanning();
@@ -228,10 +171,10 @@ async function showTurn(state: MatchState, events: GameEvent[]): Promise<void> {
   const scene = bridge.scene;
   if (scene) {
     const generation = scene.currentGeneration();
-    await scene.playEvents(events, onEvent, generation);
+    await scene.playEvents(events, applyToView, generation);
     if (!scene.isCurrent(generation)) return;
   } else {
-    for (const e of events) onEvent(e);
+    for (const e of events) applyToView(e);
   }
   store.setState({ view: state });
   if (state.status !== 'playing') {
@@ -241,10 +184,10 @@ async function showTurn(state: MatchState, events: GameEvent[]): Promise<void> {
   beginPlanning();
 }
 
-/** Tras la celebración. Monedas, resultados y logros ya se guardaron al mostrarse sus eventos (D-31). */
+/** Tras la celebración, los resultados. El sandbox no da monedas ni logros (D-34). */
 function finishMatch(): void {
-  recordResults();
-  store.setState({ phase: 'ended', screen: 'results' });
+  const { match } = store.getState();
+  store.setState({ phase: 'ended', screen: 'results', results: match ? { state: match } : null });
 }
 
 export function restartMatch(): void {
@@ -474,74 +417,6 @@ export function setHover(v: Vec | null): void {
   const h = store.getState().hover;
   if ((h && v && eq(h, v)) || (!h && !v)) return;
   store.setState({ hover: v });
-}
-
-/* ---------- Progresión (§18) ---------- */
-
-let revealKey = 0;
-
-/** Entrada al juego: la primera vez se elige el camino (R-30). */
-export function enterGame(): void {
-  store.setState({ screen: store.getState().profile.camino ? 'team' : 'camino' });
-}
-
-export function chooseCamino(element: ElementKind): void {
-  const { profile } = store.getState();
-  if (profile.camino) return;
-  const next = { ...profile, camino: element, collection: starterCollection(element) };
-  saveProfile(next);
-  audio.play('bonus');
-  store.setState({ profile: next, screen: 'team', welcome: element });
-}
-
-export function openCollection(from: Screen, tab?: ElementKind): void {
-  const st = store.getState();
-  store.setState({ screen: 'collection', collectionReturn: from, collectionTab: tab ?? st.profile.camino ?? 'fire' });
-}
-
-export function closeCollection(): void {
-  store.setState({ screen: store.getState().collectionReturn, reveal: null });
-}
-
-export function setCollectionTab(tab: ElementKind): void {
-  store.setState({ collectionTab: tab });
-}
-
-/** Compra y abre una caja (R-28). Devuelve false si no alcanzan las monedas. */
-export function buyBox(element: ElementKind, size: number): boolean {
-  const { profile } = store.getState();
-  const price = boxPrice(size);
-  if (profile.coins < price) {
-    audio.play('error');
-    return false;
-  }
-  const rng = rngFrom(Math.floor(Math.random() * 2 ** 32) >>> 0);
-  const cards = openBox(element, size, rng);
-  const seen = new Set(Object.keys(profile.collection).filter((id) => (profile.collection[id] ?? 0) > 0));
-  const fresh = cards.map((c) => {
-    const isNew = !seen.has(c.id);
-    seen.add(c.id);
-    return isNew;
-  });
-  const next = {
-    ...profile,
-    coins: profile.coins - price,
-    collection: addToCollection(profile.collection, cards),
-    boxesOpened: profile.boxesOpened + 1,
-  };
-  saveProfile(next);
-  revealKey += 1;
-  audio.play('confirm');
-  store.setState({ profile: next, reveal: { element, cards, fresh, key: revealKey } });
-  return true;
-}
-
-export function closeReveal(): void {
-  store.setState({ reveal: null });
-}
-
-export function dismissWelcome(): void {
-  store.setState({ welcome: null });
 }
 
 /* ---------- Coreografía (fase 3) ---------- */

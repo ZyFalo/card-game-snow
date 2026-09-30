@@ -20,14 +20,10 @@ export type TestWindow = {
 
 export const phase = (page: Page) => page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().phase);
 
-/** Abre el juego, elige el Camino del Fuego y espera a que empiece la planificación. */
+/** Abre el juego, entra al sandbox y espera a que empiece la planificación. */
 export async function startMatch(page: Page, speed = 0.3) {
   await page.goto(`/?speed=${speed}`);
   await page.getByRole('button', { name: 'Jugar', exact: true }).click();
-  // Primera entrada (R-30): se elige el camino.
-  await expect(page.getByRole('heading', { name: 'Elige tu camino' })).toBeVisible();
-  await page.getByRole('button', { name: 'Camino del Fuego' }).click();
-  await page.getByRole('button', { name: 'Elegir el Camino del Fuego' }).click();
   await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
   await page.getByRole('button', { name: 'Comenzar partida' }).click();
   await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');

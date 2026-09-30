@@ -1,21 +1,10 @@
-import type {
-  AchievementId,
-  BankCard,
-  BonusCondition,
-  CoinReward,
-  ElementKind,
-  MatchState,
-  Plan,
-  Round,
-  Vec,
-} from '@ventisca/core';
+import type { BonusCondition, ElementKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { TIPS } from '../i18n/es';
-import { loadAchievements, loadSettings, type Settings, type Unlocked } from './persist';
-import { loadProfile, type Profile } from './profile';
+import { loadSettings, type Settings } from './persist';
 
-export type Screen = 'title' | 'camino' | 'team' | 'collection' | 'loading' | 'battle' | 'results';
+export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results';
 /** intro: aparición de la ronda; planning: el jugador planifica; resolving: se anima el turno. */
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
 
@@ -49,22 +38,9 @@ export interface TimerState {
   total: number | null;
 }
 
+/** El sandbox no da monedas ni logros (D-34): los resultados son la partida y sus estadísticas. */
 export interface Results {
   state: MatchState;
-  earned: AchievementId[];
-  fresh: AchievementId[];
-  /** Monedas que pagó la partida (R-29) y saldo después de cobrarlas. */
-  reward: CoinReward;
-  balance: number;
-}
-
-/** Cartas recién sacadas de una caja, para la animación de revelado. */
-export interface Reveal {
-  element: ElementKind;
-  cards: BankCard[];
-  /** Por posición: true si era una carta que el jugador todavía no tenía. */
-  fresh: boolean[];
-  key: number;
 }
 
 export interface AppState {
@@ -86,14 +62,7 @@ export interface AppState {
   notice: { text: string; key: number } | null;
   loadingTip: string;
   results: Results | null;
-  unlocked: Unlocked;
   seed: number | null;
-  profile: Profile;
-  reveal: Reveal | null;
-  collectionTab: ElementKind;
-  collectionReturn: Screen;
-  /** Camino recién elegido: la pantalla de equipo da la bienvenida una vez. */
-  welcome: ElementKind | null;
   /** Mantener Espacio (o el botón) acelera la resolución del turno. */
   boosting: boolean;
   resolveStep: ResolveStep;
@@ -123,13 +92,7 @@ export const initialState = (): AppState => ({
   notice: null,
   loadingTip: TIPS[0] as string,
   results: null,
-  unlocked: loadAchievements(),
   seed: null,
-  profile: loadProfile(),
-  reveal: null,
-  collectionTab: 'fire',
-  collectionReturn: 'title',
-  welcome: null,
   boosting: false,
   resolveStep: null,
   flights: [],

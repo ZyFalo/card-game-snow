@@ -553,7 +553,12 @@ export class BattleScene extends Phaser.Scene {
     this.fx.actor({ x: u.container.x, y: u.container.y }, color);
   }
 
-  async playEvents(events: GameEvent[], apply: Apply, gen = this.generation): Promise<void> {
+  async playEvents(events: GameEvent[], applyEvent: Apply, gen = this.generation): Promise<void> {
+    // Si la partida se interrumpe (reiniciar o salir), la animación en curso termina su paso
+    // actual: sus eventos ya no deben tocar el estado presentado de la partida nueva.
+    const apply: Apply = (e) => {
+      if (this.isCurrent(gen)) applyEvent(e);
+    };
     let i = 0;
     // Cartas cuyo gesto y vuelo ocurrieron durante el cartel del combo.
     const primed = new Set<string>();

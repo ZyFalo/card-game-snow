@@ -32,4 +32,11 @@ describe('Ajustes guardados', () => {
     storeSettings({ pace: 'expert', difficulty: 'storm', volumen: 11 });
     expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, pace: 'expert', difficulty: 'storm' });
   });
+
+  it('un ritmo que solo existe como propiedad heredada no es válido (dejaría el reloj en NaN)', () => {
+    for (const pace of ['toString', 'constructor']) {
+      storeSettings({ pace, difficulty: pace });
+      expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
+    }
+  });
 });

@@ -54,7 +54,8 @@ function sanitizeSettings(raw: unknown, base: Settings): Settings {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
   const r = raw as Record<string, unknown>;
   const out: Settings = { ...base };
-  if (typeof r.pace === 'string' && r.pace in PACES) out.pace = r.pace as Pace;
+  // Solo claves propias: con `in`, "toString" o "constructor" pasarían y dejarían el reloj en NaN.
+  if (typeof r.pace === 'string' && Object.hasOwn(PACES, r.pace)) out.pace = r.pace as Pace;
   if ((DIFFICULTIES as readonly unknown[]).includes(r.difficulty)) out.difficulty = r.difficulty as Difficulty;
   for (const k of BOOLEAN_SETTINGS) if (typeof r[k] === 'boolean') out[k] = r[k];
   return out;

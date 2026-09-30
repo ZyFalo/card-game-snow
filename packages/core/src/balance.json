@@ -1,0 +1,128 @@
+{
+  "grid": {
+    "width": 9,
+    "height": 5
+  },
+  "planSecondsPerNinja": 10,
+  "paceMultiplier": {
+    "relaxed": 0,
+    "normal": 1,
+    "expert": 0.5
+  },
+  "ninjas": {
+    "fire": {
+      "hp": 30,
+      "attack": 8,
+      "range": 2,
+      "move": 2,
+      "heal": 0
+    },
+    "water": {
+      "hp": 40,
+      "attack": 10,
+      "range": 1,
+      "move": 2,
+      "heal": 0
+    },
+    "snow": {
+      "hp": 25,
+      "attack": 6,
+      "range": 3,
+      "move": 3,
+      "heal": 6
+    }
+  },
+  "enemies": {
+    "sniper": {
+      "hp": 30,
+      "attack": 3,
+      "range": 3,
+      "move": 3,
+      "bonusPerTile": 1,
+      "maxAttack": 5
+    },
+    "artillery": {
+      "hp": 45,
+      "attack": 8,
+      "range": 2,
+      "move": 2,
+      "splash": 4
+    },
+    "colossus": {
+      "hp": 60,
+      "attack": 10,
+      "range": 1,
+      "move": 1,
+      "sweep": 10
+    }
+  },
+  "enemiesPerRound": {
+    "maxSameKind": 3
+  },
+  "difficulty": {
+    "classic": {
+      "enemiesPerRound": {
+        "min": 1,
+        "max": 3,
+        "bonus": 4
+      },
+      "enemyHpMultiplier": 1,
+      "focusWeakest": false,
+      "bonusTurnLimit": 13
+    },
+    "storm": {
+      "enemiesPerRound": {
+        "min": 2,
+        "max": 4,
+        "bonus": 5
+      },
+      "enemyHpMultiplier": 1.4,
+      "focusWeakest": true,
+      "bonusTurnLimit": 18
+    }
+  },
+  "meter": {
+    "perEvent": 2,
+    "max": 10
+  },
+  "handMax": 4,
+  "deckValues": [8, 9, 10, 10, 11, 12],
+  "waterCardMultiplier": 2,
+  "boostMultiplier": 1.5,
+  "burn": {
+    "damage": 3,
+    "ticks": 3
+  },
+  "reviveHp": 1,
+  "rocks": [[2, 0], [6, 0], [2, 4], [6, 4]],
+  "spawn": {
+    "ninjaRows": [0, 2, 4],
+    "enemyColumns": [7, 8]
+  },
+  "economy": {
+    "coinsPerRound": [60, 120, 120],
+    "bonusCoins": 120,
+    "doubleCoinsWithAllAchievements": true,
+    "boxes": [
+      {
+        "size": 1,
+        "price": 100
+      },
+      {
+        "size": 2,
+        "price": 180
+      },
+      {
+        "size": 3,
+        "price": 250
+      }
+    ]
+  },
+  "bank": {
+    "valuesPerElement": [9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12]
+  },
+  "starter": {
+    "value": 9,
+    "stormRecommendedPerElement": 4
+  }
+}

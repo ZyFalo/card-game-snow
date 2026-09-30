@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+  - apps/*
+
+# pnpm 10+ no ejecuta scripts de instalación salvo los permitidos explícitamente.
+allowBuilds:
+  esbuild: true

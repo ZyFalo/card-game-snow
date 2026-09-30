@@ -1,0 +1,30 @@
+{
+  "name": "ventisca",
+  "private": true,
+  "type": "module",
+  "description": "Táctico cooperativo por turnos inspirado en Card-Jitsu Snow. Mecánica fiel, identidad original.",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ventisca/web dev",
+    "build": "pnpm --filter @ventisca/web build",
+    "build:single": "pnpm --filter @ventisca/web build:single",
+    "preview": "pnpm --filter @ventisca/web preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "sim": "pnpm --filter @ventisca/core sim",
+    "e2e": "pnpm --filter @ventisca/web e2e",
+    "ci": "biome ci . && pnpm typecheck && pnpm test && pnpm build",
+    "pacing": "pnpm --filter @ventisca/web pacing"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  }
+}

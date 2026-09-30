@@ -415,7 +415,7 @@ describe('Reglas técnicas', () => {
     for (const n of r.state.ninjas) expect(Number.isInteger(n.hp)).toBe(true);
   });
 
-  it('R-24 en Tormenta la vida ×1,4 de los gólems se redondea al entero más cercano (D-31)', () => {
+  it('R-24 en Tormenta la vida ×1,4 de los gólems se redondea al entero más cercano (D-33)', () => {
     // 45 × 1,4 da 62,999… en coma flotante: truncar dejaba al artillero con 62 en vez de 63.
     const seen: Partial<Record<EnemyKind, number>> = {};
     for (let seed = 1; seed <= 40; seed++) {

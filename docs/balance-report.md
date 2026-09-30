@@ -1,6 +1,6 @@
 # Reporte de balance (v0.9.2)
 
-Fecha: 29 de septiembre de 2026 · Motor: `@ventisca/core`, con D-18 y D-31 · Reemplaza al reporte de M4
+Fecha: 29 de septiembre de 2026 · Motor: `@ventisca/core`, con D-18 y D-33 · Reemplaza al reporte de M4
 
 ## Por qué se rehízo
 
@@ -84,7 +84,7 @@ La tabla de economía del §18.3 también coincide. En monedas por partida en Cl
    - La calibración de M4 vale desde la primera caja; al empezar, el bonus es mucho más difícil.
 4. **Los combos dependen de la colección.** Al empezar hay menos de uno por partida (0,95), así que el momento cumbre del juego casi no aparece. Tras la primera caja son 3,4.
 5. **"Vida completa" sigue siendo la condición de maestría:** 2 % al empezar y 30–36 % después.
-6. **D-31 apenas mueve Tormenta.** Con el mazo fijo, la victoria baja de 94,0 a 93,3 % con habilidad 1 y de 88,7 a 88,0 % con habilidad 0,6 (ver el anexo).
+6. **D-33 apenas mueve Tormenta.** Con el mazo fijo, la victoria baja de 94,0 a 93,3 % con habilidad 1 y de 88,7 a 88,0 % con habilidad 0,6 (ver el anexo).
 
 ## Preguntas para el dueño de producto
 
@@ -102,7 +102,7 @@ Este reporte no cambia ningún valor; solo mide.
 
 ## Anexo: mazo fijo de v1
 
-Es la configuración del reporte de M4: un mazo de 6 cartas (8, 9, 10, 10, 11 y 12) por ninja. El juego ya no la usa, pero se conserva porque con ella se calibró D-12. Se volvió a medir con D-31, que solo cambia Tormenta. Antes de D-31, la victoria en Tormenta era de 94,0 % con habilidad 1 y 88,7 % con habilidad 0,6. Comando: `pnpm sim -- --collection fixed`.
+Es la configuración del reporte de M4: un mazo de 6 cartas (8, 9, 10, 10, 11 y 12) por ninja. El juego ya no la usa, pero se conserva porque con ella se calibró D-12. Se volvió a medir con D-33, que solo cambia Tormenta. Antes de D-33, la victoria en Tormenta era de 94,0 % con habilidad 1 y 88,7 % con habilidad 0,6. Comando: `pnpm sim -- --collection fixed`.
 
 | Métrica | Clásica · 1 | Clásica · 0,6 | Tormenta · 1 | Tormenta · 0,6 |
 |---|---|---|---|---|

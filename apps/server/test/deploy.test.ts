@@ -31,6 +31,14 @@ describe('Despliegue en Railway (railway.json)', () => {
     expect(railway.deploy.startCommand).toMatch(/^node /);
   });
 
+  it('la imagen instala @node-rs/argon2 (nativo) con la misma versión exacta que package.json', () => {
+    const pkg = JSON.parse(readFileSync(root('apps/server/package.json'), 'utf8')) as {
+      dependencies: Record<string, string>;
+    };
+    const installed = readFileSync(root('Dockerfile'), 'utf8').match(/@node-rs\/argon2@(\S+)/)?.[1];
+    expect(installed).toBe(pkg.dependencies['@node-rs/argon2']);
+  });
+
   it('la comprobación de salud apunta a una ruta que responde', async () => {
     const app = buildApp({ ping: async () => {}, webDist: null, logger: false });
     const res = await app.inject({ method: 'GET', url: railway.deploy.healthcheckPath ?? '' });

@@ -12,7 +12,9 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.2",
     "@fastify/static": "10.1.5",
+    "@node-rs/argon2": "2.2.1",
     "@ventisca/core": "workspace:*",
     "@ventisca/protocol": "workspace:*",
     "drizzle-orm": "0.45.3",

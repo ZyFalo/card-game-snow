@@ -13,7 +13,8 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 - **Servidor (`apps/server`):**
   - Fastify con Postgres (Drizzle).
   - Sirve el juego y `/api/health`, y aplica las migraciones al arrancar.
-  - Las cuentas y el progreso llegan en los siguientes pasos del M7.
+  - Cuentas (`/api/auth/*`): registro, verificación con código de 6 dígitos, inicio y cierre de sesión. Los datos de cuenta viajan siempre en el cuerpo de la petición, nunca en la URL, porque los registros guardan la URL.
+  - La recuperación, los cambios de contraseña y de correo, el borrado y el progreso llegan en los siguientes pasos del M7.
 - **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.
 - **Animación en cuatro fases:** esqueletos articulados, efectos, coreografía medida con metas de ritmo e interfaz animada.
 - **Calidad:**
@@ -33,6 +34,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 
 - **Jugar el sandbox:** `pnpm dev` y abre http://localhost:5173. No necesita el servidor.
 - **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Sirve la API y, si antes corriste `pnpm build`, también el juego.
+- **Correos en desarrollo:** el servidor no los envía; los muestra en su consola, con el código. En producción no hay envío hasta que llegue Resend (PR 6): mientras tanto, registrarse responde `email_unavailable`.
 - **Todo como en producción:** `docker compose up --build` y abre http://localhost:3000. Es la misma imagen que se despliega.
 - **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
   - En pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada.
@@ -57,7 +59,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 - **DNS (D-58):** en wpena.dev hay dos registros: el CNAME `ventisca`, que apunta a Railway, y el TXT de verificación. El CNAME va en **"Solo DNS"** (nube gris en Cloudflare), nunca con el proxy. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad.
 - **Comprobar un despliegue:** `pnpm check:prod`. Revisa:
   - el DNS sin el proxy;
-  - el certificado de Let's Encrypt;
+  - un certificado válido con más de 14 días de vigencia (el emisor se muestra como dato);
   - las cabeceras sin Cloudflare;
   - la redirección de HTTP a HTTPS;
   - la salud y el 404;

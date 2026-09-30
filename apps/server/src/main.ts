@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { devMailer, noMailer } from './accounts/mailer';
 import { buildApp, privateLogger } from './app';
 import { loadConfig } from './config';
 import { connect } from './db';
@@ -10,7 +11,18 @@ const WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 const config = loadConfig(process.env);
 const database = connect(config.databaseUrl);
-const app = buildApp({ ping: database.ping, webDist: WEB_DIST, logger: privateLogger(config.logLevel) });
+const app = buildApp({
+  ping: database.ping,
+  webDist: WEB_DIST,
+  logger: privateLogger(config.logLevel),
+  accounts: {
+    db: database.db,
+    // Resend llega con el PR 6. Hasta entonces, en producción no se envían correos.
+    mailer: config.production ? noMailer : devMailer,
+    secret: config.sessionSecret,
+    appUrl: config.appUrl,
+  },
+});
 
 try {
   await database.migrate();

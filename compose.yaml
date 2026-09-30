@@ -1,0 +1,39 @@
+# Entorno local con Docker (Docker Desktop):
+#   docker compose up -d db     solo Postgres, para `pnpm dev:server` y `pnpm test`
+#   docker compose up --build   Postgres y la misma imagen que se despliega en Railway
+# Lee DATABASE_URL y el resto de variables de .env (copia de .env.example).
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ventisca
+      POSTGRES_PASSWORD: ventisca
+      POSTGRES_DB: ventisca
+    # En el 5434 para no chocar con otros Postgres de la máquina (el 5432 y el 5433 suelen estar usados).
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ventisca -d ventisca"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Dentro de compose, Postgres se llama "db", no "localhost".
+      DATABASE_URL: postgres://ventisca:ventisca@db:5432/ventisca
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

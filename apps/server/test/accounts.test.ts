@@ -150,14 +150,13 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
       await register(data);
       const code = lastCode();
       const wrong = code === '000000' ? '111111' : '000000';
-      for (let i = 1; i < CODE_ATTEMPTS; i++) {
+      // Sin sesión no se dice cuántos intentos quedan (D-59), pero el límite se aplica igual.
+      for (let i = 0; i < CODE_ATTEMPTS; i++) {
         const res = await post('/api/auth/verify', { email: data.email, code: wrong });
-        expect(errorOf(res)).toEqual({ code: 'invalid_code', attemptsLeft: CODE_ATTEMPTS - i });
+        expect(errorOf(res)).toEqual({ code: 'invalid_code' });
       }
-      const last = await post('/api/auth/verify', { email: data.email, code: wrong });
-      expect(errorOf(last)).toEqual({ code: 'too_many_attempts', attemptsLeft: 0 });
       const right = await post('/api/auth/verify', { email: data.email, code });
-      expect(errorOf(right).code).toBe('too_many_attempts');
+      expect(errorOf(right)).toEqual({ code: 'invalid_code' });
     });
 
     it('R-43: el código vence a los 15 minutos', async () => {
@@ -165,7 +164,21 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
       await register(data);
       clock = new Date(START.getTime() + 15 * 60_000);
       const res = await post('/api/auth/verify', { email: data.email, code: lastCode() });
-      expect(errorOf(res).code).toBe('code_expired');
+      expect(errorOf(res)).toEqual({ code: 'invalid_code' });
+    });
+
+    it('D-59: sin sesión, un código que no sirve responde igual exista o no la cuenta', async () => {
+      const pending = fresh();
+      await register(pending);
+      const wrong = lastCode() === '000000' ? '111111' : '000000';
+      const { data: verified } = await signUp();
+      const bodies = await Promise.all(
+        [pending.email, verified.email, 'nadie@example.com'].map(async (email) => {
+          const res = await post('/api/auth/verify', { email, code: wrong });
+          return [res.statusCode, res.body];
+        }),
+      );
+      expect(new Set(bodies.map((b) => JSON.stringify(b))).size).toBe(1);
     });
 
     it('R-43: pedir otro código antes de 60 s no manda nada; después, el nuevo invalida el anterior', async () => {
@@ -663,6 +676,14 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
       const res = await post('/api/auth/email/request', { password: data.password, newEmail: data.email }, cookie);
       expect(errorOf(res)).toEqual({ code: 'bad_request', reason: 'same_email' });
     });
+  });
+
+  it('con sesión, confirmar el correo nuevo sí dice cuántos intentos quedan: no hay nada que delatar', async () => {
+    const { data, cookie } = await signUp();
+    await post('/api/auth/email/request', { password: data.password, newEmail: `nuevo2.${data.email}` }, cookie);
+    const wrong = lastCode() === '000000' ? '111111' : '000000';
+    const res = await post('/api/auth/email/confirm', { code: wrong }, cookie);
+    expect(errorOf(res)).toEqual({ code: 'invalid_code', attemptsLeft: CODE_ATTEMPTS - 1 });
   });
 
   describe('Borrar la cuenta (R-49)', () => {

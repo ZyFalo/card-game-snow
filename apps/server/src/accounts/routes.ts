@@ -199,6 +199,14 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     });
   }
 
+  /**
+   * Sin sesión (verificar, recuperar), un código que no sirve responde siempre lo mismo: equivocado,
+   * vencido o agotado. Decir cuántos intentos quedan delataría que el correo tiene una cuenta con un
+   * código pendiente (D-59). Los límites de R-43 se aplican igual.
+   */
+  const hiddenCodeError = (reply: FastifyReply) => reply.code(400).send(apiError('invalid_code'));
+
+  /** Con sesión (confirmar el correo nuevo) no hay nada que delatar: se dice qué pasó. */
   const codeError = (reply: FastifyReply, result: Exclude<CodeResult, { ok: true }>) =>
     reply
       .code(400)
@@ -321,7 +329,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     // Sin cuenta o ya verificada: el mismo error que un código equivocado (D-59).
     if (!user || user.emailVerifiedAt) return reply.code(400).send(apiError('invalid_code'));
     const result = await consumeCode(user.id, 'verify', parsed.data.code);
-    if (!result.ok) return codeError(reply, result);
+    if (!result.ok) return hiddenCodeError(reply);
     const [verified] = await db.update(users).set({ emailVerifiedAt: now() }).where(eq(users.id, user.id)).returning();
     await startSession(reply, user.id);
     const body: Session = { user: publicUser(verified as UserRow) };
@@ -390,7 +398,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     if (problem) return reply.code(400).send(apiError('weak_password', { reason: problem }));
     if (!user) return reply.code(400).send(apiError('invalid_code'));
     const result = await consumeCode(user.id, 'recover', parsed.data.code);
-    if (!result.ok) return codeError(reply, result);
+    if (!result.ok) return hiddenCodeError(reply);
 
     const passwordHash = await hashPassword(parsed.data.password);
     // El código prueba que el correo es suyo: si la cuenta no estaba verificada, ahora lo está.

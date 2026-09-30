@@ -53,9 +53,9 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 - **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
   - En pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada.
 - **Pruebas en el navegador:** instala el navegador una vez con `pnpm --filter @ventisca/web exec playwright install chromium`, y después corre `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
-  - Necesitan Postgres (`docker compose up -d db`): levantan Vite en el puerto 5174 y el servidor de verdad en el 3100, con el `DATABASE_URL` del `.env` (en la CI, `E2E_DATABASE_URL`).
-  - Los correos no se envían: el servidor los guarda en `apps/web/.e2e-outbox/` (ignorada por git), y de ahí las pruebas leen los códigos. El script de Turnstile se reemplaza por uno falso.
-  - Cada corrida deja cuentas de prueba (`e2e.…@example.com`) en la base de desarrollo.
+  - Necesitan Postgres (`docker compose up -d db`): levantan Vite en el puerto 5174 y el servidor de verdad en el 3100.
+  - El servidor de las e2e usa su propia base, `ventisca_e2e`, que recrea en cada corrida en el Postgres de `DATABASE_URL_TEST`. La base de desarrollo no se toca.
+  - Los correos no se envían: el servidor los guarda en `apps/web/.e2e-outbox/` (ignorada por git y vaciada en cada corrida), y de ahí las pruebas leen los códigos. El script de Turnstile se reemplaza por uno falso.
 - **Cambiar la base de datos:**
   1. Edita `apps/server/src/schema.ts`.
   2. Corre `pnpm db:generate`.

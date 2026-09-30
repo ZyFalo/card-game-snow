@@ -80,3 +80,21 @@ test('las teclas de planificación no se repiten al mantenerlas', async ({ page 
   expect(await phase(page)).toBe('planning');
   expect(await confirms(page)).toHaveLength(1);
 });
+
+test('deshacer la única acción no deja un plan vacío: el siguiente Esc abre la pausa', async ({ page }) => {
+  await startMatch(page);
+  // Un ninja que solo ataca, sin moverse (no es fácil de lograr al empezar, así que se prepara el plan).
+  await page.evaluate(() => {
+    const store = (window as unknown as TestWindow).__ventisca as unknown as {
+      getState(): { active: string; match: { enemies: { id: string }[] } };
+      setState(patch: object): void;
+    };
+    const { active, match } = store.getState();
+    const target = match.enemies[0]?.id ?? 'e1';
+    store.setState({ plans: { [active]: { ninjaId: active, action: { type: 'attack', targetId: target } } } });
+  });
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().plans)).toEqual({});
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pausa' })).toBeVisible();
+});

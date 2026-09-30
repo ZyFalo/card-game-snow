@@ -254,8 +254,14 @@ export function replayJson(): string {
 
 /* ---------- Planificación (§9.3) ---------- */
 
+/** Sin movimiento ni acción no hay plan: se quita, para que Esc vuelva a abrir la pausa. */
 function setPlan(id: ElementKind, plan: Plan): void {
-  store.setState((s) => ({ plans: { ...s.plans, [id]: plan } }));
+  store.setState((s) => {
+    const plans = { ...s.plans };
+    if (plan.moveTo || plan.action) plans[id] = plan;
+    else delete plans[id];
+    return { plans };
+  });
 }
 
 const withoutAction = (plan: Plan): Plan =>

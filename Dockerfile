@@ -25,6 +25,10 @@ RUN cd /srv && mkdir -p apps/server && cd apps/server \
 COPY --from=build /repo/apps/server/dist apps/server/dist
 COPY --from=build /repo/apps/server/drizzle apps/server/drizzle
 COPY --from=build /repo/apps/web/dist apps/web/dist
+# Commit desplegado, para /api/health. Railway lo pasa al construir si se declara el ARG; al final, para
+# no invalidar la caché de las capas anteriores en cada commit.
+ARG RAILWAY_GIT_COMMIT_SHA=""
+ENV APP_COMMIT=${RAILWAY_GIT_COMMIT_SHA}
 USER node
 EXPOSE 3000
 CMD ["node", "--enable-source-maps", "apps/server/dist/server.mjs"]

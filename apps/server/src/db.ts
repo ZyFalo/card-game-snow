@@ -25,3 +25,4 @@ export function connect(url: string) {
 }
 
 export type Database = ReturnType<typeof connect>;
+export type Db = Database['db'];

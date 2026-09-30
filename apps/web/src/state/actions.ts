@@ -3,7 +3,8 @@ import {
   addToCollection,
   BALANCE,
   boxPrice,
-  coinsForMatch,
+  type CoinReward,
+  coinsForRound,
   type ElementKind,
   earnedAchievements,
   enemyAt,
@@ -19,6 +20,7 @@ import {
   ninjaAt,
   openBox,
   type Plan,
+  type Round,
   reservesFor,
   rngFrom,
   starterCollection,
@@ -69,12 +71,57 @@ function applyToView(e: GameEvent): void {
   if (v) store.setState({ view: applyEvent(v, e) });
 }
 
+/* ---------- Cobro (R-29, D-31) ---------- */
+
+/** Monedas que lleva cobradas la partida en curso, ronda por ronda. */
+let reward: CoinReward = { lines: [], base: 0, doubled: false, total: 0 };
+
+/**
+ * Cada evento, al mostrarse: actualiza el estado presentado y, según D-31, acredita cada
+ * ronda superada en el momento en que termina y guarda resultados y logros al terminar
+ * la partida, antes de la celebración. Lo cobrado no se pierde aunque después salgas.
+ */
+function onEvent(e: GameEvent): void {
+  applyToView(e);
+  if (e.t === 'roundEnd') creditRound(e.round);
+  else if (e.t === 'matchEnd') recordResults();
+}
+
+function creditRound(round: Round): void {
+  const st = store.getState();
+  const doubled = hasDoubleCoins(Object.keys(st.unlocked) as AchievementId[]);
+  const coins = coinsForRound(round, doubled);
+  const base = coinsForRound(round, false);
+  reward = {
+    lines: [...reward.lines, { round, coins: base }],
+    base: reward.base + base,
+    doubled,
+    total: reward.total + coins,
+  };
+  const profile = { ...st.profile, coins: st.profile.coins + coins };
+  saveProfile(profile);
+  store.setState({ profile });
+}
+
+function recordResults(): void {
+  const st = store.getState();
+  const state = st.match;
+  if (!state || st.results) return;
+  const earned = earnedAchievements(state);
+  const unlocked = { ...st.unlocked };
+  const fresh = earned.filter((id) => !unlocked[id]);
+  for (const id of fresh) unlocked[id] = new Date().toISOString();
+  saveAchievements(unlocked);
+  store.setState({ unlocked, results: { state, earned, fresh, reward, balance: st.profile.coins } });
+}
+
 /* ---------- Partida ---------- */
 
 export async function startMatch(): Promise<void> {
   const { settings } = store.getState();
   host.stopTimer();
   host = new LocalHost();
+  reward = { lines: [], base: 0, doubled: false, total: 0 };
   const seed = Math.floor(Math.random() * 2 ** 32) >>> 0;
   const { profile } = store.getState();
   // R-26: cada ninja lleva toda su colección (con repetidas) como reserva.
@@ -102,7 +149,7 @@ export async function startMatch(): Promise<void> {
   await sleep((settings.reducedMotion ? 900 : 1800) * URL_SPEED);
   if (!scene.isCurrent(generation)) return;
   store.setState({ screen: 'battle' });
-  await scene.playEvents(created.events, applyToView, generation);
+  await scene.playEvents(created.events, onEvent, generation);
   if (!scene.isCurrent(generation)) return;
   store.setState({ view: created.state });
   beginPlanning();
@@ -153,8 +200,10 @@ export async function confirmTurn(fromTimeout = false): Promise<void> {
   });
   if (scene) {
     const generation = scene.currentGeneration();
-    await scene.playEvents(result.events, applyToView, generation);
+    await scene.playEvents(result.events, onEvent, generation);
     if (!scene.isCurrent(generation)) return;
+  } else {
+    for (const e of result.events) onEvent(e);
   }
   store.setState({ view: result.state });
   if (result.state.status !== 'playing') {
@@ -164,26 +213,10 @@ export async function confirmTurn(fromTimeout = false): Promise<void> {
   beginPlanning();
 }
 
+/** Tras la celebración. Monedas, resultados y logros ya se guardaron al mostrarse sus eventos (D-31). */
 function finishMatch(): void {
-  const st = store.getState();
-  const state = st.match;
-  if (!state) return;
-  const earned = earnedAchievements(state);
-  const unlocked = { ...st.unlocked };
-  const fresh = earned.filter((id) => !unlocked[id]);
-  for (const id of fresh) unlocked[id] = new Date().toISOString();
-  saveAchievements(unlocked);
-  // R-29: se paga por ronda superada; con los 9 logros, las monedas se duplican.
-  const reward = coinsForMatch(state, hasDoubleCoins(Object.keys(unlocked) as AchievementId[]));
-  const profile = { ...st.profile, coins: st.profile.coins + reward.total };
-  saveProfile(profile);
-  store.setState({
-    phase: 'ended',
-    unlocked,
-    profile,
-    results: { state, earned, fresh, reward, balance: profile.coins },
-    screen: 'results',
-  });
+  recordResults();
+  store.setState({ phase: 'ended', screen: 'results' });
 }
 
 export function restartMatch(): void {

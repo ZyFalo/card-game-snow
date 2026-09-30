@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.3 |
+| Versión | 0.9.4 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -39,7 +39,7 @@
 | Cliente web (escena, HUD, pantallas, logros, pausa, ayuda) | ✅ | 10 pruebas e2e de Playwright: humo, partida completa, tienda, teclado (mantener Espacio o Tab no repite acciones), reinicio a mitad de una animación y cobro por ronda de D-31 (salir tras la ronda 1, abandonar en la 2 y salir durante la celebración). Las 3 de v0.9.1 pasan también en WebKit y Firefox |
 | Arte y audio originales | ✅ | SVG y WebAudio generados en código (ADR 0003) |
 | Build en un solo HTML | ✅ | 1,7 MB (478 KB gzip), sin peticiones salvo Google Fonts |
-| CI y despliegue | 🟡 | CI en verde en GitHub Actions (github.com/ZyFalo/card-game-snow). El despliegue a Cloudflare falla hasta configurar sus secretos |
+| CI y despliegue | 🟡 | CI en verde en GitHub Actions (github.com/ZyFalo/card-game-snow). Despliegue pendiente: Railway, hito M7 |
 | Interfaz (fase 4 de animación) | ✅ Implementada | Capturas con las animaciones congeladas en un punto exacto; partida completa con robos reales; e2e |
 | Coreografía (fase 3 de animación) | ✅ Implementada | Estimador de ritmo sobre partidas del bot; 3 pruebas con metas; partida completa acelerando con Espacio |
 | Efectos (fase 2 de animación) | ✅ Implementada | Prueba de texturas de efectos; capturas por instante de cada efecto en el tablero real; ninguna secuencia se bloquea. e2e: reiniciar a mitad de una carta no deja efectos vivos |
@@ -827,7 +827,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 - [x] `core` con RNG con semilla (R-23), números enteros (R-24), tipos del §11.5 y `balance.json`
 - [x] React montado sobre el canvas y store de Zustand conectado a la escena
 - [x] Escena de Phaser que dibuja el tablero de 9×5 con rocas y unidades
-- [ ] Despliegue automático en Cloudflare: `wrangler.jsonc` y `deploy.yml` listos; faltan cuenta y secretos
+- [ ] Despliegue automático: pendiente, Railway (hito M7). Se quitaron `wrangler.jsonc` y `deploy.yml`
 
 ### M1 — Combate básico y planificación de 3 ninjas ✅
 - [x] R-01 a R-07 y R-11
@@ -985,6 +985,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md` |
 | 0.9.3 | 2026-09-29 | Decisiones aprobadas: D-31 (cobro al instante por ronda; resultados y logros en el evento de fin de partida; enmienda R-29) y D-32 (los números de orden siguen el orden real de R-11; nuevo punto 6 del §9.3). Implementadas con sus pruebas, junto con el texto del bonus contra el reloj de R-21: "Turno t de N · quedan N − t + 1" en la ficha y en el cartel de ronda |
 | 0.9.2 | 2026-09-29 | Primer commit en GitHub (se recuperaron `.gitignore` y los workflows, que se perdieron al copiar el zip) y CI en verde. Correcciones: mantener Espacio ya no confirma turnos vacíos; reiniciar o salir ya no deja efectos vivos; una animación interrumpida ya no aplica eventos a la partida nueva. `pnpm sim` mide con la colección real y el reporte de balance se rehízo con ella. ADR 0003 queda reemplazado en su parte de animación por D-27. R-24 y D-33: en Tormenta, la vida de los gólems se redondea al entero más cercano (Granizo pasa de 62 a 63). Las repeticiones de Tormenta grabadas antes, en las que aparece un Granizo, ya no reproducen el mismo hash. En 2.000 partidas del bot cambian 1.952 (todas las que tienen un Granizo) y el resultado cambia en 60. Las de Clásica no cambian. Ritmo vuelto a medir: Clásica igual y Tormenta en 3,5 s / 6,7 s / 102 s por partida, dentro de las metas |
 | 0.9.1 | 2026-09-29 | Traspaso a Claude Code: `CLAUDE.md`, guía `docs/traspaso.md` con puesta en marcha y primer mensaje, y script `pnpm pacing` |

@@ -7,7 +7,7 @@ Estado al 29 de septiembre de 2026: **v0.9**. Construido en claude.ai con Claude
 - **Juego completo para un jugador:** reglas R-01 a R-24, progresión con monedas, cajas y colección (R-25 a R-32), dificultades Clásica y Tormenta, tres ritmos de reloj, logros, pausa y ayuda.
 - **Animación en cuatro fases:** esqueletos articulados, efectos, coreografía medida con metas de ritmo e interfaz animada.
 - **Calidad:** 49 pruebas (Vitest), 2 pruebas e2e (Playwright), lint (Biome) y tipos (TypeScript 7), más un simulador de balance y un estimador de ritmo.
-- **Publicación:** build normal (`pnpm build`) y de un solo archivo (`pnpm build:single`). Los workflows de CI y de despliegue a Cloudflare están listos; faltan tus secretos.
+- **Publicación:** build normal (`pnpm build`) y de un solo archivo (`pnpm build:single`). El CI corre en GitHub Actions. Despliegue: Pendiente: Railway, hito M7.
 
 ## Puesta en marcha (una sola vez)
 
@@ -17,7 +17,7 @@ Estado al 29 de septiembre de 2026: **v0.9**. Construido en claude.ai con Claude
 4. **Jugar en local:** `pnpm dev` y abre http://localhost:5173.
 5. **Verificación completa:** `pnpm ci` (lint, tipos, pruebas y build).
 6. **Pruebas en el navegador:** `pnpm --filter @ventisca/web exec playwright install chromium` y luego `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
-7. **Cloudflare (opcional):** `npx wrangler login` y luego `pnpm --filter @ventisca/web deploy:cloudflare`. Para el despliegue automático, sube el repositorio a GitHub y crea los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+7. **Despliegue:** Pendiente: Railway, hito M7.
 
 ## Herramientas útiles
 
@@ -32,7 +32,8 @@ Estado al 29 de septiembre de 2026: **v0.9**. Construido en claude.ai con Claude
 - QA en Firefox y Safari, y control táctil.
 - **Multijugador (v2, hitos M7 a M9):** primero se define su sección del PRD en claude.ai y después se implementa aquí.
 - Rangos y experiencia (P-18).
-- Despliegue en Cloudflare con tu cuenta y video de demo.
+- Despliegue: Pendiente: Railway, hito M7.
+- Video de demo.
 
 ## Primer mensaje para Claude Code
 

@@ -22,7 +22,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 - Progresión: carta de camino, colección de 60 cartas, tienda de cajas y monedas por ronda (PRD §18).
 - Animación: ninjas y gólems articulados por piezas, con estados de ataque, golpe, caída, reanimación, aturdido, aparición y celebración, más efectos de impacto, cinemáticas de carta, efectos de estado, coreografía medida con metas de ritmo e interfaz animada (PRD §10.2).
 - 64 pruebas unitarias y 10 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
-- Pendiente: playtest con personas, QA manual en Firefox y Safari (las e2e de v0.9.1 ya pasan en WebKit y Firefox), táctil, despliegue en Cloudflare (faltan los secretos del repositorio), multijugador (v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
+- Pendiente: playtest con personas, QA manual en Firefox y Safari (las e2e de v0.9.1 ya pasan en WebKit y Firefox), táctil, despliegue (Pendiente: Railway, hito M7), multijugador (v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
 
 ## Stack
 
@@ -36,7 +36,9 @@ docs            PRD, ADRs, reporte de balance y bitácora de IA
 
 ## Despliegue
 
-`apps/web/wrangler.jsonc` publica `dist/` como Worker de assets estáticos en Cloudflare. El workflow `.github/workflows/deploy.yml` lo hace en cada push a `main` si configuras los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`. Mientras falten, ese job falla en cada push a `main`. El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e de humo en cada push.
+Pendiente: Railway, hito M7.
+
+El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e de humo en cada push.
 
 ## Aviso
 

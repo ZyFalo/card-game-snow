@@ -21,7 +21,6 @@ import {
   openBox,
   type Plan,
   type Round,
-  reservesFor,
   rngFrom,
   starterCollection,
   suggestPlan,
@@ -136,13 +135,12 @@ function show(msg: HostMessage): Promise<void> {
 }
 
 export async function startMatch(): Promise<void> {
-  const { settings, profile } = store.getState();
+  const { settings } = store.getState();
   attachHost(new LocalHost());
   reward = { lines: [], base: 0, doubled: false, total: 0 };
   const seed = Math.floor(Math.random() * 2 ** 32) >>> 0;
-  // R-26: cada ninja lleva toda su colección (con repetidas) como reserva.
-  const decks = profile.camino ? reservesFor(profile.collection) : undefined;
-  await host.start({ seed, difficulty: settings.difficulty, ...(decks ? { decks } : {}) });
+  // D-50: sin reserva, cada ninja juega con el mazo de referencia del balance (8, 9, 10, 10, 11 y 12).
+  await host.start({ seed, difficulty: settings.difficulty });
 }
 
 /** La partida está lista (mensaje `matchStart`): pantalla de carga, entrada y primer turno. */

@@ -1,12 +1,4 @@
-import {
-  ACHIEVEMENT_IDS,
-  BALANCE,
-  bankCard,
-  CAMINO_CARDS,
-  collectionSummary,
-  type Difficulty,
-  ELEMENTS,
-} from '@ventisca/core';
+import { ACHIEVEMENT_IDS, BALANCE, bankCard, CAMINO_CARDS, type Difficulty, ELEMENTS } from '@ventisca/core';
 import { art } from '../art';
 import { audio } from '../audio/audio';
 import {
@@ -81,10 +73,6 @@ export function TeamScreen() {
   const settings = useApp((s) => s.settings);
   const profile = useApp((s) => s.profile);
   const welcome = useApp((s) => s.welcome);
-  const reserveOf = (el: (typeof ELEMENTS)[number]) => collectionSummary(profile.collection, el).total;
-  const stormRisk =
-    settings.difficulty === 'storm' &&
-    ELEMENTS.some((el) => reserveOf(el) < BALANCE.starter.stormRecommendedPerElement);
   const welcomeCard = welcome ? bankCard(CAMINO_CARDS[welcome]) : undefined;
   return (
     <div className="screen team-screen">
@@ -107,9 +95,6 @@ export function TeamScreen() {
           const st = BALANCE.ninjas[el];
           return (
             <section key={el} className={`class-card paper el-${el}`}>
-              <span className="reserve-chip" title={SCREEN_TEXT.reserveTitle}>
-                <Icon name="cards" /> {PROGRESSION.reserve(reserveOf(el))}
-              </span>
               <header>
                 <img src={art.bust(el)} alt="" />
                 <div>
@@ -174,11 +159,6 @@ export function TeamScreen() {
               detail: DIFFICULTIES[d].detail,
             }))}
           />
-          {stormRisk ? (
-            <p className="storm-warn" role="note">
-              {PROGRESSION.stormWarning}
-            </p>
-          ) : null}
         </div>
         <div>
           <h3 className="opt-title">{SCREEN_TEXT.aids}</h3>

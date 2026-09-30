@@ -226,6 +226,18 @@ export function TeamScreen() {
   );
 }
 
+/** Sin WebGL no hay tablero: se explica en lugar de dejar la carga colgada. */
+export function NoWebGLScreen() {
+  return (
+    <div className="screen loading-screen">
+      <div className="loading-box" role="alert">
+        <h2 className="display">{ES.noWebglTitle}</h2>
+        <p>{ES.noWebglBody}</p>
+      </div>
+    </div>
+  );
+}
+
 export function LoadingScreen() {
   const tip = useApp((s) => s.loadingTip);
   return (

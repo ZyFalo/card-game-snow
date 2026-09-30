@@ -102,6 +102,8 @@ export interface AppState {
   incoming: string[];
   /** Cartas que acaban de aterrizar (destello de llegada). */
   arrived: string[];
+  /** El navegador no tiene WebGL: el tablero no se puede dibujar. */
+  webglMissing: boolean;
 }
 
 export const initialState = (): AppState => ({
@@ -133,6 +135,7 @@ export const initialState = (): AppState => ({
   flights: [],
   incoming: [],
   arrived: [],
+  webglMissing: false,
 });
 
 export const store = createStore<AppState>()(() => initialState());

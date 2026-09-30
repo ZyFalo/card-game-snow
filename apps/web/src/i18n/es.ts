@@ -58,6 +58,9 @@ export const ES = {
   achievements: 'Logros',
   statsTitle: 'Resumen de la partida',
   loading: 'Doblando a los aprendices…',
+  noWebglTitle: 'Este navegador no puede mostrar el tablero',
+  noWebglBody:
+    'Ventisca dibuja el tablero con WebGL y aquí no está disponible. Activa la aceleración por hardware en la configuración del navegador, o prueba con una versión reciente de Chrome, Edge, Firefox o Safari, y vuelve a abrir la página.',
 } as const;
 
 export const PACES: Record<Pace, { label: string; detail: string }> = {

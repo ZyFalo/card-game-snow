@@ -1,3 +1,4 @@
+import type { PublicConfig } from '@ventisca/protocol';
 import { z } from 'zod';
 
 /*
@@ -15,6 +16,14 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'debe tener al menos 32 caracteres'),
   // Dirección pública del juego, sin barra final: https://ventisca.wpena.dev en producción.
   APP_URL: z.string().regex(/^https?:\/\/[^/\s]+$/, 'debe ser http(s)://dominio, sin ruta ni barra final'),
+  // Resend (PR 6). Sin clave: en desarrollo el correo se imprime en la consola; en producción no sale.
+  RESEND_API_KEY: z.string().optional(),
+  // Turnstile. La secreta verifica el registro; la del sitio es pública y la entrega /api/config.
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+  TURNSTILE_SITE_KEY: z.string().optional(),
+  // Commit desplegado: Railway lo da en tiempo de ejecución; APP_COMMIT lo hornea el Dockerfile.
+  RAILWAY_GIT_COMMIT_SHA: z.string().optional(),
+  APP_COMMIT: z.string().optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   HOST: z.string().min(1).default('0.0.0.0'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
@@ -25,6 +34,10 @@ export interface Config {
   databaseUrl: string;
   sessionSecret: string;
   appUrl: string;
+  resendApiKey: string | null;
+  turnstileSecretKey: string | null;
+  turnstileSiteKey: string | null;
+  commit: string | null;
   port: number;
   host: string;
   logLevel: (typeof LOG_LEVELS)[number];
@@ -42,8 +55,17 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     databaseUrl: e.DATABASE_URL,
     sessionSecret: e.SESSION_SECRET,
     appUrl: e.APP_URL,
+    resendApiKey: e.RESEND_API_KEY || null,
+    turnstileSecretKey: e.TURNSTILE_SECRET_KEY || null,
+    turnstileSiteKey: e.TURNSTILE_SITE_KEY || null,
+    commit: e.RAILWAY_GIT_COMMIT_SHA || e.APP_COMMIT || null,
     port: e.PORT,
     host: e.HOST,
     logLevel: e.LOG_LEVEL,
   };
+}
+
+/** Los únicos valores de la configuración que puede ver el navegador (GET /api/config). */
+export function publicConfigFrom(config: Config): PublicConfig {
+  return { turnstileSiteKey: config.turnstileSiteKey };
 }

@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url';
+import { missingCaptcha, noCaptcha, turnstile } from './accounts/captcha';
 import { devMailer, noMailer } from './accounts/mailer';
+import { resendMailer } from './accounts/resend';
 import { buildApp, privateLogger } from './app';
-import { loadConfig } from './config';
+import { loadConfig, publicConfigFrom } from './config';
 import { connect } from './db';
 
 /* Arranque: configuración, migraciones pendientes y servidor. Railway manda SIGTERM al reemplazarlo. */
@@ -11,14 +13,25 @@ const WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 const config = loadConfig(process.env);
 const database = connect(config.databaseUrl);
+/** Resend si hay clave; si no, la consola en desarrollo y ningún envío en producción. */
+const mailer = config.resendApiKey ? resendMailer(config.resendApiKey) : config.production ? noMailer : devMailer;
+/** Turnstile si hay clave; en producción exige que el desafío se haya resuelto en el dominio del juego. */
+const captcha = config.turnstileSecretKey
+  ? turnstile(config.turnstileSecretKey, config.production ? new URL(config.appUrl).hostname : null)
+  : config.production
+    ? missingCaptcha
+    : noCaptcha;
+
 const app = buildApp({
   ping: database.ping,
+  commit: config.commit,
+  publicConfig: publicConfigFrom(config),
   webDist: WEB_DIST,
   logger: privateLogger(config.logLevel),
   accounts: {
     db: database.db,
-    // Resend llega con el PR 6. Hasta entonces, en producción no se envían correos.
-    mailer: config.production ? noMailer : devMailer,
+    mailer,
+    captcha,
     secret: config.sessionSecret,
     appUrl: config.appUrl,
   },

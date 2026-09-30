@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.4: aprobada para implementar · 30 de septiembre de 2026 · William Andres Peña Vargas
+Versión 1.5: aprobada para implementar · 30 de septiembre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, y la 1.4 agrega D-59, aprobada con las cuentas del servidor.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, y la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor.
 
 ## Resumen y alcance
 
@@ -18,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, y D-59, aprobada con las cuentas del servidor. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -47,7 +47,9 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-56 | Borrar la cuenta borra la fila del usuario junto con sus sesiones, sus códigos y su progreso: perfil, colección, libro de monedas, logros y estadísticas. Su lugar en `match_players` queda anónimo, como el del bot. | Tomada |
 | D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en todo lo que pasa por el correo, en lugar de enlaces. Contraseña de 8 a 128 caracteres con mayúscula, número y símbolo, más una lista de contraseñas comunes. Cambiar la contraseña con la sesión iniciada solo pide la actual (R-43 a R-49). | Aprobada |
 | D-58 | El dominio del juego va en "Solo DNS", sin el proxy de Cloudflare: el CNAME apunta directo a Railway, que sirve el certificado. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad. `pnpm check:prod` lo comprueba. | Tomada |
-| D-59 | Las cuentas no revelan qué correos están registrados. Registrarse y pedir un código responden igual exista o no la cuenta; si ya existía, su dueño recibe un aviso por correo. Iniciar sesión con un correo sin cuenta o con la contraseña equivocada da el mismo error y tarda lo mismo. El nombre ocupado se revisa antes que el correo, para no delatarlo. Rige también para los límites de intentos y la recuperación de la contraseña. | Aprobada |
+| D-59 | Las cuentas no revelan qué correos están registrados. Registrarse y pedir un código responden igual exista o no la cuenta; si ya existía, su dueño recibe un aviso por correo. Iniciar sesión con un correo sin cuenta o con la contraseña equivocada da el mismo error y tarda lo mismo. El nombre ocupado se revisa antes que el correo, para no delatarlo. Rige también para los límites de intentos y la recuperación de la contraseña. Sin sesión, un código que no sirve (equivocado, vencido o agotado) responde siempre lo mismo: decir cuántos intentos quedan delataría la cuenta. | Aprobada |
+| D-60 | Un cambio de correo se puede deshacer desde el correo anterior durante 7 días con un código (R-50), porque la recuperación (R-46) mandaría el código al correo nuevo. Deshacerlo pide una contraseña nueva, porque quien hizo el cambio conocía la anterior. | Aprobada |
+| D-61 | El límite por IP sube a 50 intentos fallidos cada 15 min; el de 5 por cuenta sigue. Un salón de clase puede salir a internet por una sola IP. Solo cuentan los fallos. | Aprobada |
 
 ## Experiencia del jugador
 
@@ -106,9 +108,9 @@ Con público abierto, el servidor no confía en nada que llegue del cliente y gu
 | Verificación | Código de 6 dígitos que vence en 15 min (R-43 y R-44). Sin verificar no se juega en línea. |
 | Recuperación | Código de 6 dígitos por correo (R-43 y R-46). Al terminar se cierran todas las sesiones. |
 | Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. |
-| Abuso | Hasta 5 intentos de inicio de sesión cada 15 min por cuenta y por IP, y hasta 3 correos por hora por dirección. Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
+| Abuso | Hasta 5 intentos fallidos de contraseña cada 15 min por cuenta y 50 por IP (D-61); solo cuentan los fallos. Hasta 3 correos por hora por dirección, salvo los avisos de seguridad (R-50). Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
 | Mensajes del juego | Cada mensaje se valida con un esquema (D-53), y el servidor verifica cada plan con el motor antes de aceptarlo. |
-| Correo | Resend, con el dominio wpena.dev verificado mediante registros SPF y DKIM. Remitente no-responder@wpena.dev. |
+| Correo | Resend, con el subdominio ventisca.wpena.dev verificado en la región São Paulo (sa-east-1). Remitente: Ventisca <no-responder@ventisca.wpena.dev>. Sin seguimiento de aperturas ni de clics. Ningún correo lleva texto escrito por quien llena un formulario. |
 | Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil (D-56). |
 
 ### Gestión de la cuenta
@@ -122,6 +124,7 @@ Todo lo que pasa por el correo usa códigos de 6 dígitos en lugar de enlaces, y
 - **R-47 Cambiar la contraseña.** Con la sesión iniciada: la contraseña actual una vez y la nueva dos veces, sin código. Se cierran las demás sesiones, la actual sigue abierta y llega un aviso al correo. Quien olvidó la actual usa R-46.
 - **R-48 Cambiar el correo.** Con la sesión iniciada: se confirma con la contraseña actual y llega un código al correo nuevo (R-43). Al escribirlo, el cambio se aplica y el correo anterior recibe un aviso. Hasta entonces, la cuenta sigue con el correo anterior.
 - **R-49 Borrar la cuenta.** Con la sesión iniciada, se confirma con la contraseña actual. Se borran la cuenta, sus sesiones, códigos y progreso, y su lugar en las partidas jugadas queda anónimo, como el del bot.
+- **R-50 Deshacer un cambio de correo.** El aviso al correo anterior (R-48) lleva un código de 6 dígitos para deshacer el cambio: vale 7 días, sirve una sola vez y admite 5 intentos. Deshacerlo no requiere sesión: se ingresan el correo anterior, el código y una contraseña nueva dos veces. Se restaura el correo anterior, se cierran todas las sesiones y queda la contraseña nueva, porque quien hizo el cambio conocía la anterior. Responde igual exista o no la cuenta (D-59).
 
 Cada aviso por correo dice qué cambió y qué hacer si no fue la persona: recuperar la contraseña (R-46).
 
@@ -207,7 +210,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 **M7: Cuentas y servidor** (todavía sin multijugador)
 
 - [x] Una imagen de Docker con cliente y servidor, desplegada en Railway con Postgres y servida en ventisca.wpena.dev con HTTPS
-- [ ] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49)
+- [x] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-50)
 - [ ] Progreso en la cuenta: carta de camino, monedas, cajas y colección (R-25 a R-32 resueltos en el servidor)
 - [x] Sandbox con el mazo fijo (D-50) y sin progreso
 - [x] `GameHost` asíncrono, con el sandbox funcionando igual que hoy

@@ -40,9 +40,12 @@ export const sessions = pgTable(
   (t) => [index('sessions_user_id_idx').on(t.userId)],
 );
 
-export const EMAIL_CODE_PURPOSES = ['verify', 'recover', 'change_email'] as const;
+export const EMAIL_CODE_PURPOSES = ['verify', 'recover', 'change_email', 'revert_email'] as const;
 
-/** Códigos de 6 dígitos de un solo uso (R-43): se guarda su huella HMAC, nunca el código. */
+/**
+ * Códigos de 6 dígitos de un solo uso (R-43): se guarda su huella HMAC, nunca el código. `revert_email`
+ * es el que deshace un cambio de correo desde el correo anterior (R-50).
+ */
 export const emailCodes = pgTable(
   'email_codes',
   {
@@ -52,7 +55,10 @@ export const emailCodes = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     purpose: text('purpose', { enum: EMAIL_CODE_PURPOSES }).notNull(),
     codeHash: text('code_hash').notNull(),
-    /** Solo al cambiar el correo (R-48): el correo nuevo, hasta que se confirme. */
+    /**
+     * El correo que se aplica al usar el código: el nuevo al cambiarlo (R-48), o el anterior al
+     * deshacer el cambio (R-50).
+     */
     newEmail: text('new_email'),
     attempts: integer('attempts').notNull().default(0),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -61,6 +67,7 @@ export const emailCodes = pgTable(
   },
   (t) => [
     index('email_codes_user_purpose_idx').on(t.userId, t.purpose),
-    check('email_codes_purpose_check', sql`${t.purpose} in ('verify', 'recover', 'change_email')`),
+    check('email_codes_purpose_check', sql`${t.purpose} in ('verify', 'recover', 'change_email', 'revert_email')`),
+    index('email_codes_purpose_new_email_idx').on(t.purpose, t.newEmail),
   ],
 );

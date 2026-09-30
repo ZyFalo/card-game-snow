@@ -14,6 +14,10 @@ describe('Configuración del servidor', () => {
       databaseUrl: base.DATABASE_URL,
       sessionSecret: base.SESSION_SECRET,
       appUrl: base.APP_URL,
+      resendApiKey: null,
+      turnstileSecretKey: null,
+      turnstileSiteKey: null,
+      commit: null,
       port: 3000,
       host: '0.0.0.0',
       logLevel: 'info',
@@ -30,6 +34,18 @@ describe('Configuración del servidor', () => {
     expect(() => loadConfig({})).toThrow(/DATABASE_URL/);
     expect(() => loadConfig({ ...base, SESSION_SECRET: undefined })).toThrow(/SESSION_SECRET/);
     expect(() => loadConfig({ ...base, APP_URL: undefined })).toThrow(/APP_URL/);
+  });
+
+  it('el commit desplegado sale de Railway en ejecución o, si no, del que horneó el Dockerfile', () => {
+    expect(loadConfig({ ...base, RAILWAY_GIT_COMMIT_SHA: 'aaa', APP_COMMIT: 'bbb' }).commit).toBe('aaa');
+    expect(loadConfig({ ...base, APP_COMMIT: 'bbb' }).commit).toBe('bbb');
+    // El ARG sin valor deja APP_COMMIT vacío: eso es "sin commit".
+    expect(loadConfig({ ...base, APP_COMMIT: '' }).commit).toBeNull();
+  });
+
+  it('las claves vacías cuentan como ausentes', () => {
+    const config = loadConfig({ ...base, RESEND_API_KEY: '', TURNSTILE_SECRET_KEY: '', TURNSTILE_SITE_KEY: '' });
+    expect([config.resendApiKey, config.turnstileSecretKey, config.turnstileSiteKey]).toEqual([null, null, null]);
   });
 
   it('SESSION_SECRET necesita al menos 32 caracteres', () => {

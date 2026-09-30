@@ -1,8 +1,10 @@
 // Comprueba un despliegue en producción. Uso: pnpm check:prod [url]; por defecto, https://ventisca.wpena.dev.
 // Revisa el DNS sin el proxy de Cloudflare (D-58), el certificado (válido y con margen), las cabeceras, la
-// redirección de HTTP a HTTPS, la salud, el 404 y un turno jugado en Chromium sin pedir nada a otros dominios.
+// redirección de HTTP a HTTPS, la salud, el commit desplegado (el último de main), el 404 y un turno jugado
+// en Chromium sin pedir nada a otros dominios.
 // Sale con código 1 si algo falla. Necesita Chromium de Playwright
 // (pnpm --filter @ventisca/web exec playwright install chromium).
+import { execFileSync } from 'node:child_process';
 import { resolveCname } from 'node:dns/promises';
 import { connect } from 'node:tls';
 import { chromium } from '@playwright/test';
@@ -81,11 +83,23 @@ await check('HTTP redirige a HTTPS desde Railway', async () => {
   return `${res.status} → ${location}`;
 });
 
+let health = null;
 await check('Salud con la base de datos conectada', async () => {
   const res = await fetch(new URL('/api/health', base));
-  const body = await res.json().catch(() => null);
-  if (res.status !== 200 || body?.ok !== true || body?.db !== 'ok') fail(`${res.status} ${JSON.stringify(body)}`);
-  return JSON.stringify(body);
+  health = await res.json().catch(() => null);
+  if (res.status !== 200 || health?.ok !== true || health?.db !== 'ok') fail(`${res.status} ${JSON.stringify(health)}`);
+  return JSON.stringify(health);
+});
+
+await check('Corre el último commit de main', async () => {
+  // El repositorio es público: el commit de main se lee de origin, sin credenciales.
+  const main = execFileSync('git', ['ls-remote', 'origin', 'refs/heads/main'], { encoding: 'utf8' }).split(/\s/)[0];
+  const deployed = health?.commit ?? null;
+  if (!deployed) fail(`la salud no informa el commit (último de main: ${main?.slice(0, 7)})`);
+  if (deployed !== main) {
+    fail(`corre ${deployed.slice(0, 7)} y main va en ${main?.slice(0, 7)}: ¿Railway todavía no despliega?`);
+  }
+  return deployed.slice(0, 7);
 });
 
 await check('Una ruta inexistente da 404 con su código', async () => {

@@ -23,6 +23,10 @@ export const errorCodeSchema = z.enum([
   'too_many_attempts',
   'invalid_credentials',
   'email_not_verified',
+  'too_many_requests',
+  'captcha_failed',
+  'captcha_unavailable',
+  'email_taken',
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
@@ -43,11 +47,21 @@ export const apiError = (code: ErrorCode, extra: { reason?: string; attemptsLeft
   error: { code, ...extra },
 });
 
-/** `GET /api/health`: el servidor responde y llega a la base de datos. */
-export const healthSchema = z.object({ ok: z.literal(true), db: z.literal('ok') });
+/**
+ * `GET /api/health`: el servidor responde y llega a la base de datos. `commit` es el commit desplegado
+ * (el repositorio es público), para que `pnpm check:prod` confirme que corre el último de main.
+ */
+export const healthSchema = z.object({ ok: z.literal(true), db: z.literal('ok'), commit: z.string().nullable() });
 export type Health = z.infer<typeof healthSchema>;
 
-/* ---------- Cuentas (R-43 a R-45) ---------- */
+/**
+ * `GET /api/config`: lo que el cliente necesita saber del servidor en tiempo de ejecución. La clave
+ * del sitio de Turnstile es pública (viaja al navegador en cada página); null si no hay captcha.
+ */
+export const publicConfigSchema = z.object({ turnstileSiteKey: z.string().nullable() });
+export type PublicConfig = z.infer<typeof publicConfigSchema>;
+
+/* ---------- Cuentas (R-43 a R-49) ---------- */
 
 /** Solo tipos y tamaños máximos: las reglas (R-45, filtro de nombres) las aplica el servidor con su motivo. */
 const email = z.string().trim().min(1).max(254);
@@ -69,12 +83,13 @@ export type PasswordProblem = z.infer<typeof passwordProblemSchema>;
 export const nameProblemSchema = z.enum(['length', 'characters', 'spaces', 'offensive', 'reserved']);
 export type NameProblem = z.infer<typeof nameProblemSchema>;
 
-/** `POST /api/auth/register` (R-44). */
+/** `POST /api/auth/register` (R-44). `captchaToken`: el token de Turnstile del formulario. */
 export const registerSchema = z.object({
   email,
   password,
   displayName: z.string().max(64),
   acceptPrivacy: z.boolean(),
+  captchaToken: z.string().min(1).max(2048),
 });
 export type RegisterBody = z.infer<typeof registerSchema>;
 
@@ -90,11 +105,36 @@ export type ResendBody = z.infer<typeof resendSchema>;
 export const loginSchema = z.object({ email, password });
 export type LoginBody = z.infer<typeof loginSchema>;
 
+/** `POST /api/auth/recover/request`: pide un código para recuperar la contraseña (R-46). */
+export const recoverRequestSchema = z.object({ email });
+export type RecoverRequestBody = z.infer<typeof recoverRequestSchema>;
+
+/** `POST /api/auth/recover/confirm`: el código y la contraseña nueva (R-46). */
+export const recoverConfirmSchema = z.object({ email, code: z.string().regex(/^\d{6}$/), password });
+export type RecoverConfirmBody = z.infer<typeof recoverConfirmSchema>;
+
+/** `POST /api/auth/password`: con la sesión iniciada, la actual y la nueva (R-47). */
+export const changePasswordSchema = z.object({ currentPassword: password, newPassword: password });
+export type ChangePasswordBody = z.infer<typeof changePasswordSchema>;
+
+/** `POST /api/auth/email/request`: con la sesión iniciada, la contraseña y el correo nuevo (R-48). */
+export const changeEmailRequestSchema = z.object({ password, newEmail: email });
+export type ChangeEmailRequestBody = z.infer<typeof changeEmailRequestSchema>;
+
+/** `POST /api/auth/email/confirm`: el código que llegó al correo nuevo (R-48). */
+export const changeEmailConfirmSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
+export type ChangeEmailConfirmBody = z.infer<typeof changeEmailConfirmSchema>;
+
+/** `POST /api/auth/delete`: con la sesión iniciada, se confirma con la contraseña (R-49). */
+export const deleteAccountSchema = z.object({ password });
+export type DeleteAccountBody = z.infer<typeof deleteAccountSchema>;
+
 /**
  * Respuesta de registrar o pedir un código: siempre la misma, exista o no la cuenta (D-59), para no
  * revelar qué correos están registrados.
  */
 export const checkEmailSchema = z.object({ status: z.literal('check_email') });
+
 export type CheckEmail = z.infer<typeof checkEmailSchema>;
 
 export const userSchema = z.object({

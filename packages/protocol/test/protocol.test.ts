@@ -12,7 +12,8 @@ describe('Protocolo: API HTTP', () => {
   });
 
   it('la salud solo es válida si la base de datos respondió', () => {
-    expect(healthSchema.safeParse({ ok: true, db: 'ok' }).success).toBe(true);
-    expect(healthSchema.safeParse({ ok: true, db: 'down' }).success).toBe(false);
+    expect(healthSchema.safeParse({ ok: true, db: 'ok', commit: null }).success).toBe(true);
+    expect(healthSchema.safeParse({ ok: true, db: 'ok', commit: 'abc1234' }).success).toBe(true);
+    expect(healthSchema.safeParse({ ok: true, db: 'down', commit: null }).success).toBe(false);
   });
 });

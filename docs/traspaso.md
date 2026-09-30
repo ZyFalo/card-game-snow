@@ -1,23 +1,45 @@
 # Traspaso a Claude Code
 
-Estado al 29 de septiembre de 2026: **v0.9**. Construido en claude.ai con Claude; desde aquí continúa en Claude Code.
+Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el modo en línea y se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
 
 ## Qué hay
 
-- **Juego completo para un jugador:** reglas R-01 a R-24, progresión con monedas, cajas y colección (R-25 a R-32), dificultades Clásica y Tormenta, tres ritmos de reloj, logros, pausa y ayuda.
+- **Sandbox para un jugador:**
+  - Las reglas R-01 a R-24, con los tres ninjas y el mazo de referencia (D-50).
+  - Sin cuenta ni progreso (D-34).
+  - Dificultades Clásica y Tormenta, tres ritmos de reloj, pausa y ayuda.
+- **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
+- **Servidor (`apps/server`):**
+  - Fastify con Postgres (Drizzle).
+  - Sirve el juego y `/api/health`, y aplica las migraciones al arrancar.
+  - Las cuentas y el progreso llegan en los siguientes pasos del M7.
+- **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.
 - **Animación en cuatro fases:** esqueletos articulados, efectos, coreografía medida con metas de ritmo e interfaz animada.
-- **Calidad:** 49 pruebas (Vitest), 2 pruebas e2e (Playwright), lint (Biome) y tipos (TypeScript 7), más un simulador de balance y un estimador de ritmo.
-- **Publicación:** build normal (`pnpm build`) y de un solo archivo (`pnpm build:single`). El CI corre en GitHub Actions. Despliegue: Pendiente: Railway, hito M7.
+- **Calidad:**
+  - Pruebas unitarias con Vitest, que incluyen las del servidor contra Postgres.
+  - e2e con Playwright, lint con Biome y tipos con TypeScript 7.
+  - Un simulador de balance y un estimador de ritmo.
+  - La CI de GitHub Actions corre todo eso y además construye y prueba la imagen de Docker.
 
 ## Puesta en marcha (una sola vez)
 
-1. **Requisitos:** Node 22.12 o superior y Git. Activa pnpm con `corepack enable`; el repositorio fija pnpm 12.8.1 en `packageManager`.
-2. **Repositorio:** `git init`, `git add -A` y `git commit -m "Ventisca v0.9: punto de partida"`.
-3. **Dependencias:** `pnpm install`.
-4. **Jugar en local:** `pnpm dev` y abre http://localhost:5173.
-5. **Verificación completa:** `pnpm run ci` (lint, tipos, pruebas y build).
-6. **Pruebas en el navegador:** `pnpm --filter @ventisca/web exec playwright install chromium` y luego `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
-7. **Despliegue:** Pendiente: Railway, hito M7.
+1. **Requisitos:** Node 22.12 o superior, Git y Docker Desktop. Activa pnpm con `corepack enable`; el repositorio fija pnpm 12.8.1. Si pnpm falla con "Cannot find module …/bin/pnpm.cjs", actualiza Corepack con `npm i -g corepack@latest`.
+2. **Dependencias:** `pnpm install`.
+3. **Variables de entorno:** `cp .env.example .env`, y cambia `SESSION_SECRET` por un valor aleatorio (`openssl rand -base64 48`). Git ignora `.env`. En producción las variables se cargan en Railway, no en un archivo.
+4. **Postgres:** `docker compose up -d db`. Queda en el puerto 5434, para no chocar con otros Postgres de la máquina.
+
+## Día a día
+
+- **Jugar el sandbox:** `pnpm dev` y abre http://localhost:5173. No necesita el servidor.
+- **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Sirve la API y, si antes corriste `pnpm build`, también el juego.
+- **Todo como en producción:** `docker compose up --build` y abre http://localhost:3000. Es la misma imagen que se despliega.
+- **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
+  - En pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada.
+- **Pruebas en el navegador:** instala el navegador una vez con `pnpm --filter @ventisca/web exec playwright install chromium`, y después corre `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
+- **Cambiar la base de datos:**
+  1. Edita `apps/server/src/schema.ts`.
+  2. Corre `pnpm db:generate`.
+  3. Sube la migración nueva de `apps/server/drizzle/` junto con el cambio. El servidor la aplica al arrancar.
 
 ## Herramientas útiles
 
@@ -26,27 +48,14 @@ Estado al 29 de septiembre de 2026: **v0.9**. Construido en claude.ai con Claude
 - `pnpm sim -- --matches 2000 --skill 1 [--storm]` mide el balance con el bot, sin render.
 - `pnpm pacing` mide cuánto dura la animación de cada turno sobre partidas del bot.
 
-## Pendiente, según el PRD
+## Pendiente, según los PRD
 
+- **M7, en pasos pequeños (PRD de v2):** despliegue en Railway (ventisca.wpena.dev), cuentas en el servidor y en el cliente, y progreso en la cuenta.
+- **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
-- QA en Firefox y Safari, y control táctil.
-- **Multijugador (v2, hitos M7 a M9):** primero se define su sección del PRD en claude.ai y después se implementa aquí.
-- Rangos y experiencia (P-18).
-- Despliegue: Pendiente: Railway, hito M7.
-- Video de demo.
+- QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.
 
-## Primer mensaje para Claude Code
+## Cómo se trabaja
 
-Pégalo tal cual en la primera sesión:
-
-> Hola. Este repositorio es Ventisca, un juego táctico por turnos que construí con Claude en claude.ai (v0.9). Antes de cambiar nada:
->
-> 1. Lee `CLAUDE.md`, `AGENTS.md`, `docs/traspaso.md` y `docs/PRD.md` (sobre todo §7, §11, §13 y §18).
-> 2. Instala las dependencias y corre `pnpm run ci` y `pnpm e2e`. Si algo falla en mi máquina, corrígelo con el cambio mínimo y explícame la causa.
-> 3. Resúmeme en pocas líneas la arquitectura como la entendiste y qué partes tocaría el multijugador (M7 a M9). No lo implementes todavía: su especificación la estamos definiendo aparte.
->
-> Trabaja en español y haz commits pequeños con mensajes claros.
-
-## Cuando el PRD del multijugador esté aprobado
-
-Se preparará un segundo mensaje que pida implementar el M7 según la sección aprobada del PRD, con criterios de terminado verificables (pruebas del servidor, dos clientes conectados en local y reconexión).
+- Cada paso del M7 es un PR pequeño, con sus pruebas y la CI en verde. El dueño de producto lo revisa antes de fusionarlo, con merge commit y sin squash.
+- Nunca se suben secretos al repositorio: cada variable se documenta en `.env.example`.

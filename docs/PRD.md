@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.2 |
+| Versión | 0.10.3 |
 | Última actualización | 30 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -687,10 +687,10 @@ flowchart LR
 /
 ├─ packages/
 │  ├─ core/        Reglas, IA enemiga, bot de ninjas, RNG, balance.json (TypeScript puro)
-│  └─ protocol/    (v2) Tipos de mensajes compartidos
+│  └─ protocol/    (v2) Esquemas de Zod compartidos por cliente y servidor (D-53)
 ├─ apps/
 │  ├─ web/         Vite + Phaser 4 (tablero, animador, VFX) + React (HUD y menús) + Zustand
-│  └─ server/      (v2) Servidor Node: API, salas y progreso, en Railway (D-37)
+│  └─ server/      (v2) Servidor Node con Fastify y Postgres: API, salas y progreso, en Railway (D-37, D-51, D-52)
 ├─ assets-src/     Fuentes editables de arte y audio (SVG, capas, prompts)
 └─ docs/
    ├─ PRD.md       Este documento
@@ -1036,6 +1036,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.3 | 2026-09-30 | Esqueleto del servidor del M7: `apps/server` (Fastify, Postgres con Drizzle y migraciones al arrancar, `/api/health`, el juego servido por el mismo origen y registros sin IPs) y `packages/protocol` (Zod). Imagen de Docker y `compose.yaml` con Postgres para desarrollo; `.env.example` documenta las variables y `.env` queda fuera de git. La CI prueba el servidor contra Postgres y construye y arranca la imagen. `docs/traspaso.md` se reescribe con la puesta en marcha nueva |
 | 0.10.2 | 2026-09-30 | Sandbox del M7: cada ninja juega con el mazo de referencia (D-50) y no hay monedas, cartas ni logros (D-34). Lo que v1 guardó en el navegador se descarta al abrir el juego; los ajustes se conservan (D-55). Las fuentes se alojan en el propio juego, sin Google Fonts. La documentación dice `pnpm run ci`, porque en pnpm 12 `pnpm ci` es una instalación limpia |
 | 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes. Se registra también D-57, la gestión de la cuenta del PRD de v2 (versión 1.1, R-43 a R-49) |
 | 0.10.0 | 2026-09-29 | Integra el PRD de v2 aprobado (`docs/PRD-v2.md`, versión 1.0), que manda en todo lo del modo en línea. R-04 en línea da 15 s por turno (D-46). Se agregan las decisiones D-34 a D-50 y las preguntas P-19 a P-24. Cloudflare pasa a Railway (D-37) en D-03, D-09, §11.1, §11.3, §11.4, §11.7 (que ahora remite al PRD de v2), §11.10, §15, M6 y P-02. Los hitos M7 a M9 son los del PRD de v2. R-25 a R-32 pasan a la cuenta en v2 (D-34) |

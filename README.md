@@ -8,6 +8,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 
 - En línea: la página publicada que comparta el equipo.
 - Local: `pnpm install` y luego `pnpm dev`, y abre http://localhost:5173. Si `pnpm` falla con "Cannot find module …/bin/pnpm.cjs", tu Corepack es anterior a pnpm 12: actualízalo con `npm i -g corepack@latest` (o usa `npx corepack@latest pnpm dev`).
+- Con el servidor (modo en línea, en construcción): `cp .env.example .env` y luego `docker compose up --build`, y abre http://localhost:3000. Detalle en `docs/traspaso.md`.
 - Un solo archivo: `pnpm build:single` genera `apps/web/dist-single/index.html`, que sirve para itch.io o para compartir.
 
 **Cómo se juega:** en cada turno planeas a los tres ninjas (movimiento y acción). Confirmas y se resuelve en orden: Fuego, Agua, Nieve y después los gólems. Llena el medidor para ganar cartas. Si dos o tres ninjas juegan carta en el mismo turno, desatan un combo. Supera tres rondas; si cumples la condición, se abre una ronda bonus.
@@ -26,7 +27,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 
 ## Stack
 
-TypeScript 7 · Phaser 4.2 (tablero) · React 19 + Zustand 5 (HUD) · Vite 8 · pnpm workspaces · Vitest · Playwright · Biome. Arte SVG y audio WebAudio generados en código (ADR 0003).
+TypeScript 7 · Phaser 4.2 (tablero) · React 19 + Zustand 5 (HUD) · Vite 8 · pnpm workspaces · Vitest · Playwright · Biome. Servidor: Node · Fastify · Postgres con Drizzle · Zod · Docker (ADR 0006). Arte SVG y audio WebAudio generados en código (ADR 0003).
 
 ```
 packages/core   Motor de reglas puro y determinista, bot y simulador

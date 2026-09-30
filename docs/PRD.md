@@ -871,7 +871,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 - [ ] **M7: Cuentas y servidor** (todavía sin multijugador):
   - imagen de Docker en Railway, con Postgres, en ventisca.wpena.dev;
-  - registro, verificación, inicio de sesión, recuperación y borrado de cuenta;
+  - registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49 del PRD de v2);
   - progreso en la cuenta (R-25 a R-32 resueltos en el servidor);
   - sandbox con el mazo fijo (D-50) y `GameHost` asíncrono.
 - [ ] **M8: Partida en línea:**
@@ -997,7 +997,8 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
-| D-56 | Borrar la cuenta borra al usuario con sus sesiones, tokens y progreso; su lugar en `match_players` queda anónimo, como el del bot (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
+| D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en lugar de enlaces; contraseña de 8 a 128 caracteres con mayúscula, número y símbolo; cambiarla con la sesión iniciada solo pide la actual (R-43 a R-49 de `docs/PRD-v2.md`) | ✅ | 2026-09-29 |
+| D-56 | Borrar la cuenta borra al usuario con sus sesiones, códigos y progreso; su lugar en `match_players` queda anónimo, como el del bot (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-55 | El progreso guardado en el navegador en v1 se descarta: no pasa a la cuenta y el sandbox deja de usarlo; los ajustes se conservan (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-54 | Contraseñas con Argon2id mediante @node-rs/argon2 (ADR 0006, `docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-53 | Mensajes y entradas de la API validados con Zod, con los esquemas en `packages/protocol` (ADR 0006, `docs/PRD-v2.md`) | ✅ | 2026-09-30 |
@@ -1035,7 +1036,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
-| 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes |
+| 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes. Se registra también D-57, la gestión de la cuenta del PRD de v2 (versión 1.1, R-43 a R-49) |
 | 0.10.0 | 2026-09-29 | Integra el PRD de v2 aprobado (`docs/PRD-v2.md`, versión 1.0), que manda en todo lo del modo en línea. R-04 en línea da 15 s por turno (D-46). Se agregan las decisiones D-34 a D-50 y las preguntas P-19 a P-24. Cloudflare pasa a Railway (D-37) en D-03, D-09, §11.1, §11.3, §11.4, §11.7 (que ahora remite al PRD de v2), §11.10, §15, M6 y P-02. Los hitos M7 a M9 son los del PRD de v2. R-25 a R-32 pasan a la cuenta en v2 (D-34) |
 | 0.9.5 | 2026-09-29 | Pendientes de v1 que no dependen de v2. Deshacer ya no deja planes vacíos que bloqueaban la pausa. Los ajustes guardados se validan campo por campo. Sin WebGL, un mensaje explica por qué no se puede jugar. R-04, R-10 y R-14 tienen pruebas propias. Los textos de la interfaz pasan a `i18n/es.ts`, salvo la de progresión (`Progression.tsx` y `CardFace.tsx`), que cambia en v2. Biome usa `preset` en lugar de `recommended`. R-04 aclara que el reloj da 10 s por ninja en pie (30 s con los tres), porque un caído no tiene nada que planificar; la pantalla de equipo lo dice igual |
 | 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md`. Las repeticiones pasan a la versión 2 por D-33: `runReplay` rechaza las de otra versión con un mensaje claro |

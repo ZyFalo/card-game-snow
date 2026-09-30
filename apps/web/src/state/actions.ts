@@ -1,7 +1,6 @@
 import {
   type AchievementId,
   addToCollection,
-  BALANCE,
   boxPrice,
   type CoinReward,
   coinsForRound,
@@ -33,7 +32,7 @@ import { LocalHost } from '../host/LocalHost';
 import { NINJA_TEXT, TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveAchievements, saveSettings } from './persist';
-import { activeInfo, nextPlannable, plansArray } from './planning';
+import { activeInfo, nextPlannable, plansArray, turnClockMs } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { saveProfile } from './profile';
 import { type CardFlight, type Screen, store } from './store';
@@ -155,12 +154,10 @@ export async function startMatch(): Promise<void> {
   beginPlanning();
 }
 
-/** Reloj del turno (R-04): 10 s por ninja que controla el jugador, según el ritmo. */
+/** Reloj del turno (R-04) de la partida en curso. */
 export function planningMs(): number | null {
   const { settings, match } = store.getState();
-  const mult = BALANCE.paceMultiplier[settings.pace];
-  if (!match || !mult) return null;
-  return Math.max(1, livingNinjas(match).length) * BALANCE.planSecondsPerNinja * mult * 1000;
+  return match ? turnClockMs(settings.pace, livingNinjas(match).length) : null;
 }
 
 export function beginPlanning(): void {

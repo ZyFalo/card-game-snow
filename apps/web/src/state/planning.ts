@@ -1,5 +1,6 @@
 import {
   attackTargets,
+  BALANCE,
   cardTiles,
   difficultyConfig,
   ELEMENTS,
@@ -18,8 +19,15 @@ import {
   reviveTargets,
   type Vec,
 } from '@ventisca/core';
-import { ENEMY_TEXT, ES, NINJA_TEXT } from '../i18n/es';
+import { ENEMY_TEXT, ES, NINJA_TEXT, type Pace } from '../i18n/es';
 import type { AppState } from './store';
+
+/** R-04: el reloj da 10 s por ninja en pie que controla el jugador, según el ritmo; Relajado no tiene reloj. */
+export function turnClockMs(pace: Pace, living: number): number | null {
+  const mult = BALANCE.paceMultiplier[pace];
+  if (!mult) return null;
+  return Math.max(1, living) * BALANCE.planSecondsPerNinja * mult * 1000;
+}
 
 export const plansArray = (plans: AppState['plans']): Plan[] =>
   ELEMENTS.flatMap((id) => {

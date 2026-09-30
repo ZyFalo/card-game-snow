@@ -459,29 +459,13 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
       expect(res.statusCode).toBe(429);
     });
 
-    it('5 intentos fallidos por IP cada 15 min, aunque cada uno sea con un correo distinto', async () => {
-      for (let i = 0; i < 5; i++) {
-        await post(
-          '/api/auth/login',
-          { email: `x${i}@example.com`, password: 'Otra9#Cosa' },
-          undefined,
-          '203.0.113.50',
-        );
-      }
-      const same = await post(
-        '/api/auth/login',
-        { email: 'x9@example.com', password: 'Otra9#Cosa' },
-        undefined,
-        '203.0.113.50',
-      );
-      const other = await post(
-        '/api/auth/login',
-        { email: 'x9@example.com', password: 'Otra9#Cosa' },
-        undefined,
-        '203.0.113.51',
-      );
-      expect(same.statusCode).toBe(429);
-      expect(other.statusCode).toBe(401);
+    it('D-61: 50 intentos fallidos por IP cada 15 min, aunque cada uno sea con un correo distinto', async () => {
+      const fail = (i: number, ip: string) =>
+        post('/api/auth/login', { email: `x${i}@example.com`, password: 'Otra9#Cosa' }, undefined, ip);
+      // Un salón entero puede equivocarse 50 veces desde la misma IP sin quedar bloqueado.
+      for (let i = 0; i < 50; i++) expect((await fail(i, '203.0.113.50')).statusCode).toBe(401);
+      expect((await fail(50, '203.0.113.50')).statusCode).toBe(429);
+      expect((await fail(50, '203.0.113.51')).statusCode).toBe(401);
     });
 
     it('el límite por IP no se esquiva inventando X-Forwarded-For: cuenta la IP que vio el proxy de Railway', async () => {
@@ -492,10 +476,10 @@ describe.skipIf(!adminUrl)('Cuentas (DATABASE_URL_TEST)', () => {
           payload: { email: `y${i}@example.com`, password: 'Otra9#Cosa' },
           // El proxy de Railway agrega al final la IP real; lo de antes lo escribe quien pide.
           remoteAddress: '10.0.0.2',
-          headers: { 'x-forwarded-for': `1.2.3.${i}, 203.0.113.77` },
+          headers: { 'x-forwarded-for': `10.9.${i}.1, 203.0.113.77` },
         });
-      for (let i = 0; i < 5; i++) expect((await attempt(i)).statusCode).toBe(401);
-      expect((await attempt(9)).statusCode).toBe(429);
+      for (let i = 0; i < 50; i++) expect((await attempt(i)).statusCode).toBe(401);
+      expect((await attempt(99)).statusCode).toBe(429);
     });
 
     it('iniciar sesión bien borra los fallos de la cuenta', async () => {

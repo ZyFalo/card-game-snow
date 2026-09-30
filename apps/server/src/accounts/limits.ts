@@ -53,10 +53,10 @@ const MINUTE = 60_000;
 /** Los límites del PRD de v2. */
 export function accountLimits(now: () => Date) {
   return {
-    /** Hasta 5 intentos fallidos de inicio de sesión cada 15 min por cuenta (el correo escrito)… */
+    /** Hasta 5 intentos fallidos de contraseña cada 15 min por cuenta (el correo escrito)… */
     loginByAccount: new RateLimiter(5, 15 * MINUTE, now),
-    /** …y por IP. */
-    loginByIp: new RateLimiter(5, 15 * MINUTE, now),
+    /** …y 50 por IP: un salón de clase puede salir a internet por una sola IP (D-61). */
+    loginByIp: new RateLimiter(50, 15 * MINUTE, now),
     /** Hasta 3 correos por hora por dirección. Pasado el límite no se envía, sin avisar (D-59). */
     mailByAddress: new RateLimiter(3, 60 * MINUTE, now),
   };

@@ -1,13 +1,17 @@
 import { existsSync } from 'node:fs';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import { apiError, type Health } from '@ventisca/protocol';
+import { apiError, type Health, type PublicConfig } from '@ventisca/protocol';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { type AccountsOptions, accountsRoutes } from './accounts/routes';
 
 export interface AppOptions {
   /** Comprueba que la base de datos responde. */
   ping: () => Promise<void>;
+  /** Commit desplegado, o null (desarrollo). */
+  commit?: string | null;
+  /** Lo público que el cliente necesita saber (GET /api/config). */
+  publicConfig?: PublicConfig;
   /** Carpeta con el build del cliente (apps/web/dist); sin ella solo se sirve la API. */
   webDist: string | null;
   logger: FastifyServerOptions['logger'];
@@ -25,19 +29,28 @@ export const privateLogger = (level: string, stream?: NodeJS.WritableStream) => 
   ...(stream ? { stream } : {}),
 });
 
-export function buildApp({ ping, webDist, logger, accounts }: AppOptions) {
-  // Railway pone un proxy delante: la IP real llega en X-Forwarded-For (para los límites del PR 6).
-  const app = Fastify({ logger, trustProxy: true });
+export function buildApp({ ping, webDist, logger, accounts, commit = null, publicConfig }: AppOptions) {
+  // Railway pone un solo proxy delante: la IP real es la última de X-Forwarded-For. Confiar en más de un
+  // salto dejaría que cualquiera inventara su IP y esquivara los límites por IP.
+  // Se confía solo en el salto 0 (el proxy de Railway, conectado directo); equivale a un salto.
+  const app = Fastify({ logger, trustProxy: (_address: string, hop: number) => hop === 0 });
 
   app.get('/api/health', async (req, reply) => {
     try {
       await ping();
-      const health: Health = { ok: true, db: 'ok' };
+      const health: Health = { ok: true, db: 'ok', commit };
       return health;
     } catch (err) {
       req.log.error({ err }, 'La base de datos no responde');
       return reply.code(503).send(apiError('db_unavailable'));
     }
+  });
+
+  // Solo una lista explícita de valores públicos, campo por campo: nunca el entorno ni un objeto de
+  // configuración entero, aunque llegue uno con más campos.
+  app.get('/api/config', async () => {
+    const body: PublicConfig = { turnstileSiteKey: publicConfig?.turnstileSiteKey ?? null };
+    return body;
   });
 
   app.register(fastifyCookie);

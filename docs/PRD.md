@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.1 |
+| Versión | 0.9.4 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -29,22 +29,22 @@
 - [x] Animación fase 3 (§10.2): coreografía medida con metas de ritmo, animaciones rápidas y aceleración manteniendo Espacio
 - [x] Animación fase 4 (§10.2): cartas que vuelan a la mano, medidor y vida animados, transiciones entre pantallas y resultados que cuentan. Plan de animación completo
 
-### Estado de implementación (v0.3)
+### Estado de implementación (v0.9.3)
 
 | Área | Estado | Evidencia |
 |---|---|---|
-| Motor de reglas R-01 a R-24 | ✅ | 33 pruebas en `packages/core/test`, nombradas por regla |
-| Estado presentado (animación evento por evento) | ✅ | Prueba que lo compara con el motor en partidas completas |
-| Bot y simulador | ✅ | 8.000 partidas; `docs/balance-report.md` |
-| Cliente web (escena, HUD, pantallas, logros, pausa, ayuda) | ✅ | Prueba e2e de Playwright y partida completa jugada por la interfaz (victoria + bonus en 16 turnos) |
+| Motor de reglas R-01 a R-24 | ✅ | 35 pruebas de reglas en `packages/core/test/rules.test.ts`, nombradas por regla (incluye el orden de resolución de D-32). R-04, R-10 y R-14 aún no tienen prueba propia |
+| Estado presentado (animación evento por evento) | ✅ | Prueba que lo compara con el motor en partidas completas. e2e: una animación interrumpida no aplica eventos a la partida nueva |
+| Bot y simulador | ✅ | `pnpm sim` mide con la colección real (`--collection`) y reproduce la tabla del §18.3 (`--table`). Reporte en `docs/balance-report.md` |
+| Cliente web (escena, HUD, pantallas, logros, pausa, ayuda) | ✅ | 10 pruebas e2e de Playwright: humo, partida completa, tienda, teclado (mantener Espacio o Tab no repite acciones), reinicio a mitad de una animación y cobro por ronda de D-31 (salir tras la ronda 1, abandonar en la 2 y salir durante la celebración). Las 3 de v0.9.1 pasan también en WebKit y Firefox |
 | Arte y audio originales | ✅ | SVG y WebAudio generados en código (ADR 0003) |
-| Build en un solo HTML | ✅ | 1,6 MB (463 KB gzip), sin peticiones salvo Google Fonts |
-| CI y despliegue | 🟡 | Workflows y `wrangler.jsonc` listos; faltan el repositorio en GitHub y los secretos de Cloudflare |
+| Build en un solo HTML | ✅ | 1,7 MB (478 KB gzip), sin peticiones salvo Google Fonts |
+| CI y despliegue | 🟡 | CI en verde en GitHub Actions (github.com/ZyFalo/card-game-snow). Despliegue pendiente: Railway, hito M7 |
 | Interfaz (fase 4 de animación) | ✅ Implementada | Capturas con las animaciones congeladas en un punto exacto; partida completa con robos reales; e2e |
 | Coreografía (fase 3 de animación) | ✅ Implementada | Estimador de ritmo sobre partidas del bot; 3 pruebas con metas; partida completa acelerando con Espacio |
-| Efectos (fase 2 de animación) | ✅ Implementada | Prueba de texturas de efectos; capturas por instante de cada efecto en el tablero real; ninguna secuencia se bloquea |
+| Efectos (fase 2 de animación) | ✅ Implementada | Prueba de texturas de efectos; capturas por instante de cada efecto en el tablero real; ninguna secuencia se bloquea. e2e: reiniciar a mitad de una carta no deja efectos vivos |
 | Animación por esqueletos (fase 1) | ✅ Implementada | 2 pruebas de consistencia de esqueletos y clips; hoja de poses en el tablero real; partida completa y secuencia de caída, reanimación, aturdido y explosión sin errores |
-| Progresión: monedas, cajas y colección | ✅ Implementada | 8 pruebas de R-25 a R-30; e2e de camino y de compra de cajas; partida completa cobrando monedas |
+| Progresión: monedas, cajas y colección | ✅ Implementada | 9 pruebas de R-25 a R-30 (incluye el pago por ronda de D-31), más 4 de las colecciones del simulador; e2e de camino y de compra de cajas; partida completa cobrando monedas |
 | Validación con personas | ⬜ | Pendiente (meta en `docs/balance-report.md`) |
 
 ---
@@ -395,7 +395,7 @@ Los valores numéricos viven en configuración (Apéndice A) para poder balancea
 ### Reglas técnicas
 
 - **R-23 Aleatoriedad determinista.** Todo el azar (orden de aparición, tipo y cantidad de enemigos, empates de la IA, robo de cartas, condición del bonus) sale de un generador pseudoaleatorio con semilla por partida. Misma semilla + mismos planes = misma partida, bit a bit.
-- **R-24 Números enteros.** HP y daño son enteros. Los multiplicadores se aplican y luego se redondea hacia abajo. Con los valores actuales no aparecen fracciones (15, 12 y 9 con Potencia; 4 y 10 de salpicadura).
+- **R-24 Números enteros.** HP y daño son enteros. Los multiplicadores se aplican y luego se redondea hacia abajo. Con los valores actuales no aparecen fracciones (15, 12 y 9 con Potencia; 4 y 10 de salpicadura). Excepción (D-33): la vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano, así que queda en 42, 63 y 84.
 
 ---
 
@@ -476,7 +476,7 @@ El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los pan
 3. Clic en una casilla: aparece el fantasma de ese ninja y se recalculan sus objetivos desde ahí. Los objetivos se marcan con íconos distintos para atacar, curar y revivir (forma y color, no solo color).
 4. Clic en un objetivo, o elegir una carta (1 a 4 o clic en la mano) y luego la casilla, con previsualización del patrón 3×3 y de los enemigos que alcanzaría.
 5. Al completar movimiento y acción se activa el siguiente ninja sin plan (se puede desactivar).
-6. Los tres fantasmas se ven a la vez, cada uno con un número que indica su orden de resolución (R-11), para que el resultado sea predecible.
+6. Los tres fantasmas se ven a la vez. Cada ninja con una acción planificada muestra, en su panel y sobre su fantasma, el orden real en que actuará (R-11, D-32): primero las acciones básicas (atacar, curar, revivir) en orden Fuego, Agua, Nieve, y después las cartas en el mismo orden. Los movimientos son simultáneos y no se numeran; un ninja sin acción no muestra número. El orden se recalcula con cada cambio de plan.
 7. "Confirmar turno" (botón o Espacio) cierra la planificación de los tres. Se puede confirmar con planes incompletos: ese ninja no hace nada. Esc deshace el último paso del ninja activo.
 
 **Atajos:** Tab y Shift+Tab cambian de ninja, 1 a 4 eligen carta del ninja activo, Espacio confirma el turno, Esc deshace.
@@ -823,11 +823,11 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 ### M0 — Fundaciones ✅
 - [x] Monorepo pnpm con `packages/core` y `apps/web` (armado desde cero en lugar de la plantilla oficial, para controlar las versiones)
-- [x] TypeScript estricto, Biome, Vitest y CI en GitHub Actions (workflow escrito; se ejecutará al subir el repositorio)
+- [x] TypeScript estricto, Biome, Vitest y CI en GitHub Actions (en verde desde el primer push)
 - [x] `core` con RNG con semilla (R-23), números enteros (R-24), tipos del §11.5 y `balance.json`
 - [x] React montado sobre el canvas y store de Zustand conectado a la escena
 - [x] Escena de Phaser que dibuja el tablero de 9×5 con rocas y unidades
-- [ ] Despliegue automático en Cloudflare: `wrangler.jsonc` y `deploy.yml` listos; faltan cuenta y secretos
+- [ ] Despliegue automático: pendiente, Railway (hito M7). Se quitaron `wrangler.jsonc` y `deploy.yml`
 
 ### M1 — Combate básico y planificación de 3 ninjas ✅
 - [x] R-01 a R-07 y R-11
@@ -970,6 +970,9 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-33 | La vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano (R-24). Se registró primero como D-31; se renumeró porque D-31 y D-32 ya estaban aprobadas para otras decisiones. Truncar dejaba a Granizo con 62 en vez de 63, porque en coma flotante 45 × 1,4 da 62,999…. Cambia el hash de las repeticiones de Tormenta en las que aparece un Granizo. Por eso las repeticiones pasan a la versión 2 (`REPLAY_VERSION`) y las de versión 1 se rechazan con un mensaje claro en vez de reproducirse distinto | ✅ | 2026-09-29 |
+| D-32 | Los números de orden muestran el orden real de R-11 según los planes del momento: primero acciones básicas y luego cartas, ambas en orden Fuego, Agua, Nieve; sin acción no hay número (§9) | ✅ | 2026-09-29 |
+| D-31 | Cobro por ronda: cada ronda superada se acredita al instante; resultados y logros se guardan en el evento de fin de partida, antes de la celebración; abandonar antes solo pierde los logros de esa partida (enmienda R-29) | ✅ | 2026-09-29 |
 | D-30 | Las animaciones de interfaz usan Web Animations y CSS: no bloquean el turno y se pueden congelar en un punto exacto para verificarlas | ✅ | 2026-09-29 |
 | D-29 | Coreografía con tabla única de tiempos y estimador de ritmo; metas de duración por turno vigiladas por pruebas | ✅ | 2026-09-29 |
 | D-28 | La pausa de impacto se mide con el delta real de cada cuadro (no con temporizadores): en equipos lentos dura como mucho un cuadro | ✅ | 2026-09-29 |
@@ -982,6 +985,9 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md`. Las repeticiones pasan a la versión 2 por D-33: `runReplay` rechaza las de otra versión con un mensaje claro |
+| 0.9.3 | 2026-09-29 | Decisiones aprobadas: D-31 (cobro al instante por ronda; resultados y logros en el evento de fin de partida; enmienda R-29) y D-32 (los números de orden siguen el orden real de R-11; nuevo punto 6 del §9.3). Implementadas con sus pruebas, junto con el texto del bonus contra el reloj de R-21: "Turno t de N · quedan N − t + 1" en la ficha y en el cartel de ronda |
+| 0.9.2 | 2026-09-29 | Primer commit en GitHub (se recuperaron `.gitignore` y los workflows, que se perdieron al copiar el zip) y CI en verde. Correcciones: mantener Espacio ya no confirma turnos vacíos; reiniciar o salir ya no deja efectos vivos; una animación interrumpida ya no aplica eventos a la partida nueva. `pnpm sim` mide con la colección real y el reporte de balance se rehízo con ella. ADR 0003 queda reemplazado en su parte de animación por D-27. R-24 y D-33: en Tormenta, la vida de los gólems se redondea al entero más cercano (Granizo pasa de 62 a 63). Las repeticiones de Tormenta grabadas antes, en las que aparece un Granizo, ya no reproducen el mismo hash. En 2.000 partidas del bot cambian 1.952 (todas las que tienen un Granizo) y el resultado cambia en 60. Las de Clásica no cambian. Ritmo vuelto a medir: Clásica igual y Tormenta en 3,5 s / 6,7 s / 102 s por partida, dentro de las metas |
 | 0.9.1 | 2026-09-29 | Traspaso a Claude Code: `CLAUDE.md`, guía `docs/traspaso.md` con puesta en marcha y primer mensaje, y script `pnpm pacing` |
 | 0.9 | 2026-09-29 | Animación fase 4 (interfaz): cartas que vuelan a la mano, medidor vivo, rastro de vida, temblor de panel, transiciones entre pantallas, entradas escalonadas y conteo de resultados. D-30. Plan de animación completo |
 | 0.8 | 2026-09-29 | Animación fase 3: tabla de tiempos y estimador (D-29), metas de ritmo, combos encadenados, quemaduras y estados agrupados, explosiones sin bloqueo, anillo del actor, consejo por fase, animaciones rápidas y aceleración con Espacio. Carteles sincronizados con la velocidad |
@@ -1018,7 +1024,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **R-26 Reserva en batalla.** La reserva de cada ninja es toda la colección de su elemento, con repetidas (D-20). Al llenarse el medidor sale una carta al azar, sin reposición dentro de la partida (R-15 no cambia). Si la reserva se agota, el medidor sigue cargando sin dar cartas.
 - **R-27 Valores y rareza 📌.** Valores del 9 al 12, como las cartas de poder del original. Banco por elemento: 7 cartas de 9, 6 de 10, 4 de 11 y 3 de 12. Cada una de las 20 tiene la misma probabilidad de salir, así que por carta: 35 % / 30 % / 20 % / 15 %.
 - **R-28 Cajas.** Cajas de 1, 2 o 3 cartas (D-22). 📌 La caja es de un elemento a elección y cada carta se sortea por separado entre las 20 del banco, así que puede salir repetida. 📌 Precios: 100, 180 y 250 monedas.
-- **R-29 Monedas.** Como el original (D-23): 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Se cobran al final y se conserva lo de las rondas superadas aunque se pierda después; la ronda en la que caes no paga. Con los 9 logros completos, las monedas se duplican (hasta 840).
+- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros.
 - **R-30 Inicio.** Inventario inicial: 1 carta de 9 por elemento (la categoría más baja) (D-24). Al entrar por primera vez, el jugador elige además su **carta de camino** (D-25). 📌 Se elige entre tres cartas de 12, una por elemento, del banco (cuentan dentro de las 20). La elección es permanente y define el título ("Camino del Fuego"), el color y emblema del perfil y, en v2, el ninja que controla por defecto.
 - **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea.
 - **R-32 Persistencia.** Colección, monedas y camino se guardan en el navegador hasta que existan cuentas (v2). Borrar los datos del navegador reinicia el progreso.
@@ -1049,6 +1055,8 @@ Simulación con el bot en habilidad 0,6 ("juego flojo"), modelo de reserva fiel 
 | 8 cartas al azar del banco | 99,6 % | 92 % | 3,8 |
 | Las 20 (colección completa) | 99,6 % | 94 % | 3,8 |
 | Solo las 7 más altas (11 y 12) | 100 % | 97 % | 3,7 |
+
+Esta tabla se reproduce con `pnpm sim -- --table`. `docs/balance-report.md` la compara con una medición de 2.000 partidas por celda.
 
 **Lectura.**
 - El jugador nuevo vive una etapa de aprendiz: gana más de la mitad en Clásica y los combos son raros. Las primeras cajas "desbloquean la magia": los combos pasan de 1 a 3,4 por partida.
@@ -1099,7 +1107,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 | `burn` | 3 de daño × 3 turnos | Wiki y reimplementación | |
 | `reviveHp` | 1 | Reimplementación | 🧪 |
 | `bonusTurnLimit` | 13 turnos (Clásica) y 18 (Tormenta) para superar las rondas 1 a 3 | Simulación de 2.000 partidas por configuración (M4) | ✅ Ver reporte de balance |
-| `difficulty.storm` | 2 a 4 gólems (bonus 5), vida ×1,4, rematan al más débil | Propuesta calibrada con simulación (D-13) | ✅ |
+| `difficulty.storm` | 2 a 4 gólems (bonus 5), vida ×1,4 redondeada (D-33), rematan al más débil | Propuesta calibrada con simulación (D-13) | ✅ |
 | `rocks` | (2,0) (6,0) (2,4) (6,4) | Reimplementación | Por mapa |
 | `spawn.ninjas` | x = 0; y ∈ {0, 2, 4} al azar | Reimplementación | |
 | `spawn.enemies` | x ∈ {7, 8}; y al azar | Reimplementación | |

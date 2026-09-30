@@ -171,8 +171,8 @@ export function HelpModal() {
       <h3>Monedas, cajas y colección</h3>
       <ul>
         <li>
-          Cada ronda superada paga monedas: 60, 120 y 120, más 120 si ganas el bonus. Se cobran aunque después pierdas.
-          Con los 9 logros, las monedas se duplican.
+          Cada ronda superada paga al instante: 60, 120 y 120, más 120 si ganas el bonus. Lo cobrado no se pierde aunque
+          después caigas o salgas. Con los 9 logros, las monedas se duplican.
         </li>
         <li>
           Con monedas compras cajas de 1, 2 o 3 cartas del elemento que elijas. Los números altos son menos comunes.

@@ -1,9 +1,0 @@
-{
-  // Worker de solo assets estáticos: publica el build de Vite.
-  "name": "ventisca",
-  "compatibility_date": "2026-09-01",
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
-}

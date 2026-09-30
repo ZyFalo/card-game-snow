@@ -4,10 +4,12 @@ import {
   BALANCE,
   cardTiles,
   createMatch,
+  type EnemyKind,
   type GameEvent,
   healTargets,
   key,
   moveOptions,
+  resolutionOrder,
   resolveTurn,
   reviveTargets,
   sanitizePlans,
@@ -174,6 +176,51 @@ describe('Acciones básicas', () => {
     // Fuego derrota al enemigo; Agua y Nieve pierden su acción (R-06).
     expect(attacks).toHaveLength(1);
     expect(attacks[0]).toMatchObject({ sourceId: 'fire' });
+  });
+});
+
+describe('Orden de resolución que ve el jugador (R-11, D-32)', () => {
+  it('R-11: carta de Brasa y ataque de Marea: Marea actúa 1.ª y Brasa 2.ª', () => {
+    const s = blank();
+    ninja(s, 'fire').hand = [{ id: 'f', element: 'fire', value: 10 }];
+    const order = resolutionOrder(s, [
+      { ninjaId: 'fire', action: { type: 'card', cardId: 'f', at: { x: 1, y: 1 } } },
+      { ninjaId: 'water', action: { type: 'attack', targetId: 'e1' } },
+    ]);
+    expect(order).toEqual({ water: 1, fire: 2 });
+  });
+
+  it('R-11: tres ataques se numeran 1, 2 y 3 en orden Fuego, Agua, Nieve', () => {
+    const s = blank();
+    const attack = { type: 'attack', targetId: 'e1' } as const;
+    const order = resolutionOrder(s, [
+      { ninjaId: 'snow', action: attack },
+      { ninjaId: 'water', action: attack },
+      { ninjaId: 'fire', action: attack },
+    ]);
+    expect(order).toEqual({ fire: 1, water: 2, snow: 3 });
+  });
+
+  it('R-11: revivir cuenta como acción básica y va antes que las cartas', () => {
+    const s = blank();
+    place(s, 'water', 0, 2, { hp: 0, everKo: true });
+    ninja(s, 'fire').hand = [{ id: 'f', element: 'fire', value: 10 }];
+    const order = resolutionOrder(s, [
+      { ninjaId: 'fire', action: { type: 'card', cardId: 'f', at: { x: 1, y: 1 } } },
+      { ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } },
+    ]);
+    expect(order).toEqual({ snow: 1, fire: 2 });
+  });
+
+  it('D-32: un ninja sin acción o caído no lleva número', () => {
+    const s = blank();
+    place(s, 'snow', 0, 4, { hp: 0, everKo: true });
+    const order = resolutionOrder(s, [
+      { ninjaId: 'fire', moveTo: { x: 1, y: 0 } },
+      { ninjaId: 'water', action: { type: 'attack', targetId: 'e1' } },
+      { ninjaId: 'snow', action: { type: 'attack', targetId: 'e1' } },
+    ]);
+    expect(order).toEqual({ water: 1 });
   });
 });
 
@@ -412,6 +459,15 @@ describe('Reglas técnicas', () => {
     const r = resolveTurn(s, [{ ninjaId: 'water', action: { type: 'attack', targetId: e.id } }]);
     for (const ev of r.events) if (ev.t === 'damage') expect(Number.isInteger(ev.amount)).toBe(true);
     for (const n of r.state.ninjas) expect(Number.isInteger(n.hp)).toBe(true);
+  });
+
+  it('R-24 en Tormenta la vida ×1,4 de los gólems se redondea al entero más cercano (D-33)', () => {
+    // 45 × 1,4 da 62,999… en coma flotante: truncar dejaba al artillero con 62 en vez de 63.
+    const seen: Partial<Record<EnemyKind, number>> = {};
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const e of createMatch({ seed, difficulty: 'storm' }).state.enemies) seen[e.kind] = e.maxHp;
+    }
+    expect(seen).toEqual({ sniper: 42, artillery: 63, colossus: 84 });
   });
 
   it('resolveTurn no muta el estado de entrada', () => {

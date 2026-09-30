@@ -1,33 +1,8 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { phase, startMatch, type TestWindow } from './helpers';
 
 /* Casilla del tablero -> coordenadas de página con el escenario a 1280×720 (escala 1). */
 const tile = (x: number, y: number) => ({ x: 240 + 100 * x, y: 144 + 84 * y });
-
-interface TestState {
-  phase: string;
-  screen: string;
-  active: string | null;
-  plans: Record<string, unknown>;
-  match: { ninjas: { id: string; pos: { x: number; y: number } }[] };
-}
-type TestWindow = { __ventisca: { getState(): TestState } };
-
-const phase = (page: Page) =>
-  page.evaluate(
-    () => (window as unknown as { __ventisca: { getState(): { phase: string } } }).__ventisca.getState().phase,
-  );
-
-async function startMatch(page: Page, speed = 0.3) {
-  await page.goto(`/?speed=${speed}`);
-  await page.getByRole('button', { name: 'Jugar', exact: true }).click();
-  // Primera entrada (R-30): se elige el camino.
-  await expect(page.getByRole('heading', { name: 'Elige tu camino' })).toBeVisible();
-  await page.getByRole('button', { name: 'Camino del Fuego' }).click();
-  await page.getByRole('button', { name: 'Elegir el Camino del Fuego' }).click();
-  await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
-  await page.getByRole('button', { name: 'Comenzar partida' }).click();
-  await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');
-}
 
 test('menú, planificación y un turno completo sin errores', async ({ page }) => {
   const errors: string[] = [];

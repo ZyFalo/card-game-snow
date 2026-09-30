@@ -15,7 +15,7 @@ function RoundBanner({ o }: { o: Extract<NonNullable<Overlay>, { kind: 'round' }
   let detail: string;
   if (o.round === 'bonus') detail = 'Última oleada. Pase lo que pase, la victoria ya es suya.';
   else if (o.round === 1) detail = BONUS_TEXT[o.condition](o.turnLimit);
-  else if (o.condition === 'turnLimit') detail = `Van ${o.turn} turnos. El bonus pide ${o.turnLimit} o menos.`;
+  else if (o.condition === 'turnLimit') detail = ES.turnLimitProgress(o.turn, o.turnLimit);
   else detail = BONUS_TEXT[o.condition](o.turnLimit);
   return (
     <div className="overlay">

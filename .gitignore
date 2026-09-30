@@ -4,6 +4,5 @@ dist-single/
 coverage/
 test-results/
 playwright-report/
-.wrangler/
 *.log
 .DS_Store

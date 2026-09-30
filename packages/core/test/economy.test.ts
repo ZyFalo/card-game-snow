@@ -6,6 +6,7 @@ import {
   bankFor,
   CAMINO_CARDS,
   coinsForMatch,
+  coinsForRound,
   collectionSummary,
   createMatch,
   ELEMENTS,
@@ -14,6 +15,7 @@ import {
   openBox,
   type Plan,
   planTeam,
+  REPLAY_VERSION,
   reservesFor,
   resolveTurn,
   rngFrom,
@@ -71,6 +73,13 @@ describe('§18 Progresión: monedas, cajas y colección', () => {
     expect(doubled.lines.map((l) => l.round)).toEqual([1, 2, 3, 'bonus']);
   });
 
+  it('R-29 (D-31): cada ronda superada paga al instante lo suyo, el doble con los 9 logros', () => {
+    expect([1, 2, 3, 'bonus'].map((r) => coinsForRound(r as 1 | 2 | 3 | 'bonus', false))).toEqual([60, 120, 120, 120]);
+    expect(coinsForRound(2, true)).toBe(240);
+    // La suma de los pagos por ronda es lo que paga la partida entera.
+    expect(coinsForMatch(ended({ status: 'victory', bonusOutcome: 'won' }), false).total).toBe(60 + 120 + 120 + 120);
+  });
+
   it('R-29: las monedas dobles exigen los 9 logros', () => {
     expect(hasDoubleCoins([...ACHIEVEMENT_IDS])).toBe(true);
     expect(hasDoubleCoins(ACHIEVEMENT_IDS.slice(1))).toBe(false);
@@ -111,7 +120,7 @@ describe('§18 Progresión: monedas, cajas y colección', () => {
       state = r.state;
     }
     const replay = runReplay({
-      version: 1,
+      version: REPLAY_VERSION,
       seed: 99,
       mapId: first.mapId,
       difficulty: first.difficulty,

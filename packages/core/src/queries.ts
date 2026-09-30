@@ -143,6 +143,19 @@ export function sanitizePlans(s: MatchState, plans: readonly Plan[]): Plan[] {
 export const ninjaOrder = (id: ElementKind): number => ELEMENTS.indexOf(id);
 
 /**
+ * R-11 y D-32: el orden en que actuará cada ninja según los planes del momento. Primero
+ * las acciones básicas (atacar, curar, revivir) y después las cartas, ambas en orden
+ * Fuego, Agua, Nieve. Los movimientos son simultáneos: sin acción, o caído, no hay número.
+ */
+export function resolutionOrder(s: MatchState, plans: readonly Plan[]): Partial<Record<ElementKind, number>> {
+  const actionOf = (id: ElementKind) => plans.find((p) => p.ninjaId === id)?.action;
+  const acting = ELEMENTS.filter((id) => (getNinja(s, id)?.hp ?? 0) > 0 && actionOf(id));
+  const basic = acting.filter((id) => actionOf(id)?.type !== 'card');
+  const cards = acting.filter((id) => actionOf(id)?.type === 'card');
+  return Object.fromEntries([...basic, ...cards].map((id, i) => [id, i + 1]));
+}
+
+/**
  * Casillas que un enemigo puede golpear en la próxima fase enemiga: todo lo que
  * queda a su alcance desde cualquier casilla a la que pueda llegar (R-05, R-12).
  */

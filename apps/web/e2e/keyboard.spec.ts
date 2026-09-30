@@ -1,0 +1,82 @@
+import { expect, type Page, test } from '@playwright/test';
+import { phase, startMatch, type TestWindow } from './helpers';
+
+type LogWindow = TestWindow & { __confirms: number[] };
+
+const boosting = (page: Page) => page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().boosting);
+
+/** Cantidad de ninjas con plan en cada turno confirmado desde que se llamó a `watchConfirms`. */
+const confirms = (page: Page) => page.evaluate(() => (window as unknown as LogWindow).__confirms);
+
+function watchConfirms(page: Page) {
+  return page.evaluate(() => {
+    const w = window as unknown as LogWindow;
+    w.__confirms = [];
+    w.__ventisca.subscribe((s, prev) => {
+      if (prev.phase === 'planning' && s.phase === 'resolving') w.__confirms.push(Object.keys(prev.plans).length);
+    });
+  });
+}
+
+test('mantener Espacio acelera la resolución, pero no confirma el turno siguiente hasta soltarlo', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await startMatch(page);
+  await watchConfirms(page);
+  for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+
+  // Espacio confirma y se queda pulsado: cada keydown siguiente llega con repeat = true,
+  // como la autorrepetición del teclado.
+  await page.keyboard.down('Space');
+  await expect.poll(() => phase(page)).toBe('resolving');
+  let sawBoost = false;
+  const deadline = Date.now() + 30_000;
+  while ((await phase(page)) === 'resolving' && Date.now() < deadline) {
+    await page.keyboard.down('Space');
+    sawBoost ||= await boosting(page);
+    await page.waitForTimeout(40);
+  }
+  // Sigue pulsado ya en la planificación del turno siguiente.
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(40);
+  }
+
+  expect(sawBoost).toBe(true);
+  expect(await phase(page)).toBe('planning');
+  expect(await confirms(page)).toEqual([3]);
+
+  // Al soltarlo, una pulsación nueva sí confirma.
+  await page.keyboard.up('Space');
+  await page.keyboard.press('Space');
+  await expect.poll(() => phase(page)).toBe('resolving');
+  expect(await confirms(page)).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
+test('las teclas de planificación no se repiten al mantenerlas', async ({ page }) => {
+  await startMatch(page);
+  await watchConfirms(page);
+  const active = () => page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().active);
+  const first = await active();
+
+  // Mantener Tab cambia de ninja una sola vez.
+  await page.keyboard.down('Tab');
+  const second = await active();
+  for (let i = 0; i < 5; i++) await page.keyboard.down('Tab');
+  await page.keyboard.up('Tab');
+  expect(second).not.toBe(first);
+  expect(await active()).toBe(second);
+
+  // Mantener Enter confirma una sola vez.
+  await page.keyboard.down('Enter');
+  await expect.poll(() => phase(page)).toBe('resolving');
+  await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.down('Enter');
+    await page.waitForTimeout(40);
+  }
+  await page.keyboard.up('Enter');
+  expect(await phase(page)).toBe('planning');
+  expect(await confirms(page)).toHaveLength(1);
+});

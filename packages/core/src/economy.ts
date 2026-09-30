@@ -33,13 +33,19 @@ export function hasDoubleCoins(unlocked: readonly AchievementId[]): boolean {
   return BALANCE.economy.doubleCoinsWithAllAchievements && ACHIEVEMENT_IDS.every((id) => unlocked.includes(id));
 }
 
-/** Monedas que paga una partida terminada (R-29): 60 / 120 / 120 por ronda y 120 por el bonus. */
-export function coinsForMatch(s: MatchState, doubled: boolean): CoinReward {
+/**
+ * Monedas de una ronda superada (R-29): 60 / 120 / 120 y 120 por el bonus, el doble con
+ * los 9 logros. Se acreditan al instante, en el momento de superar la ronda (D-31).
+ */
+export function coinsForRound(round: ClearedRound, doubled: boolean): number {
   const eco = BALANCE.economy;
-  const lines = roundsCleared(s).map((round) => ({
-    round,
-    coins: round === 'bonus' ? eco.bonusCoins : (eco.coinsPerRound[round - 1] ?? 0),
-  }));
+  const base = round === 'bonus' ? eco.bonusCoins : (eco.coinsPerRound[round - 1] ?? 0);
+  return doubled ? base * 2 : base;
+}
+
+/** Monedas que paga una partida terminada (R-29): la suma de sus rondas superadas. */
+export function coinsForMatch(s: MatchState, doubled: boolean): CoinReward {
+  const lines = roundsCleared(s).map((round) => ({ round, coins: coinsForRound(round, false) }));
   const base = lines.reduce((sum, l) => sum + l.coins, 0);
   return { lines, base, doubled, total: doubled ? base * 2 : base };
 }

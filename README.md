@@ -7,7 +7,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 > ¿Continúas el desarrollo con Claude Code? Empieza por `docs/traspaso.md`.
 
 - En línea: la página publicada que comparta el equipo.
-- Local: `pnpm install` y luego `pnpm dev`, y abre http://localhost:5173.
+- Local: `pnpm install` y luego `pnpm dev`, y abre http://localhost:5173. Si `pnpm` falla con "Cannot find module …/bin/pnpm.cjs", tu Corepack es anterior a pnpm 12: actualízalo con `npm i -g corepack@latest` (o usa `npx corepack@latest pnpm dev`).
 - Un solo archivo: `pnpm build:single` genera `apps/web/dist-single/index.html`, que sirve para itch.io o para compartir.
 
 **Cómo se juega:** en cada turno planeas a los tres ninjas (movimiento y acción). Confirmas y se resuelve en orden: Fuego, Agua, Nieve y después los gólems. Llena el medidor para ganar cartas. Si dos o tres ninjas juegan carta en el mismo turno, desatan un combo. Supera tres rondas; si cumples la condición, se abre una ronda bonus.
@@ -16,13 +16,13 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 
 **Controles:** clic para seleccionar, moverse y elegir objetivos · clic derecho o Esc para deshacer · Tab para cambiar de ninja · 1 a 4 para las cartas · Espacio para confirmar (y mantenerlo para acelerar la resolución) · S para sugerir una jugada · P para pausar.
 
-## Estado (v0.3)
+## Estado (v0.9.3)
 
 - Jugable de punta a punta: 3 rondas + bonus, cartas, combos, caídas y reanimación, 2 dificultades, 3 ritmos de reloj, consejos, logros, pausa y ayuda.
 - Progresión: carta de camino, colección de 60 cartas, tienda de cajas y monedas por ronda (PRD §18).
 - Animación: ninjas y gólems articulados por piezas, con estados de ataque, golpe, caída, reanimación, aturdido, aparición y celebración, más efectos de impacto, cinemáticas de carta, efectos de estado, coreografía medida con metas de ritmo e interfaz animada (PRD §10.2).
-- 43 pruebas unitarias, 2 pruebas e2e en Chromium y 8.000 partidas simuladas (`docs/balance-report.md`).
-- Pendiente: playtest con personas, QA en Firefox y Safari, táctil, despliegue en Cloudflare (requiere cuenta), multijugador (v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
+- 64 pruebas unitarias y 10 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
+- Pendiente: playtest con personas, QA manual en Firefox y Safari (las e2e de v0.9.1 ya pasan en WebKit y Firefox), táctil, despliegue (Pendiente: Railway, hito M7), multijugador (v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
 
 ## Stack
 
@@ -36,7 +36,9 @@ docs            PRD, ADRs, reporte de balance y bitácora de IA
 
 ## Despliegue
 
-`apps/web/wrangler.jsonc` publica `dist/` como Worker de assets estáticos en Cloudflare. El workflow `.github/workflows/deploy.yml` lo hace en cada push a `main` si configuras los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+Pendiente: Railway, hito M7.
+
+El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e de humo en cada push.
 
 ## Aviso
 

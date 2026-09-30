@@ -20,6 +20,7 @@ export type Screen = 'title' | 'camino' | 'team' | 'collection' | 'loading' | 'b
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
 
 export type Overlay =
+  /** `turn`: el turno que se planificará al terminar el cartel (R-21). */
   | { kind: 'round'; round: Round; condition: BonusCondition; turnLimit: number; turn: number; key: number; ms: number }
   | { kind: 'combo'; elements: ElementKind[]; key: number; ms: number }
   | { kind: 'bonus'; met: boolean; condition: BonusCondition; key: number; ms: number }

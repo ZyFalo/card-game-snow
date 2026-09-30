@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.9.4 |
+| Versión | 0.9.5 |
 | Última actualización | 29 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -29,14 +29,14 @@
 - [x] Animación fase 3 (§10.2): coreografía medida con metas de ritmo, animaciones rápidas y aceleración manteniendo Espacio
 - [x] Animación fase 4 (§10.2): cartas que vuelan a la mano, medidor y vida animados, transiciones entre pantallas y resultados que cuentan. Plan de animación completo
 
-### Estado de implementación (v0.9.3)
+### Estado de implementación (v0.9.5)
 
 | Área | Estado | Evidencia |
 |---|---|---|
-| Motor de reglas R-01 a R-24 | ✅ | 35 pruebas de reglas en `packages/core/test/rules.test.ts`, nombradas por regla (incluye el orden de resolución de D-32). R-04, R-10 y R-14 aún no tienen prueba propia |
+| Motor de reglas R-01 a R-24 | ✅ | 44 pruebas de reglas en `packages/core/test/rules.test.ts`, nombradas por regla (incluye el orden de resolución de D-32). De R-01 a R-30, todas tienen prueba propia; R-31 y R-32 esperan a v2 |
 | Estado presentado (animación evento por evento) | ✅ | Prueba que lo compara con el motor en partidas completas. e2e: una animación interrumpida no aplica eventos a la partida nueva |
 | Bot y simulador | ✅ | `pnpm sim` mide con la colección real (`--collection`) y reproduce la tabla del §18.3 (`--table`). Reporte en `docs/balance-report.md` |
-| Cliente web (escena, HUD, pantallas, logros, pausa, ayuda) | ✅ | 10 pruebas e2e de Playwright: humo, partida completa, tienda, teclado (mantener Espacio o Tab no repite acciones), reinicio a mitad de una animación y cobro por ronda de D-31 (salir tras la ronda 1, abandonar en la 2 y salir durante la celebración). Las 3 de v0.9.1 pasan también en WebKit y Firefox |
+| Cliente web (escena, HUD, pantallas, logros, pausa, ayuda) | ✅ | 12 pruebas e2e de Playwright: humo, partida completa, tienda, teclado (mantener Espacio o Tab no repite acciones; deshacer no deja planes vacíos), reinicio a mitad de una animación, cobro por ronda de D-31 (salir tras la ronda 1, abandonar en la 2 y salir durante la celebración) y aviso sin WebGL. Los ajustes guardados se validan al cargarlos. Las 3 de v0.9.1 pasan también en WebKit y Firefox |
 | Arte y audio originales | ✅ | SVG y WebAudio generados en código (ADR 0003) |
 | Build en un solo HTML | ✅ | 1,7 MB (478 KB gzip), sin peticiones salvo Google Fonts |
 | CI y despliegue | 🟡 | CI en verde en GitHub Actions (github.com/ZyFalo/card-game-snow). Despliegue pendiente: Railway, hito M7 |
@@ -985,6 +985,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.9.5 | 2026-09-29 | Pendientes de v1 que no dependen de v2. Deshacer ya no deja planes vacíos que bloqueaban la pausa. Los ajustes guardados se validan campo por campo. Sin WebGL, un mensaje explica por qué no se puede jugar. R-04, R-10 y R-14 tienen pruebas propias. Los textos de la interfaz pasan a `i18n/es.ts`, salvo la de progresión (`Progression.tsx` y `CardFace.tsx`), que cambia en v2. Biome usa `preset` en lugar de `recommended` |
 | 0.9.4 | 2026-09-29 | Cloudflare sale del plan: se quitan `deploy.yml`, `wrangler.jsonc` y el script `deploy:cloudflare`. El despliegue queda pendiente en Railway (hito M7). Se borra la copia de `PRD.md` de la raíz: la única fuente es `docs/PRD.md`. Las repeticiones pasan a la versión 2 por D-33: `runReplay` rechaza las de otra versión con un mensaje claro |
 | 0.9.3 | 2026-09-29 | Decisiones aprobadas: D-31 (cobro al instante por ronda; resultados y logros en el evento de fin de partida; enmienda R-29) y D-32 (los números de orden siguen el orden real de R-11; nuevo punto 6 del §9.3). Implementadas con sus pruebas, junto con el texto del bonus contra el reloj de R-21: "Turno t de N · quedan N − t + 1" en la ficha y en el cartel de ronda |
 | 0.9.2 | 2026-09-29 | Primer commit en GitHub (se recuperaron `.gitignore` y los workflows, que se perdieron al copiar el zip) y CI en verde. Correcciones: mantener Espacio ya no confirma turnos vacíos; reiniciar o salir ya no deja efectos vivos; una animación interrumpida ya no aplica eventos a la partida nueva. `pnpm sim` mide con la colección real y el reporte de balance se rehízo con ella. ADR 0003 queda reemplazado en su parte de animación por D-27. R-24 y D-33: en Tormenta, la vida de los gólems se redondea al entero más cercano (Granizo pasa de 62 a 63). Las repeticiones de Tormenta grabadas antes, en las que aparece un Granizo, ya no reproducen el mismo hash. En 2.000 partidas del bot cambian 1.952 (todas las que tienen un Granizo) y el resultado cambia en 60. Las de Clásica no cambian. Ritmo vuelto a medir: Clásica igual y Tormenta en 3,5 s / 6,7 s / 102 s por partida, dentro de las metas |

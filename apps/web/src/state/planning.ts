@@ -1,6 +1,7 @@
 import {
   attackTargets,
   cardTiles,
+  difficultyConfig,
   ELEMENTS,
   type ElementKind,
   type Enemy,
@@ -17,7 +18,7 @@ import {
   reviveTargets,
   type Vec,
 } from '@ventisca/core';
-import { ENEMY_TEXT, NINJA_TEXT } from '../i18n/es';
+import { ENEMY_TEXT, ES, NINJA_TEXT } from '../i18n/es';
 import type { AppState } from './store';
 
 export const plansArray = (plans: AppState['plans']): Plan[] =>
@@ -149,4 +150,26 @@ export function contextualTip(s: AppState): string | null {
     return `Tab pasa al siguiente ninja. Falta planear a ${pending.map((id) => NINJA_TEXT[id].name).join(' y ')}.`;
   }
   return 'Todo listo. Confirma el turno con Espacio.';
+}
+
+/** Progreso de la condición del bonus (R-21) para la ficha de ronda del HUD. */
+export function bonusProgress(v: MatchState): { text: string; cls: string } {
+  if (v.round === 'bonus') return { text: 'Desbloqueado', cls: 'ok' };
+  switch (v.bonusCondition) {
+    case 'noKo': {
+      const ok = !v.ninjas.some((n) => n.everKo);
+      return { text: ok ? 'Nadie ha caído' : 'Alguien cayó', cls: ok ? 'ok' : 'bad' };
+    }
+    case 'fullHealth': {
+      const full = v.ninjas.every((n) => n.hp === n.maxHp);
+      return { text: full ? 'Todos a tope' : 'Hay heridos', cls: full ? 'ok' : 'bad' };
+    }
+    case 'turnLimit': {
+      const n = difficultyConfig(v.difficulty).bonusTurnLimit;
+      // El turno que se planifica (o se resuelve) es el siguiente a los ya resueltos.
+      const t = v.turn + 1;
+      const left = n - t + 1;
+      return { text: ES.turnLimitProgress(t, n), cls: left > 2 ? 'ok' : left > 0 ? '' : 'bad' };
+    }
+  }
 }

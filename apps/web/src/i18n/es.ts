@@ -48,7 +48,9 @@ export const ES = {
   round: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r} de 3`),
   roundBanner: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r}`),
   bonusLocked: 'Bonus',
-  turnsLeft: (n: number) => (n === 1 ? 'queda 1 turno' : `quedan ${Math.max(0, n)} turnos`),
+  /** Bonus contra el reloj (R-21): el turno t de un límite de n y los que quedan contando ese. */
+  turnLimitProgress: (t: number, n: number) =>
+    t <= n ? `Turno ${t} de ${n} · quedan ${n - t + 1}` : `Turno ${t} de ${n} · límite superado`,
   combo: '¡Combo!',
   victory: 'Victoria',
   defeat: 'Derrota',

@@ -1,10 +1,10 @@
-import { difficultyConfig, type ElementKind, type MatchState, type Ninja, resolutionOrder } from '@ventisca/core';
+import { type ElementKind, type Ninja, resolutionOrder } from '@ventisca/core';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
 import { BONUS_SHORT, ES, NINJA_TEXT } from '../i18n/es';
 import { confirmTurn, selectCard, selectNinja, setBoost, setHelp, suggest, togglePause } from '../state/actions';
-import { contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
+import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
 import { ElementGlyph, Icon } from './common';
 
@@ -146,24 +146,6 @@ function TurnControls() {
       </button>
     </div>
   );
-}
-
-function bonusProgress(v: MatchState): { text: string; cls: string } {
-  if (v.round === 'bonus') return { text: 'Desbloqueado', cls: 'ok' };
-  switch (v.bonusCondition) {
-    case 'noKo': {
-      const ok = !v.ninjas.some((n) => n.everKo);
-      return { text: ok ? 'Nadie ha caído' : 'Alguien cayó', cls: ok ? 'ok' : 'bad' };
-    }
-    case 'fullHealth': {
-      const full = v.ninjas.every((n) => n.hp === n.maxHp);
-      return { text: full ? 'Todos a tope' : 'Hay heridos', cls: full ? 'ok' : 'bad' };
-    }
-    case 'turnLimit': {
-      const left = difficultyConfig(v.difficulty).bonusTurnLimit - v.turn;
-      return { text: left > 0 ? ES.turnsLeft(left) : 'Sin turnos', cls: left > 2 ? 'ok' : left > 0 ? '' : 'bad' };
-    }
-  }
 }
 
 function RoundInfo() {

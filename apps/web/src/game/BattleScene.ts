@@ -753,7 +753,8 @@ export class BattleScene extends Phaser.Scene {
             round: e.round,
             condition: view?.bonusCondition ?? 'noKo',
             turnLimit: view ? difficultyConfig(view.difficulty).bonusTurnLimit : 0,
-            turn: view?.turn ?? 0,
+            // Turno que se va a planificar al terminar el cartel (el motor ya resolvió el actual).
+            turn: (store.getState().match?.turn ?? 0) + 1,
             key: 0,
             ms: 0,
           },

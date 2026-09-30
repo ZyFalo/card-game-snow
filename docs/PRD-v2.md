@@ -4,7 +4,7 @@ Versión 1.4: aprobada para implementar · 30 de septiembre de 2026 · William A
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, y la 1.4 propone D-59 con las cuentas del servidor.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, y la 1.4 agrega D-59, aprobada con las cuentas del servidor.
 
 ## Resumen y alcance
 
@@ -18,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, y D-59, que se propuso con las cuentas del servidor y espera aprobación. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, y D-59, aprobada con las cuentas del servidor. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-56 | Borrar la cuenta borra la fila del usuario junto con sus sesiones, sus códigos y su progreso: perfil, colección, libro de monedas, logros y estadísticas. Su lugar en `match_players` queda anónimo, como el del bot. | Tomada |
 | D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en todo lo que pasa por el correo, en lugar de enlaces. Contraseña de 8 a 128 caracteres con mayúscula, número y símbolo, más una lista de contraseñas comunes. Cambiar la contraseña con la sesión iniciada solo pide la actual (R-43 a R-49). | Aprobada |
 | D-58 | El dominio del juego va en "Solo DNS", sin el proxy de Cloudflare: el CNAME apunta directo a Railway, que sirve el certificado. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad. `pnpm check:prod` lo comprueba. | Tomada |
-| D-59 | Las cuentas no revelan qué correos están registrados. Registrarse y pedir un código responden igual exista o no la cuenta; si ya existía, su dueño recibe un aviso por correo. Iniciar sesión con un correo sin cuenta o con la contraseña equivocada da el mismo error y tarda lo mismo. El nombre ocupado se revisa antes que el correo, para no delatarlo. | Propuesta |
+| D-59 | Las cuentas no revelan qué correos están registrados. Registrarse y pedir un código responden igual exista o no la cuenta; si ya existía, su dueño recibe un aviso por correo. Iniciar sesión con un correo sin cuenta o con la contraseña equivocada da el mismo error y tarda lo mismo. El nombre ocupado se revisa antes que el correo, para no delatarlo. Rige también para los límites de intentos y la recuperación de la contraseña. | Aprobada |
 
 ## Experiencia del jugador
 

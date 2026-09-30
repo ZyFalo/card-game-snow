@@ -1,10 +1,10 @@
-import { difficultyConfig, type ElementKind, type MatchState, type Ninja } from '@ventisca/core';
+import { difficultyConfig, type ElementKind, type MatchState, type Ninja, resolutionOrder } from '@ventisca/core';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
 import { BONUS_SHORT, ES, NINJA_TEXT } from '../i18n/es';
 import { confirmTurn, selectCard, selectNinja, setBoost, setHelp, suggest, togglePause } from '../state/actions';
-import { contextualTip, planLabel, planStatus } from '../state/planning';
+import { contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
 import { ElementGlyph, Icon } from './common';
 
@@ -225,7 +225,7 @@ function Notice() {
   );
 }
 
-function NinjaPanel({ n, order }: { n: Ninja; order: number }) {
+function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
   const plan = useApp((s) => s.plans[n.id]);
   const match = useApp((s) => s.match);
   const isActive = useApp((s) => s.active === n.id);
@@ -300,9 +300,11 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number }) {
       aria-label={`${t.name}, ${n.hp} de ${n.maxHp} de vida. ${label}`}
     >
       <span ref={inner} className="np-inner">
-        <span className="np-order" title="Orden de resolución">
-          {order}
-        </span>
+        {order ? (
+          <span className="np-order" title="Orden de resolución">
+            {order}
+          </span>
+        ) : null}
         <div className="np-top">
           <img src={art.bust(n.id)} alt="" />
           <div>
@@ -353,11 +355,15 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number }) {
 
 function NinjaPanels() {
   const ninjas = useApp((s) => s.view?.ninjas);
+  const match = useApp((s) => s.match);
+  const plans = useApp((s) => s.plans);
   if (!ninjas) return null;
+  // D-32: el orden real de R-11 según los planes del momento; sin acción no hay número.
+  const order = match ? resolutionOrder(match, plansArray(plans)) : {};
   return (
     <div className="panels">
-      {ninjas.map((n, i) => (
-        <NinjaPanel key={n.id} n={n} order={i + 1} />
+      {ninjas.map((n) => (
+        <NinjaPanel key={n.id} n={n} order={order[n.id]} />
       ))}
     </div>
   );

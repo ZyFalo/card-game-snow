@@ -11,6 +11,7 @@ import {
   key,
   type MatchState,
   moveOptions,
+  resolutionOrder,
   type Vec,
 } from '@ventisca/core';
 import * as Phaser from 'phaser';
@@ -417,6 +418,8 @@ export class BattleScene extends Phaser.Scene {
 
     // Planes de todos los ninjas: fantasmas, caminos, objetivos y orden de resolución.
     const plans = plansArray(s.plans);
+    // D-32: cada fantasma muestra el orden real de R-11; sin acción no hay número.
+    const order = resolutionOrder(m, plans);
     for (const plan of plans) {
       const n = getNinja(m, plan.ninjaId);
       if (!n || n.hp <= 0) continue;
@@ -478,7 +481,8 @@ export class BattleScene extends Phaser.Scene {
         this.badge({ x: cc.x, y: cc.y }, `${card?.value ?? ''}`, hex(c.dark));
       }
       const head = footPoint(origin);
-      this.badge({ x: head.x - 30, y: head.y - UNIT_SIZE.ninja.h + 6 }, `${ELEMENTS.indexOf(n.id) + 1}`, col);
+      const num = order[n.id];
+      if (num) this.badge({ x: head.x - 30, y: head.y - UNIT_SIZE.ninja.h + 6 }, `${num}`, col);
     }
 
     if (s.hover) {

@@ -204,6 +204,12 @@ test('el aviso de privacidad se lee desde la portada y desde el registro', async
   await page.getByRole('button', { name: 'Aviso de privacidad' }).click();
   await expect(page.getByRole('heading', { name: 'Aviso de privacidad de Ventisca' })).toBeVisible();
   await expect(page.getByText('williamandres1603@gmail.com').first()).toBeVisible();
+  // R-50: el código para deshacer un cambio de correo vale 7 días, no 15 minutos como los demás.
+  await expect(
+    page.getByText(
+      'Mientras tengas la cuenta. Las sesiones vencen a los 30 días, y los códigos que enviamos por correo, a los 15 minutos, salvo el que sirve para deshacer un cambio de correo, que vale 7 días.',
+    ),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Volver' }).click();
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();

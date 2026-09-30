@@ -433,8 +433,8 @@ export const ACCOUNT_ERRORS = {
 } as const;
 
 /*
- * Aviso de privacidad, aprobado por el dueño de producto el 2026-09-30. La frase de Resend se actualizó
- * con la región de envío (São Paulo) y se aprueba en el PR 7.
+ * Aviso de privacidad, aprobado por el dueño de producto el 2026-09-30, con la frase de Resend (envío desde
+ * São Paulo) y la del plazo de los códigos (R-50) aprobadas en la revisión del PR #11.
  */
 export const PRIVACY_NOTICE = {
   title: 'Aviso de privacidad de Ventisca',
@@ -486,7 +486,7 @@ export const PRIVACY_NOTICE = {
     {
       title: 'Cuánto tiempo los guardamos',
       body: [
-        'Mientras tengas la cuenta. Las sesiones vencen a los 30 días, y los códigos que enviamos por correo, a los 15 minutos.',
+        'Mientras tengas la cuenta. Las sesiones vencen a los 30 días, y los códigos que enviamos por correo, a los 15 minutos, salvo el que sirve para deshacer un cambio de correo, que vale 7 días.',
       ],
     },
     {

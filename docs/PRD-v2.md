@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.4: aprobada para implementar · 30 de septiembre de 2026 · William Andres Peña Vargas
+Versión 1.5: aprobada para implementar · 30 de septiembre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, y la 1.4 agrega D-59, aprobada con las cuentas del servidor.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, y la 1.5 registra cómo se envían los correos.
 
 ## Resumen y alcance
 
@@ -108,7 +108,7 @@ Con público abierto, el servidor no confía en nada que llegue del cliente y gu
 | Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. |
 | Abuso | Hasta 5 intentos de inicio de sesión cada 15 min por cuenta y por IP, y hasta 3 correos por hora por dirección. Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
 | Mensajes del juego | Cada mensaje se valida con un esquema (D-53), y el servidor verifica cada plan con el motor antes de aceptarlo. |
-| Correo | Resend, con el dominio wpena.dev verificado mediante registros SPF y DKIM. Remitente no-responder@wpena.dev. |
+| Correo | Resend, con el subdominio ventisca.wpena.dev verificado en la región São Paulo (sa-east-1). Remitente: Ventisca <no-responder@ventisca.wpena.dev>. Sin seguimiento de aperturas ni de clics. Ningún correo lleva texto escrito por quien llena un formulario. |
 | Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil (D-56). |
 
 ### Gestión de la cuenta
@@ -207,7 +207,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 **M7: Cuentas y servidor** (todavía sin multijugador)
 
 - [x] Una imagen de Docker con cliente y servidor, desplegada en Railway con Postgres y servida en ventisca.wpena.dev con HTTPS
-- [ ] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49)
+- [x] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49)
 - [ ] Progreso en la cuenta: carta de camino, monedas, cajas y colección (R-25 a R-32 resueltos en el servidor)
 - [x] Sandbox con el mazo fijo (D-50) y sin progreso
 - [x] `GameHost` asíncrono, con el sandbox funcionando igual que hoy

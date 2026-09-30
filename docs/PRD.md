@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.5 |
+| Versión | 0.10.6 |
 | Última actualización | 30 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -1038,6 +1038,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.6 | 2026-09-30 | Cuentas en el servidor, segunda parte (M7, paso 6): recuperación, cambio de contraseña y de correo, y borrado (R-46 a R-49). Límites de intentos por cuenta y por IP, y tope de correos por dirección, sin delatar qué correos existen (D-59). Turnstile en el registro y correos con Resend. `/api/health` informa el commit desplegado, `pnpm check:prod` lo compara con main y `/api/config` entrega solo valores públicos |
 | 0.10.5 | 2026-09-30 | Cuentas en el servidor, primera parte (M7, paso 5): registro, verificación con código de 6 dígitos, inicio y cierre de sesión, con R-43 a R-45, Argon2id y el filtro de nombres. D-59: las cuentas no revelan qué correos existen. `pnpm check:prod` exige un certificado válido con más de 14 días de vigencia y muestra el emisor solo como dato |
 | 0.10.4 | 2026-09-30 | El juego está desplegado en Railway y se sirve en https://ventisca.wpena.dev (M7, paso 4). `railway.json` fija el build, el comando de arranque, la salud, la región y cuándo se redespliega. Railway espera la CI de main antes de desplegar. D-58: el dominio va en "Solo DNS", sin el proxy de Cloudflare. `pnpm check:prod` comprueba el despliegue |
 | 0.10.3 | 2026-09-30 | Esqueleto del servidor del M7: `apps/server` (Fastify, Postgres con Drizzle y migraciones al arrancar, `/api/health`, el juego servido por el mismo origen y registros sin IPs) y `packages/protocol` (Zod). Imagen de Docker y `compose.yaml` con Postgres para desarrollo; `.env.example` documenta las variables y `.env` queda fuera de git. La CI prueba el servidor contra Postgres y construye y arranca la imagen. `docs/traspaso.md` se reescribe con la puesta en marcha nueva |

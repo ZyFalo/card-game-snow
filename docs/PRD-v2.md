@@ -1,6 +1,6 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.0: aprobada para implementar · 29 de septiembre de 2026 · William Andres Peña Vargas
+Versión 1.1: aprobada para implementar · 29 de septiembre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 
@@ -16,7 +16,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las diecisiete decisiones están cerradas: ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una; D-57, la gestión de la cuenta, se aprobó después. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -37,6 +37,7 @@ Las diecisiete decisiones están cerradas: ocho se tomaron al definir la idea y 
 | D-48 | Recompensas individuales: cada persona cobra sus rondas (D-31) y gana sus logros. Solo cobra una ronda quien estaba conectado al terminarla; el bot no cobra. | Aprobada |
 | D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio. | Aprobada |
 | D-50 | El sandbox usa por ninja el mazo de referencia del balance (8, 9, 10, 10, 11 y 12). El mazo de una cuenta nueva, con un solo 9, apenas permite combos. | Aprobada |
+| D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en todo lo que pasa por el correo, en lugar de enlaces. Contraseña de 8 a 128 caracteres con mayúscula, número y símbolo, más una lista de contraseñas comunes. Cambiar la contraseña con la sesión iniciada solo pide la actual (R-43 a R-49). | Aprobada |
 
 ## Experiencia del jugador
 
@@ -51,7 +52,7 @@ La portada ofrece dos puertas: jugar en el sandbox sin cuenta o entrar al modo e
 **Primera vez en línea**
 
 1. Se registra con correo, contraseña y nombre visible, y acepta el aviso de privacidad.
-2. Recibe un correo de verificación; el enlace activa la cuenta.
+2. Recibe un correo con un código de verificación; al escribirlo, la cuenta queda verificada (R-44).
 3. Elige su carta de camino (D-25) y recibe el mazo inicial (R-30).
 4. Llega al inicio en línea: jugar, colección, tienda y estadísticas.
 
@@ -90,15 +91,29 @@ Con público abierto, el servidor no confía en nada que llegue del cliente y gu
 
 | Tema | Cómo se resuelve |
 | --- | --- |
-| Registro | Correo, contraseña de al menos 10 caracteres y nombre visible de 3 a 16 caracteres, único y con filtro de palabras. Incluye aceptar el aviso de privacidad. No se pide la edad (P-19). |
+| Registro | Correo, contraseña (R-45) y nombre visible de 3 a 16 caracteres, único y con filtro de palabras. Incluye aceptar el aviso de privacidad. No se pide la edad (P-19). |
 | Contraseñas | Se guardan con Argon2id. Nunca se guardan ni se registran en claro. |
-| Verificación | Enlace de un solo uso que vence en 24 h. Sin verificar no se juega en línea. |
-| Recuperación | Enlace de un solo uso por correo que vence en 30 min. Al usarlo se cierran las demás sesiones. |
+| Verificación | Código de 6 dígitos que vence en 15 min (R-43 y R-44). Sin verificar no se juega en línea. |
+| Recuperación | Código de 6 dígitos por correo (R-43 y R-46). Al terminar se cierran todas las sesiones. |
 | Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. |
 | Abuso | Hasta 5 intentos de inicio de sesión cada 15 min por cuenta y por IP, y hasta 3 correos por hora por dirección. Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
 | Mensajes del juego | Cada mensaje se valida con un esquema, y el servidor verifica cada plan con el motor antes de aceptarlo. |
 | Correo | Resend, con el dominio wpena.dev verificado mediante registros SPF y DKIM. Remitente no-responder@wpena.dev. |
 | Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil. |
+
+### Gestión de la cuenta
+
+Todo lo que pasa por el correo usa códigos de 6 dígitos en lugar de enlaces, y cambiar la contraseña con la sesión iniciada no necesita código.
+
+- **R-43 Códigos por correo.** Toda verificación por correo usa un código de 6 dígitos: al registrarse, al recuperar la contraseña y al cambiar el correo. Vence a los 15 min, sirve una sola vez y admite 5 intentos. Pedir uno nuevo invalida el anterior, y solo se puede pedir otro tras 60 s. Se guarda cifrado, nunca en claro, y sigue el límite de 3 correos por hora por dirección.
+- **R-44 Registro.** Correo, contraseña (R-45), nombre visible y aceptación del aviso de privacidad. La cuenta queda verificada al escribir el código (R-43); sin verificar no se juega en línea.
+- **R-45 Contraseña.** De 8 a 128 caracteres, con al menos una mayúscula, un número y un símbolo, es decir, cualquier carácter que no sea letra, número ni espacio. Se permiten espacios, tildes, ñ y emojis, y no se permiten saltos de línea. Se rechazan las contraseñas más comunes y las que contengan el correo o el nombre visible. En JavaScript, con la bandera `u`: `^(?=.*\p{Lu})(?=.*\p{Nd})(?=.*[^\p{L}\p{Nd}\s]).{8,128}$`
+- **R-46 Recuperar la contraseña.** Sin sesión, se pide un código al correo (R-43), se escribe en la página y se pone la contraseña nueva dos veces. Al terminar se cierran todas las sesiones, la persona entra con una sesión nueva y le llega un aviso al correo.
+- **R-47 Cambiar la contraseña.** Con la sesión iniciada: la contraseña actual una vez y la nueva dos veces, sin código. Se cierran las demás sesiones, la actual sigue abierta y llega un aviso al correo. Quien olvidó la actual usa R-46.
+- **R-48 Cambiar el correo.** Con la sesión iniciada: se confirma con la contraseña actual y llega un código al correo nuevo (R-43). Al escribirlo, el cambio se aplica y el correo anterior recibe un aviso. Hasta entonces, la cuenta sigue con el correo anterior.
+- **R-49 Borrar la cuenta.** Con la sesión iniciada, se confirma con la contraseña actual. Se borran la cuenta, sus sesiones, códigos y progreso, y su lugar en las partidas jugadas queda anónimo, como el del bot.
+
+Cada aviso por correo dice qué cambió y qué hacer si no fue la persona: recuperar la contraseña (R-46).
 
 Riesgo aceptado para v2: sin límite de edad ni autorización de adultos (P-19). En Colombia, la Ley 1581 exige autorización del representante legal para tratar datos de menores de 18, y COPPA y el RGPD piden algo parecido para jugadores de otros países. Los datos mínimos, la falta de comunicación entre jugadores y las estadísticas privadas reducen el riesgo, pero no lo eliminan. Conviene revisarlo con alguien que sepa antes de que el proyecto crezca; esto no es asesoría legal.
 
@@ -152,7 +167,7 @@ La partida viaja por WebSocket con mensajes tipados en un paquete compartido (`p
 | Servidor → cliente | `match.end` | Resultados y monedas cobradas |
 | Servidor → cliente | `error` | Código de error |
 
-**API HTTP:** registro, inicio y cierre de sesión, verificación, recuperación y borrado de cuenta; perfil, colección, compra de cajas y estadísticas.
+**API HTTP:** registro, inicio y cierre de sesión, verificación con código, recuperación, cambio de contraseña, cambio de correo y borrado de cuenta; perfil, colección, compra de cajas y estadísticas.
 
 El cliente anima los eventos de `turn.result` con la misma escena de hoy y compara el hash con el que calcula; si no coincide, pide el estado completo.
 
@@ -164,7 +179,7 @@ Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasa
 | --- | --- | --- |
 | `users` | id, email único, password_hash, display_name único, email_verified_at, deleted_at | La cuenta |
 | `sessions` | id, user_id, expires_at | Sesiones con cookie |
-| `email_tokens` | hash del token, user_id, tipo (verificar o recuperar), expires_at, used_at | Enlaces de un solo uso |
+| `email_codes` | hash del código, user_id, propósito (verificar, recuperar o cambiar correo), correo nuevo (solo al cambiarlo), intentos, expires_at y used_at | Códigos de un solo uso (R-43) |
 | `profiles` | user_id, coins, camino_element, boxes_opened | Estado del progreso |
 | `collection` | user_id, card_id, count | Cartas y duplicados (R-26) |
 | `coin_ledger` | user_id, match_id, round, amount; única por (user_id, match_id, round) | Cobro por ronda sin duplicados (D-31) |
@@ -182,7 +197,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 **M7: Cuentas y servidor** (todavía sin multijugador)
 
 - [ ] Una imagen de Docker con cliente y servidor, desplegada en Railway con Postgres y servida en ventisca.wpena.dev con HTTPS
-- [ ] Registro, verificación, inicio de sesión, recuperación y borrado de cuenta
+- [ ] Registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-49)
 - [ ] Progreso en la cuenta: carta de camino, monedas, cajas y colección (R-25 a R-32 resueltos en el servidor)
 - [ ] Sandbox con el mazo fijo (D-50) y sin progreso
 - [ ] `GameHost` asíncrono, con el sandbox funcionando igual que hoy

@@ -867,7 +867,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 ### M7 a M9 — Modo en línea (v2)
 
-Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas y donde se marcan. Cada uno es publicable por sí solo y termina con `pnpm ci` y `pnpm e2e` en verde.
+Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas y donde se marcan. Cada uno es publicable por sí solo y termina con `pnpm run ci` y `pnpm e2e` en verde.
 
 - [ ] **M7: Cuentas y servidor** (todavía sin multijugador):
   - imagen de Docker en Railway, con Postgres, en ventisca.wpena.dev;

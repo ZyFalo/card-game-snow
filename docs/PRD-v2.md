@@ -200,7 +200,7 @@ Las migraciones viven en el repositorio y se aplican al desplegar. Se generan co
 
 ## Hitos M7 a M9
 
-Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, luego la partida en línea y al final el emparejamiento. Un hito termina cuando su lista está completa y `pnpm ci` y `pnpm e2e` están en verde.
+Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, luego la partida en línea y al final el emparejamiento. Un hito termina cuando su lista está completa y `pnpm run ci` y `pnpm e2e` están en verde.
 
 **M7: Cuentas y servidor** (todavía sin multijugador)
 

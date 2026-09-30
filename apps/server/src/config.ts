@@ -18,6 +18,8 @@ const envSchema = z.object({
   APP_URL: z.string().regex(/^https?:\/\/[^/\s]+$/, 'debe ser http(s)://dominio, sin ruta ni barra final'),
   // Resend (PR 6). Sin clave: en desarrollo el correo se imprime en la consola; en producción no sale.
   RESEND_API_KEY: z.string().optional(),
+  // Solo pruebas e2e, fuera de producción: carpeta donde se guardan los correos en vez de enviarlos.
+  MAIL_OUTBOX_DIR: z.string().optional(),
   // Turnstile. La secreta verifica el registro; la del sitio es pública y la entrega /api/config.
   TURNSTILE_SECRET_KEY: z.string().optional(),
   TURNSTILE_SITE_KEY: z.string().optional(),
@@ -35,6 +37,7 @@ export interface Config {
   sessionSecret: string;
   appUrl: string;
   resendApiKey: string | null;
+  mailOutboxDir: string | null;
   turnstileSecretKey: string | null;
   turnstileSiteKey: string | null;
   commit: string | null;
@@ -50,12 +53,16 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     throw new Error(`Configuración inválida. Revisa estas variables de entorno:\n- ${problems.join('\n- ')}`);
   }
   const e = parsed.data;
+  if (e.NODE_ENV === 'production' && e.MAIL_OUTBOX_DIR) {
+    throw new Error('Configuración inválida: MAIL_OUTBOX_DIR es solo para pruebas y no se usa en producción.');
+  }
   return {
     production: e.NODE_ENV === 'production',
     databaseUrl: e.DATABASE_URL,
     sessionSecret: e.SESSION_SECRET,
     appUrl: e.APP_URL,
     resendApiKey: e.RESEND_API_KEY || null,
+    mailOutboxDir: e.MAIL_OUTBOX_DIR || null,
     turnstileSecretKey: e.TURNSTILE_SECRET_KEY || null,
     turnstileSiteKey: e.TURNSTILE_SITE_KEY || null,
     commit: e.RAILWAY_GIT_COMMIT_SHA || e.APP_COMMIT || null,

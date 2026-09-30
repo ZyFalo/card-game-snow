@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { missingCaptcha, noCaptcha, turnstile } from './accounts/captcha';
-import { devMailer, noMailer } from './accounts/mailer';
+import { devMailer, fileMailer, noMailer } from './accounts/mailer';
 import { resendMailer } from './accounts/resend';
 import { buildApp, privateLogger } from './app';
 import { loadConfig, publicConfigFrom } from './config';
@@ -13,8 +13,14 @@ const WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 const config = loadConfig(process.env);
 const database = connect(config.databaseUrl);
-/** Resend si hay clave; si no, la consola en desarrollo y ningún envío en producción. */
-const mailer = config.resendApiKey ? resendMailer(config.resendApiKey) : config.production ? noMailer : devMailer;
+/** Resend si hay clave; si no, ningún envío en producción, y la consola o la carpeta de las e2e fuera de ella. */
+const mailer = config.resendApiKey
+  ? resendMailer(config.resendApiKey)
+  : config.production
+    ? noMailer
+    : config.mailOutboxDir
+      ? fileMailer(config.mailOutboxDir)
+      : devMailer;
 /** Turnstile si hay clave; en producción exige que el desafío se haya resuelto en el dominio del juego. */
 const captcha = config.turnstileSecretKey
   ? turnstile(config.turnstileSecretKey, config.production ? new URL(config.appUrl).hostname : null)

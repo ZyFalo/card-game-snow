@@ -313,7 +313,7 @@ export const HELP = {
     'Planea a cada ninja: primero a dónde se mueve (casillas azules) y luego qué hace.',
     'Haz clic en un gólem para atacarlo, en un aliado para curarlo (Escarcha) o revivirlo, o elige una carta y su casilla central.',
     `Confirma el turno. Se resuelve en orden: ${ORDER_NAMES}; después actúan los gólems, que siempre atacan si pueden.`,
-    'El reloj da 10 segundos por ninja. Si se acaba, se juega lo que hayas planeado.',
+    'El reloj da 10 s por cada ninja en pie en ritmo Normal (5 s en Experto; sin reloj en Relajado). Si se acaba, se juega lo que hayas planeado.',
   ],
   teamTitle: 'Tu equipo',
   ninjaStats: (hp: number, attack: number, range: number, move: number) =>

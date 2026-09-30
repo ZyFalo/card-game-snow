@@ -9,10 +9,16 @@ let html = readFileSync(join(dist, 'index.html'), 'utf8');
 
 const assets = readdirSync(join(dist, 'assets'));
 const read = (name) => readFileSync(join(dist, 'assets', name), 'utf8');
+// Las fuentes (woff2) que pide el CSS van como data URI: el CSS en línea ya no está junto a ellas.
+const inlineFonts = (css) =>
+  css.replace(/url\(\.\/([^)]+\.woff2)\)/g, (_, file) => {
+    const data = readFileSync(join(dist, 'assets', file)).toString('base64');
+    return `url(data:font/woff2;base64,${data})`;
+  });
 
 html = html.replace(
   /<link rel="stylesheet"[^>]*href="\.\/assets\/([^"]+\.css)"[^>]*>/g,
-  (_, file) => `<style>${read(file)}</style>`,
+  (_, file) => `<style>${inlineFonts(read(file))}</style>`,
 );
 html = html.replace(/<script type="module"[^>]*src="\.\/assets\/([^"]+\.js)"[^>]*><\/script>/g, (_, file) => {
   const code = read(file).replace(/<\/script/gi, '<\\/script');
@@ -20,7 +26,7 @@ html = html.replace(/<script type="module"[^>]*src="\.\/assets\/([^"]+\.js)"[^>]
 });
 html = html.replace(/<link rel="modulepreload"[^>]*>/g, '');
 
-const leftovers = html.match(/\.\/assets\/[^"')\s]+/g);
+const leftovers = html.match(/\.\/assets\/[^"')\s]+|url\(\.\/[^)]+\)/g);
 if (leftovers) {
   console.error('Quedaron referencias a archivos externos:', leftovers);
   process.exit(1);

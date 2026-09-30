@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { store } from './state/store';
+import './ui/fonts.css';
 import './ui/styles.css';
 
 // Acceso al estado para depurar y para las pruebas e2e (solo en desarrollo).

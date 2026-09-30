@@ -43,3 +43,5 @@ El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e d
 ## Aviso
 
 Proyecto educativo sin fines de lucro. *Card-Jitsu Snow* y *Club Penguin* son marcas de sus dueños; este repositorio no contiene ninguno de sus assets. Los valores de reglas se estudiaron a partir de documentación pública y de un servidor fan con licencia MIT (fuentes en el Apéndice B del PRD).
+
+Las fuentes Dela Gothic One y Zen Kaku Gothic New se distribuyen con el juego (paquetes `@fontsource`) bajo la licencia SIL Open Font License 1.1.

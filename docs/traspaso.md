@@ -57,7 +57,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 - **DNS (D-58):** en wpena.dev hay dos registros: el CNAME `ventisca`, que apunta a Railway, y el TXT de verificación. El CNAME va en **"Solo DNS"** (nube gris en Cloudflare), nunca con el proxy. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad.
 - **Comprobar un despliegue:** `pnpm check:prod`. Revisa:
   - el DNS sin el proxy;
-  - el certificado de Let's Encrypt;
+  - un certificado válido con más de 14 días de vigencia (el emisor se muestra como dato);
   - las cabeceras sin Cloudflare;
   - la redirección de HTTP a HTTPS;
   - la salud y el 404;

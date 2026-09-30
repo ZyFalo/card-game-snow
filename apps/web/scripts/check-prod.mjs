@@ -1,7 +1,8 @@
 // Comprueba un despliegue en producción. Uso: pnpm check:prod [url]; por defecto, https://ventisca.wpena.dev.
-// Revisa el DNS sin el proxy de Cloudflare (D-58), el certificado, las cabeceras, la redirección de HTTP a
-// HTTPS, la salud, el 404 y un turno jugado en Chromium sin pedir nada a otros dominios. Sale con código 1
-// si algo falla. Necesita Chromium de Playwright (pnpm --filter @ventisca/web exec playwright install chromium).
+// Revisa el DNS sin el proxy de Cloudflare (D-58), el certificado (válido y con margen), las cabeceras, la
+// redirección de HTTP a HTTPS, la salud, el 404 y un turno jugado en Chromium sin pedir nada a otros dominios.
+// Sale con código 1 si algo falla. Necesita Chromium de Playwright
+// (pnpm --filter @ventisca/web exec playwright install chromium).
 import { resolveCname } from 'node:dns/promises';
 import { connect } from 'node:tls';
 import { chromium } from '@playwright/test';
@@ -37,17 +38,22 @@ await check('DNS: CNAME hacia Railway, sin el proxy de Cloudflare (D-58)', async
   return target;
 });
 
+// Se exige un certificado válido con margen de vigencia; el emisor es solo un dato. No sirve para
+// detectar el proxy (Cloudflare también emite con Let's Encrypt): de eso se encargan el DNS y las cabeceras.
+const MIN_DAYS_LEFT = 14;
+
 await check(
-  "Certificado de Let's Encrypt, válido para el dominio",
+  `Certificado válido para el dominio, con más de ${MIN_DAYS_LEFT} días de vigencia`,
   () =>
     new Promise((resolve, reject) => {
       const socket = connect({ host, port: 443, servername: host }, () => {
         const cert = socket.getPeerCertificate();
         socket.end();
+        if (!socket.authorized) return reject(new Error(`no es válido: ${socket.authorizationError}`));
         const issuer = `${cert.issuer?.O ?? '?'} ${cert.issuer?.CN ?? ''}`.trim();
-        if (!/Let's Encrypt/.test(issuer)) return reject(new Error(`emisor inesperado: ${issuer}`));
         const days = Math.floor((new Date(cert.valid_to).getTime() - Date.now()) / 86_400_000);
-        resolve(`${issuer}, vence en ${days} días`);
+        if (days <= MIN_DAYS_LEFT) return reject(new Error(`vence en ${days} días (emisor: ${issuer})`));
+        resolve(`vence en ${days} días (emisor: ${issuer})`);
       });
       socket.setTimeout(20_000, () => socket.destroy(new Error('sin respuesta en 20 s')));
       socket.on('error', reject);

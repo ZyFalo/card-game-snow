@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.3 |
+| Versión | 0.10.4 |
 | Última actualización | 30 de septiembre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -997,6 +997,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-58 | El dominio del juego va en "Solo DNS", sin el proxy de Cloudflare, que vería todo el tráfico, inyectaría su analítica y agregaría reportes de red no declarados en el aviso de privacidad (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-57 | Gestión de la cuenta con códigos de 6 dígitos que vencen en 15 min en lugar de enlaces; contraseña de 8 a 128 caracteres con mayúscula, número y símbolo; cambiarla con la sesión iniciada solo pide la actual (R-43 a R-49 de `docs/PRD-v2.md`) | ✅ | 2026-09-29 |
 | D-56 | Borrar la cuenta borra al usuario con sus sesiones, códigos y progreso; su lugar en `match_players` queda anónimo, como el del bot (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-55 | El progreso guardado en el navegador en v1 se descarta: no pasa a la cuenta y el sandbox deja de usarlo; los ajustes se conservan (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
@@ -1036,6 +1037,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.4 | 2026-09-30 | El juego está desplegado en Railway y se sirve en https://ventisca.wpena.dev (M7, paso 4). `railway.json` fija el build, el comando de arranque, la salud, la región y cuándo se redespliega. Railway espera la CI de main antes de desplegar. D-58: el dominio va en "Solo DNS", sin el proxy de Cloudflare. `pnpm check:prod` comprueba el despliegue |
 | 0.10.3 | 2026-09-30 | Esqueleto del servidor del M7: `apps/server` (Fastify, Postgres con Drizzle y migraciones al arrancar, `/api/health`, el juego servido por el mismo origen y registros sin IPs) y `packages/protocol` (Zod). Imagen de Docker y `compose.yaml` con Postgres para desarrollo; `.env.example` documenta las variables y `.env` queda fuera de git. La CI prueba el servidor contra Postgres y construye y arranca la imagen. `docs/traspaso.md` se reescribe con la puesta en marcha nueva |
 | 0.10.2 | 2026-09-30 | Sandbox del M7: cada ninja juega con el mazo de referencia (D-50) y no hay monedas, cartas ni logros (D-34). Lo que v1 guardó en el navegador se descarta al abrir el juego; los ajustes se conservan (D-55). Las fuentes se alojan en el propio juego, sin Google Fonts. La documentación dice `pnpm run ci`, porque en pnpm 12 `pnpm ci` es una instalación limpia |
 | 0.10.1 | 2026-09-30 | Decisiones D-51 a D-56, tomadas al empezar el M7 y registradas en el PRD de v2 (versión 1.2): Fastify, Drizzle con drizzle-kit, Zod y @node-rs/argon2 (ADR 0006), el progreso local de v1 se descarta y borrar la cuenta borra sus datos. `GameHost` pasa a ser asíncrono (§11.3), con el sandbox igual que antes. Se registra también D-57, la gestión de la cuenta del PRD de v2 (versión 1.1, R-43 a R-49) |

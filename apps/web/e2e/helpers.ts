@@ -28,3 +28,27 @@ export async function startMatch(page: Page, speed = 0.3) {
   await page.getByRole('button', { name: 'Comenzar partida' }).click();
   await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');
 }
+
+/**
+ * Lineamientos de diseño, sección 8: los elementos visibles de la pantalla cuyo contenido es más ancho
+ * que su caja y que no se pueden desplazar, es decir, texto cortado o que se sale. Devuelve una
+ * descripción de cada uno; la prueba espera una lista vacía.
+ */
+export function clippedElements(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const found: string[] = [];
+    for (const el of document.querySelectorAll('.screen *, .modal *')) {
+      if (!(el instanceof HTMLElement)) continue;
+      // Los campos de texto se desplazan solos al escribir; los iframes (Turnstile) traen su propia caja.
+      if (el instanceof HTMLInputElement || el instanceof HTMLIFrameElement) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0 || el.clientWidth === 0) continue;
+      if (el.scrollWidth <= el.clientWidth + 1) continue;
+      const overflowX = getComputedStyle(el).overflowX;
+      if (overflowX === 'auto' || overflowX === 'scroll') continue;
+      const name = `${el.tagName.toLowerCase()}${el.className ? `.${String(el.className).trim().replace(/\s+/g, '.')}` : ''}`;
+      found.push(`${name} (${el.scrollWidth} > ${el.clientWidth}): ${(el.textContent ?? '').trim().slice(0, 60)}`);
+    }
+    return found;
+  });
+}

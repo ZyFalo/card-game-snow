@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
-import { startMatch, type TestWindow } from './helpers';
+import { clippedElements, startMatch, type TestWindow } from './helpers';
 
 /*
  * Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). Los correos no se envían:
@@ -236,4 +236,61 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
   });
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('heading', { name: 'Crear una cuenta' })).toBeVisible();
+});
+
+test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta texto', async ({ page }) => {
+  const clipped: Record<string, string[]> = {};
+  const check = async (name: string) => {
+    await page.waitForTimeout(700); // las entradas escalonadas
+    const found = await clippedElements(page);
+    if (found.length) clipped[name] = found;
+  };
+  // Un correo largo pone a prueba los textos que lo repiten.
+  const who = { ...person(), email: `nieve.con.un.correo.bastante.largo.${Date.now().toString(36)}@example.com` };
+  await stubTurnstile(page);
+  await page.goto('/?speed=0.2');
+  await page.getByRole('button', { name: 'Aviso de privacidad' }).click();
+  await check('aviso');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await check('entrar');
+  await logIn(page, who.email, who.password);
+  await expect(page.getByRole('alert')).toBeVisible();
+  await check('entrar con error');
+  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
+  await check('recuperar');
+  await page.getByLabel('Correo', { exact: true }).fill(who.email);
+  await page.getByRole('button', { name: 'Enviar código' }).click();
+  await expect(page.getByLabel('Código de 6 dígitos')).toBeVisible();
+  await check('recuperar con el código');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Deshacer un cambio de correo' }).click();
+  await check('deshacer un cambio de correo');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  await check('crear cuenta');
+  await page.getByRole('button', { name: 'aviso de privacidad' }).click();
+  await check('aviso desde el registro');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByLabel('Correo', { exact: true }).fill(who.email);
+  await page.getByLabel('Nombre visible', { exact: true }).fill(who.displayName);
+  await page.getByLabel('Contraseña', { exact: true }).fill('Tundra7Oso');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Crear cuenta' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await check('crear cuenta con error');
+  await page.getByLabel('Contraseña', { exact: true }).fill(who.password);
+  await page.getByRole('button', { name: 'Crear cuenta' }).click();
+  await expect(page.getByRole('heading', { name: 'Verifica tu correo' })).toBeVisible();
+  await check('verificar');
+  await page.getByLabel('Código de 6 dígitos').fill(codeOf(await lastMail(who.email, /Tu código para Ventisca/)));
+  await page.getByRole('button', { name: 'Verificar' }).click();
+  await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
+  await check('perfil');
+  for (const section of ['Cambiar la contraseña', 'Cambiar el correo', 'Borrar la cuenta']) {
+    await page.getByRole('button', { name: section }).click();
+    await check(`perfil: ${section}`);
+  }
+  expect(clipped).toEqual({});
 });

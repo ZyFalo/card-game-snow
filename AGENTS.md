@@ -21,7 +21,7 @@ Lee también `docs/PRD.md` (el mapa del proyecto) y `docs/adr/`.
 5. Las pruebas del core se nombran por regla: `it('R-17: …')`.
 6. Identidad original (D-01): prohibido usar nombres, arte, audio o textos del juego original en el producto. Las referencias solo pueden aparecer en `docs/`.
 7. Los textos de la UI van en `apps/web/src/i18n/es.ts`, con verbos claros y frases cortas en español neutro.
-8. La progresión (PRD §18) es pura y vive en `packages/core/src/cards.ts` y `economy.ts`. Precios, monedas y banco se cambian en `balance.json`. En v2 el progreso vive en la cuenta, en el servidor (D-34): `apps/server/src/progress/` guarda el resultado y deja las reglas a esas mismas funciones. El sandbox no guarda progreso en el navegador (D-55).
+8. La progresión (PRD §18) es pura y vive en `packages/core/src/cards.ts` y `economy.ts`. Precios, monedas y banco se cambian en `balance.json`. En v2 el progreso vive en la cuenta, en el servidor (D-34): `apps/server/src/progress/` guarda el resultado y deja las reglas a esas mismas funciones. El cliente (`apps/web/src/state/progress.ts`) solo pide y muestra lo que respondió el servidor: nunca calcula monedas ni cartas. El sandbox no guarda progreso en el navegador (D-55).
 
 ## Phaser 4
 Antes de tocar la escena, consulta las guías oficiales para agentes que vienen con el paquete, en `apps/web/node_modules/phaser/skills/` (cámaras, tweens, partículas, input, etc.). Notas locales:

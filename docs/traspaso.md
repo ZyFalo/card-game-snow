@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo en línea y se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
+Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y progreso en el servidor, todavía sin multijugador. Es el primer hito del modo en línea, que se describe en `docs/PRD-v2.md`; el siguiente es el M8. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
 
 ## Qué hay
 
@@ -12,9 +12,16 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
   - La portada ofrece "Jugar sin cuenta" y "Entrar"; con sesión, "Mi cuenta".
   - Pantallas de registro con el aviso de privacidad, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (contraseña, correo, cierre de sesión y borrado).
   - Los resultados del sandbox invitan a crear una cuenta.
-  - Las pantallas siguen `docs/lineamientos-de-diseno.md`. Los beneficios de la cuenta que todavía no existen llevan la etiqueta "Próximamente" (`BENEFITS` en `ui/Account.tsx`).
+  - Las pantallas siguen `docs/lineamientos-de-diseno.md`. El beneficio de la cuenta que todavía no existe, "Juega en línea con amigos", lleva la etiqueta "Próximamente" (`BENEFITS` en `ui/Account.tsx`).
   - El script de Turnstile se carga solo en la vista de registro, como promete el aviso de privacidad.
   - Sin servidor (por ejemplo, con `pnpm dev` solo), la portada no muestra la cuenta y se juega igual.
+- **Progreso en el cliente (`apps/web/src/state/progress.ts`, `ui/Progress.tsx` y `ui/CardFace.tsx`):**
+  - El cliente no calcula el progreso: pide `/api/progress` y muestra lo que respondió el servidor (D-34).
+  - Al verificar la cuenta o al entrar, quien todavía no eligió su carta de camino llega a elegirla (R-30). Puede dejarlo para después, y el perfil se lo recuerda (D-67).
+  - El perfil hace de inicio en línea durante el M7 (D-67): a la derecha muestra el camino, las monedas, las cartas por elemento y las cajas abiertas, y su botón primario lleva a la colección y la tienda.
+  - La colección muestra las 20 cartas de cada elemento, con las que faltan como siluetas (R-25). La tienda vende cajas de 1, 2 o 3 cartas del elemento elegido y revela lo que salió (R-28).
+  - Cada compra lleva un identificador que genera el cliente y que conserva hasta que el servidor la confirma: si la respuesta se pierde, comprar de nuevo la misma caja no cobra dos veces (D-66 y D-68). Mientras espera, los botones de compra quedan deshabilitados.
+  - **Hoy nadie puede ganar monedas:** se ganarán en las partidas en línea (M8). La tienda lo dice en futuro y con "Próximamente". Las e2e le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e; el servidor no tiene ninguna ruta que regale monedas.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
 - **Servidor (`apps/server`):**
@@ -115,12 +122,13 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
 
 ## Pendiente, según los PRD
 
-- **M7, en pasos pequeños (PRD de v2):** falta el progreso en el cliente (PR 9): elegir la carta de camino, la colección y la tienda, conectados a `/api/progress`. El despliegue, las cuentas y el progreso en el servidor ya están hechos.
-  - **PR 9:** al comprar una caja, el botón se deshabilita mientras espera, y un reintento usa el mismo identificador de compra (D-66). El perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
+- **M7 (PRD de v2):** su lista está completa: el despliegue, las cuentas y el progreso, en el servidor y en el cliente.
 - **M8:** quita "Próximamente" de "Juega en línea con amigos".
+  - **Inicio en línea:** el perfil hace de inicio durante el M7 (D-67). Con las partidas, se le suma "Jugar".
+  - **Monedas:** al existir las partidas, la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`).
   - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
   - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
-- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). Vuelven al presente cuando existan las dos cosas: el progreso con el PR 9 y el juego en línea con el M8.
+- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). El progreso ya existe; vuelven al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

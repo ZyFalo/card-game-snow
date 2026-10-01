@@ -997,6 +997,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-63 | Toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo"; sus e2e incluyen la prueba de desbordes | ✅ | 2026-09-30 |
 | D-62 | El correo de contacto es ventisca@wpena.dev, con Cloudflare Email Routing; ventisca.wpena.dev no recibe correo (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-61 | El límite por IP sube a 50 intentos fallidos cada 15 min; el de 5 por cuenta sigue (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-60 | Un cambio de correo se deshace desde el correo anterior durante 7 días con un código y una contraseña nueva (R-50 de `docs/PRD-v2.md`) | ✅ | 2026-09-30 |

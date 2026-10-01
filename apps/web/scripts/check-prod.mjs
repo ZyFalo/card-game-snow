@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { resolveCname } from 'node:dns/promises';
 import { connect } from 'node:tls';
 import { chromium } from '@playwright/test';
+import { retry } from './retry.mjs';
 
 const base = new URL(process.argv[2] ?? process.env.DEPLOY_URL ?? 'https://ventisca.wpena.dev');
 const host = base.hostname;
@@ -23,6 +24,24 @@ async function check(name, fn) {
 
 function fail(message) {
   throw new Error(message);
+}
+
+/** El último commit de main en origin. El repositorio es público: se lee sin credenciales. */
+function mainCommit() {
+  try {
+    const out = execFileSync('git', ['ls-remote', 'origin', 'refs/heads/main'], {
+      encoding: 'utf8',
+      // El error de git se captura para mostrarlo entero; si no, sale suelto por la terminal.
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 20_000,
+    });
+    const commit = out.split(/\s/)[0];
+    if (!commit) throw new Error('git ls-remote no devolvió ningún commit');
+    return commit;
+  } catch (err) {
+    const stderr = String(/** @type {any} */ (err).stderr ?? '').trim();
+    throw new Error(`no se pudo leer el commit de main: ${stderr || /** @type {Error} */ (err).message}`);
+  }
 }
 
 const viaCloudflare = (headers) => {
@@ -92,8 +111,8 @@ await check('Salud con la base de datos conectada', async () => {
 });
 
 await check('Corre el último commit de main', async () => {
-  // El repositorio es público: el commit de main se lee de origin, sin credenciales.
-  const main = execFileSync('git', ['ls-remote', 'origin', 'refs/heads/main'], { encoding: 'utf8' }).split(/\s/)[0];
+  // Leer origin falla a veces sin que el despliegue tenga nada que ver: se reintenta antes de fallar.
+  const main = await retry(mainCommit);
   const deployed = health?.commit ?? null;
   if (!deployed) fail(`la salud no informa el commit (último de main: ${main?.slice(0, 7)})`);
   if (deployed !== main) {

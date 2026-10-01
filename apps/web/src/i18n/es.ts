@@ -411,6 +411,13 @@ export const ACCOUNT_TEXT = {
   passwordsDiffer: 'Las dos contraseñas no coinciden.',
 } as const;
 
+/* ---------- Progreso en la cuenta (PRD §18; D-34) ---------- */
+
+export const PROGRESS_TEXT = {
+  /** La respuesta de una compra se perdió: reintentar es seguro (D-66). */
+  purchaseUnknown: 'No llegó la respuesta. Compra de nuevo esa caja: no se cobra dos veces.',
+} as const;
+
 /** Mensajes para cada error de la API (el servidor solo manda códigos). */
 export const ACCOUNT_ERRORS = {
   offline: 'No hay conexión con el servidor. Inténtalo de nuevo en un rato.',
@@ -447,6 +454,9 @@ export const ACCOUNT_ERRORS = {
   email_unavailable: 'No podemos enviar correos en este momento. Inténtalo más tarde.',
   email_taken: 'Ese correo ya tiene otra cuenta.',
   unauthorized: 'Tu sesión terminó. Vuelve a entrar.',
+  camino_required: 'Primero elige tu camino.',
+  camino_already_chosen: 'Ya habías elegido tu camino, y es permanente.',
+  not_enough_coins: 'No te alcanzan las monedas para esa caja.',
   generic: 'Algo falló en el servidor. Inténtalo de nuevo.',
 } as const;
 

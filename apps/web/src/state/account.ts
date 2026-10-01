@@ -1,6 +1,9 @@
 import { publicConfigSchema, sessionSchema, type User } from '@ventisca/protocol';
 import { ACCOUNT_ERRORS, ACCOUNT_TEXT } from '../i18n/es';
 import { type ApiResult, api, type ClientError } from '../net/api';
+import { errorMessage } from './errors';
+import { loadProgress } from './progress';
+import { clearSession } from './session';
 import { type AccountField, type AccountState, type AccountView, store } from './store';
 
 /*
@@ -10,41 +13,6 @@ import { type AccountField, type AccountState, type AccountView, store } from '.
  */
 
 const patch = (p: Partial<AccountState>) => store.setState((s) => ({ account: { ...s.account, ...p } }));
-
-/** El mensaje de un error de la API, con el motivo cuando la persona puede corregirlo. */
-export function errorMessage(error: ClientError): string {
-  const e = ACCOUNT_ERRORS;
-  switch (error.code) {
-    case 'bad_request':
-      if (error.reason === 'email') return e.badEmail;
-      if (error.reason === 'same_email') return e.sameEmail;
-      return e.bad_request;
-    case 'name_not_allowed':
-      return e.name[error.reason as keyof typeof e.name] ?? e.name.offensive;
-    case 'weak_password':
-      return e.password[error.reason as keyof typeof e.password] ?? e.password.length;
-    case 'invalid_code':
-      return error.attemptsLeft === undefined
-        ? e.invalid_code
-        : `${e.invalid_code} ${e.attemptsLeft(error.attemptsLeft)}`;
-    case 'offline':
-    case 'privacy_not_accepted':
-    case 'name_taken':
-    case 'code_expired':
-    case 'too_many_attempts':
-    case 'invalid_credentials':
-    case 'email_not_verified':
-    case 'too_many_requests':
-    case 'captcha_failed':
-    case 'captcha_unavailable':
-    case 'email_unavailable':
-    case 'email_taken':
-    case 'unauthorized':
-      return e[error.code];
-    default:
-      return e.generic;
-  }
-}
 
 /**
  * El campo que causó el error, si lo hay. Un correo o una contraseña incorrectos al entrar no apuntan a
@@ -78,7 +46,7 @@ async function run<T>(call: () => Promise<ApiResult<T>>, credentials?: AccountFi
   const res = await call();
   if (!res.ok) {
     patch({ busy: false, error: errorMessage(res.error), errorField: errorField(res.error, credentials) });
-    if (res.error.code === 'unauthorized') patch({ user: null, view: 'login' });
+    if (res.error.code === 'unauthorized') clearSession();
     return res;
   }
   patch({ busy: false });
@@ -96,6 +64,7 @@ export async function initAccount(): Promise<void> {
   }
   const me = await api.get('/api/auth/me', sessionSchema);
   patch({ status: 'ready', turnstileSiteKey: config.data.turnstileSiteKey, user: me.ok ? me.data.user : null });
+  if (me.ok) void loadProgress();
 }
 
 /** Abre la pantalla de cuenta en una vista; sin vista, el perfil o la entrada según haya sesión. */
@@ -104,6 +73,8 @@ export function openAccount(view?: AccountView): void {
   const next = view ?? (account.user ? 'profile' : 'login');
   store.setState({ screen: 'account' });
   patch({ view: next, previous: account.view, error: null, errorField: null, info: null, pendingEmail: null });
+  // El perfil muestra el progreso: se trae al día cada vez que se abre.
+  if (next === 'profile') void loadProgress();
 }
 
 export function showView(view: AccountView, extra: Partial<AccountState> = {}): void {
@@ -116,7 +87,11 @@ export function closeAccount(): void {
   patch({ error: null, errorField: null, info: null });
 }
 
-const signedIn = (user: User) => patch({ user, view: 'profile', email: '', error: null, errorField: null });
+/** Tras entrar, se lee el progreso de la cuenta. */
+function signedIn(user: User): void {
+  patch({ user, view: 'profile', email: '', error: null, errorField: null });
+  void loadProgress();
+}
 
 export async function register(form: {
   email: string;
@@ -154,7 +129,7 @@ export async function login(email: string, password: string): Promise<void> {
 
 export async function logout(): Promise<void> {
   await api.post('/api/auth/logout', {});
-  patch({ user: null, view: 'login' });
+  clearSession();
   store.setState({ screen: 'title' });
 }
 
@@ -217,5 +192,5 @@ export function cancelEmailChange(): void {
 
 export async function deleteAccount(password: string): Promise<void> {
   const res = await run(() => api.post('/api/auth/delete', { password }), 'current');
-  if (res.ok) patch({ user: null, view: 'login', info: { text: ACCOUNT_TEXT.deleteDone, tone: 'snow' } });
+  if (res.ok) clearSession({ info: { text: ACCOUNT_TEXT.deleteDone, tone: 'snow' } });
 }

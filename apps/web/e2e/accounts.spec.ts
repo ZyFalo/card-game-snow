@@ -109,7 +109,7 @@ test('R-44: registro, verificación con el código del correo, y la sesión sigu
   for (const url of apiUrls) {
     const { pathname, search } = new URL(url);
     expect(search).toBe('');
-    expect(pathname).toMatch(/^\/api\/(config|auth\/[a-z/]+)$/);
+    expect(pathname).toMatch(/^\/api\/(config|progress(\/[a-z]+)?|auth\/[a-z/]+)$/);
   }
 });
 

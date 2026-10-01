@@ -16,6 +16,11 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'debe tener al menos 32 caracteres'),
   // Dirección pública del juego, sin barra final: https://ventisca.wpena.dev en producción.
   APP_URL: z.string().regex(/^https?:\/\/[^/\s]+$/, 'debe ser http(s)://dominio, sin ruta ni barra final'),
+  // Solo desarrollo: el origen del cliente de Vite (pnpm dev), que pasa /api al servidor (D-65).
+  DEV_ORIGIN: z
+    .string()
+    .regex(/^https?:\/\/[^/\s]+$/, 'debe ser http(s)://dominio, sin ruta ni barra final')
+    .optional(),
   // Resend (PR 6). Sin clave: en desarrollo el correo se imprime en la consola; en producción no sale.
   RESEND_API_KEY: z.string().optional(),
   // Solo pruebas e2e, fuera de producción: carpeta donde se guardan los correos en vez de enviarlos.
@@ -36,6 +41,7 @@ export interface Config {
   databaseUrl: string;
   sessionSecret: string;
   appUrl: string;
+  devOrigin: string | null;
   resendApiKey: string | null;
   mailOutboxDir: string | null;
   turnstileSecretKey: string | null;
@@ -56,11 +62,15 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (e.NODE_ENV === 'production' && e.MAIL_OUTBOX_DIR) {
     throw new Error('Configuración inválida: MAIL_OUTBOX_DIR es solo para pruebas y no se usa en producción.');
   }
+  if (e.NODE_ENV === 'production' && e.DEV_ORIGIN) {
+    throw new Error('Configuración inválida: DEV_ORIGIN es solo para desarrollo y no se usa en producción.');
+  }
   return {
     production: e.NODE_ENV === 'production',
     databaseUrl: e.DATABASE_URL,
     sessionSecret: e.SESSION_SECRET,
     appUrl: e.APP_URL,
+    devOrigin: e.DEV_ORIGIN || null,
     resendApiKey: e.RESEND_API_KEY || null,
     mailOutboxDir: e.MAIL_OUTBOX_DIR || null,
     turnstileSecretKey: e.TURNSTILE_SECRET_KEY || null,

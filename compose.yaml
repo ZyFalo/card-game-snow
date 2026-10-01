@@ -32,6 +32,8 @@ services:
       # Dentro de compose, Postgres se llama "db", no "localhost".
       DATABASE_URL: postgres://ventisca:ventisca@db:5432/ventisca
       PORT: "3000"
+      # La imagen corre en modo producción, que no admite el origen de desarrollo del .env (D-65).
+      DEV_ORIGIN: ""
     ports:
       - "3000:3000"
 

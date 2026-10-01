@@ -9,7 +9,12 @@ try {
 
 export default defineConfig({
   test: {
-    include: ['packages/**/test/**/*.test.ts', 'apps/web/src/**/*.test.ts', 'apps/server/test/**/*.test.ts'],
+    include: [
+      'packages/**/test/**/*.test.ts',
+      'apps/web/src/**/*.test.ts',
+      'apps/web/scripts/**/*.test.mjs',
+      'apps/server/test/**/*.test.ts',
+    ],
     environment: 'node',
   },
 });

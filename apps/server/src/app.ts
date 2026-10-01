@@ -4,6 +4,8 @@ import fastifyStatic from '@fastify/static';
 import { apiError, type Health, type PublicConfig } from '@ventisca/protocol';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { type AccountsOptions, accountsRoutes } from './accounts/routes';
+import { originGuard } from './origin';
+import { progressRoutes } from './progress/routes';
 
 export interface AppOptions {
   /** Comprueba que la base de datos responde. */
@@ -15,8 +17,15 @@ export interface AppOptions {
   /** Carpeta con el build del cliente (apps/web/dist); sin ella solo se sirve la API. */
   webDist: string | null;
   logger: FastifyServerOptions['logger'];
-  /** Cuentas (R-43 a R-45). Sin ellas, el servidor solo sirve la salud y el juego. */
+  /** Cuentas (R-43 a R-50) y, con ellas, el progreso. Sin ellas, el servidor solo sirve la salud y el juego. */
   accounts?: AccountsOptions;
+  /**
+   * Solo desarrollo: el origen del cliente de Vite, que pasa /api al servidor. Se suma al del juego
+   * (`accounts.appUrl`) como origen válido de las peticiones que cambian estado (D-65).
+   */
+  devOrigin?: string | null;
+  /** Semilla del sorteo de cada caja (R-27); las pruebas la fijan. Por defecto, una aleatoria por caja. */
+  boxSeed?: () => number;
 }
 
 /**
@@ -29,11 +38,15 @@ export const privateLogger = (level: string, stream?: NodeJS.WritableStream) => 
   ...(stream ? { stream } : {}),
 });
 
-export function buildApp({ ping, webDist, logger, accounts, commit = null, publicConfig }: AppOptions) {
+export function buildApp(options: AppOptions) {
+  const { ping, webDist, logger, accounts, commit = null, publicConfig, devOrigin, boxSeed } = options;
   // Railway pone un solo proxy delante: la IP real es la última de X-Forwarded-For. Confiar en más de un
   // salto dejaría que cualquiera inventara su IP y esquivara los límites por IP.
   // Se confía solo en el salto 0 (el proxy de Railway, conectado directo); equivale a un salto.
   const app = Fastify({ logger, trustProxy: (_address: string, hop: number) => hop === 0 });
+
+  // Antes que cualquier ruta: lo que cambia estado solo se acepta desde el propio juego (D-65).
+  if (accounts) originGuard(app, [new URL(accounts.appUrl).origin, ...(devOrigin ? [devOrigin] : [])]);
 
   app.get('/api/health', async (req, reply) => {
     try {
@@ -54,7 +67,11 @@ export function buildApp({ ping, webDist, logger, accounts, commit = null, publi
   });
 
   app.register(fastifyCookie);
-  if (accounts) app.register(accountsRoutes, accounts);
+  if (accounts) {
+    app.register(accountsRoutes, accounts);
+    // El progreso vive en la cuenta (D-34): usa la misma base, el mismo secreto y el mismo reloj.
+    app.register(progressRoutes, { db: accounts.db, secret: accounts.secret, now: accounts.now, seed: boxSeed });
+  }
 
   if (webDist && existsSync(webDist)) {
     app.register(fastifyStatic, { root: webDist });

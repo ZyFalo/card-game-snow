@@ -28,7 +28,14 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
   - Ninguna respuesta revela si un correo tiene cuenta (D-59).
   - Límites en memoria (hay una sola instancia): 5 intentos fallidos de contraseña cada 15 min por cuenta y 50 por IP (D-61), y 3 correos por hora por dirección, salvo los avisos de seguridad.
   - `/api/config` entrega al cliente solo valores públicos (la clave del sitio de Turnstile).
-  - El progreso llega en los siguientes pasos del M7.
+  - Las peticiones que cambian estado solo se aceptan desde el propio juego (D-65): deben traer el `Origin` de `APP_URL`. La cookie `SameSite=Lax` no basta, porque para `SameSite` todo wpena.dev es el mismo sitio.
+  - Progreso en la cuenta (`/api/progress`, D-34), con las reglas R-25 a R-30 resueltas por `packages/core`:
+    - `GET /api/progress`: camino, monedas, cajas abiertas y colección;
+    - `POST /api/progress/camino`: elige la carta de camino, que es permanente, y da el inventario inicial (R-30);
+    - `POST /api/progress/boxes`: compra una caja; el servidor cobra y sortea las cartas (R-27, R-28). El cliente manda un identificador por compra: si reintenta con el mismo, recibe el resultado original y no paga de nuevo (D-66).
+    - El libro de monedas (`coin_ledger`) guarda todos los movimientos del saldo: los cobros de rondas, positivos, y las compras, negativas, con sus cartas.
+    - El cobro de las rondas no tiene ruta: `creditRound` (`apps/server/src/progress/store.ts`) lo hará al resolver las partidas en línea (M8). El libro de monedas impide pagar dos veces la misma ronda (D-31).
+    - Los logros y las estadísticas llegan con las partidas (M8 y M9).
 - **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.
 - **Animación en cuatro fases:** esqueletos articulados, efectos, coreografía medida con metas de ritmo e interfaz animada.
 - **Calidad:**
@@ -47,7 +54,7 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
 ## Día a día
 
 - **Jugar el sandbox:** `pnpm dev` y abre http://localhost:5173. No necesita el servidor.
-- **Probar las cuentas en el navegador:** además de `pnpm dev`, corre `pnpm dev:server`. Vite pasa `/api` al puerto 3000 y el código de cada correo aparece en la consola del servidor.
+- **Probar las cuentas en el navegador:** además de `pnpm dev`, corre `pnpm dev:server`. Vite pasa `/api` al puerto 3000 y el código de cada correo aparece en la consola del servidor. El `.env` debe tener `DEV_ORIGIN=http://localhost:5173`, como en `.env.example`: sin él, el servidor rechaza lo que llegue desde el puerto de Vite (D-65).
 - **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Sirve la API y, si antes corriste `pnpm build`, también el juego.
 - **Correos en desarrollo:** sin `RESEND_API_KEY`, el servidor no los envía: los muestra en su consola, con el código. El captcha usa las claves de prueba públicas de Turnstile de `.env.example`, que siempre pasan.
 - **Todo como en producción:** `docker compose up --build` y abre http://localhost:3000. Es la misma imagen que se despliega.
@@ -66,7 +73,8 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
 
 - **Dónde:** https://ventisca.wpena.dev, en Railway (plan Hobby, región EE. UU. Este), con su Postgres. La base no tiene copias de seguridad: es un riesgo aceptado, a revisar antes de que el proyecto crezca.
 - **Cómo se despliega:** con cada push a `main`, es decir, al fusionar un PR, toque lo que toque (D-64).
-  - En el panel está activado "Wait for CI": Railway espera a que pase la CI de `main` y entonces construye la imagen del Dockerfile.
+  - En el panel está activado "Wait for CI": Railway espera a que termine la CI de `main` y entonces construye la imagen del Dockerfile. Medido el 1 de octubre de 2026: no dejó ningún estado en el commit mientras corría la CI, empezó a desplegar 4 segundos después de que terminó y tardó 38. Así que entre fusionar y ver el cambio en producción pasa lo que dure la CI (de 3 a 10 minutos) y un minuto más.
+  - GitHub muestra en cada commit dos suites en cola, de `railway-app` y `cursor`, que nunca corren nada. No detienen el despliegue.
   - `railway.json` es la fuente de verdad del despliegue. Fija el comando de arranque, la comprobación de salud (`/api/health`), los reinicios y la región. No lleva `watchPatterns`: con una lista de rutas vigiladas, un PR solo de documentación dejaría producción atrás a propósito, y `pnpm check:prod` exige que corra el último commit de `main`.
   - **En el panel del servicio deben quedar vacíos "Watch Paths", "Custom Build Command", "Custom Start Command" y "Root Directory".** El panel puede pisar a `railway.json` sin que se note. Al importar el monorepo, Railway puso por su cuenta un comando de arranque y uno de build con pnpm, y unas "Watch Paths" (`/apps/server/**`) que saltaron los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación.
   - Si un despliegue no llega, mira el estado que Railway deja en el commit en GitHub. "No deployment needed - watched paths not modified" significa que lo saltó por las rutas vigiladas del panel.
@@ -91,7 +99,7 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
   - las cabeceras sin Cloudflare;
   - la redirección de HTTP a HTTPS;
   - la salud y el 404;
-  - que corra el último commit de main (`/api/health` lo informa);
+  - que corra el último commit de main (`/api/health` lo informa); la lectura de `main` se reintenta, porque a veces falla sin que el despliegue tenga nada que ver;
   - un turno jugado en Chromium sin pedir nada a otros dominios.
 
   Sale con código 1 si algo falla.
@@ -107,10 +115,11 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
 
 ## Pendiente, según los PRD
 
-- **M7, en pasos pequeños (PRD de v2):** falta el progreso en la cuenta, en el servidor (PR 8) y en el cliente (PR 9). El despliegue y las cuentas ya están hechos.
-  - **PR 8:** suma la comprobación de `Origin` en las peticiones que cambian algo.
-  - **PR 9:** el perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
+- **M7, en pasos pequeños (PRD de v2):** falta el progreso en el cliente (PR 9): elegir la carta de camino, la colección y la tienda, conectados a `/api/progress`. El despliegue, las cuentas y el progreso en el servidor ya están hechos.
+  - **PR 9:** al comprar una caja, el botón se deshabilita mientras espera, y un reintento usa el mismo identificador de compra (D-66). El perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
 - **M8:** quita "Próximamente" de "Juega en línea con amigos".
+  - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
+  - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
 - **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). Vuelven al presente cuando existan las dos cosas: el progreso con el PR 9 y el juego en línea con el M8.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.

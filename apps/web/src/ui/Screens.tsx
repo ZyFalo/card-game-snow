@@ -245,10 +245,11 @@ export function ResultsScreen() {
         </section>
       </div>
       {/* PRD de v2, sandbox: resultados sin monedas, con una invitación a crear una cuenta. */}
+      {/* Su botón es secundario: el primario de esta vista es "Jugar otra vez" (lineamientos, sección 3). */}
       {account.status === 'ready' && !account.user ? (
         <div className="paper results-invite">
           <span>{ACCOUNT_TEXT.invite}</span>
-          <button type="button" className="btn btn-primary" onClick={() => openAccount('register')}>
+          <button type="button" className="btn" onClick={() => openAccount('register')}>
             {ACCOUNT_TEXT.inviteButton}
           </button>
         </div>

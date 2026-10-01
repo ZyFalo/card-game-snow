@@ -19,6 +19,7 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 - **Terminado significa:** `pnpm run ci` en verde (con Postgres levantado si tocaste el servidor: `docker compose up -d db`), más `pnpm e2e` si tocaste la interfaz o la escena. Si cambias algo visible, verifícalo en el navegador.
 - **Commits pequeños,** uno por paso lógico, con mensajes que expliquen el porqué.
 - **Registro:** toda decisión de producto o arquitectura va al registro de decisiones del PRD (D-xx), con una línea en `docs/ai-log.md`.
+- **Diseño (D-63):** toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo".
 - **Identidad (D-01):** nunca uses nombres, arte, audio ni textos del juego original.
 - **Motor puro (D-02):** `packages/core` no conoce el DOM, Phaser ni la red. El multijugador debe reutilizarlo tal cual en el servidor.
 - **Balance y ritmo se miden:** si cambias números, vuelve a correr `pnpm sim` o `pnpm pacing` y actualiza el reporte correspondiente.

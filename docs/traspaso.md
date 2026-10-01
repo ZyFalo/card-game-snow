@@ -12,6 +12,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - La portada ofrece "Jugar sin cuenta" y "Entrar"; con sesión, "Mi cuenta".
   - Pantallas de registro con el aviso de privacidad, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (contraseña, correo, cierre de sesión y borrado).
   - Los resultados del sandbox invitan a crear una cuenta.
+  - Las pantallas siguen `docs/lineamientos-de-diseno.md`. Los beneficios de la cuenta que todavía no existen llevan la etiqueta "Próximamente" (`BENEFITS` en `ui/Account.tsx`).
   - El script de Turnstile se carga solo en la vista de registro, como promete el aviso de privacidad.
   - Sin servidor (por ejemplo, con `pnpm dev` solo), la portada no muestra la cuenta y se juega igual.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
@@ -107,11 +108,16 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 ## Pendiente, según los PRD
 
 - **M7, en pasos pequeños (PRD de v2):** falta el progreso en la cuenta, en el servidor (PR 8) y en el cliente (PR 9). El despliegue y las cuentas ya están hechos.
+  - **PR 8:** suma la comprobación de `Origin` en las peticiones que cambian algo.
+  - **PR 9:** el perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
+- **M8:** quita "Próximamente" de "Juega en línea con amigos".
+- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). Vuelven al presente cuando existan las dos cosas: el progreso con el PR 9 y el juego en línea con el M8.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.
 
 ## Cómo se trabaja
 
+- Toda interfaz sigue `docs/lineamientos-de-diseno.md` (D-63) y se compara con una captura a 1280×720 junto a "Tu equipo".
 - Cada paso del M7 es un PR pequeño, con sus pruebas y la CI en verde. El dueño de producto lo revisa antes de fusionarlo, con merge commit y sin squash.
 - Nunca se suben secretos al repositorio: cada variable se documenta en `.env.example`.

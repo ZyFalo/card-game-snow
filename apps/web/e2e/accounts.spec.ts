@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
-import { startMatch, type TestWindow } from './helpers';
+import { clippedElements, startMatch, type TestWindow } from './helpers';
 
 /*
  * Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). Los correos no se envían:
@@ -83,7 +83,8 @@ async function signUp(page: Page, who = person()) {
 async function logIn(page: Page, email: string, password: string) {
   await page.getByLabel('Correo', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
-  await page.locator('form').getByRole('button', { name: 'Entrar' }).click();
+  // En la pantalla de cuenta, "Entrar" es el botón que envía el formulario, abajo a la derecha.
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
 }
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
@@ -133,7 +134,7 @@ test('R-46: recuperar la contraseña con el código del correo', async ({ page }
   const who = await signUp(page);
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await page.getByRole('button', { name: 'Olvidé mi contraseña' }).click();
+  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
   await page.getByLabel('Correo', { exact: true }).fill(who.email);
   await page.getByRole('button', { name: 'Enviar código' }).click();
   const code = codeOf(await lastMail(who.email, /recuperar tu contraseña/));
@@ -233,6 +234,90 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
     };
     st.setState({ screen: 'results', phase: 'ended', results: { state: st.getState().match } });
   });
-  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  // La invitación habla en futuro: jugar en línea y guardar el progreso todavía no existen.
+  await expect(
+    page.getByText('¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.'),
+  ).toBeVisible();
+  // Lineamientos: un solo primario por vista ("Jugar otra vez"), y el botón de la invitación en una línea.
+  await expect(page.locator('.results-screen .btn-primary')).toHaveText(['Jugar otra vez']);
+  const invite = page.getByRole('button', { name: 'Crear una cuenta' });
+  expect((await invite.boundingBox())?.height ?? 0).toBeLessThan(50);
+  await invite.click();
   await expect(page.getByRole('heading', { name: 'Crear una cuenta' })).toBeVisible();
+});
+
+test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta texto', async ({ page }) => {
+  const clipped: Record<string, string[]> = {};
+  const check = async (name: string) => {
+    await page.waitForTimeout(700); // las entradas escalonadas
+    const found = await clippedElements(page);
+    if (found.length) clipped[name] = found;
+  };
+  // Un correo largo pone a prueba los textos que lo repiten.
+  const who = { ...person(), email: `nieve.con.un.correo.bastante.largo.${Date.now().toString(36)}@example.com` };
+  await stubTurnstile(page);
+  await page.goto('/?speed=0.2');
+  await page.getByRole('button', { name: 'Aviso de privacidad' }).click();
+  await check('aviso');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await check('entrar');
+  await logIn(page, who.email, who.password);
+  await expect(page.getByRole('alert')).toBeVisible();
+  await check('entrar con error');
+  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
+  await check('recuperar');
+  await page.getByLabel('Correo', { exact: true }).fill(who.email);
+  await page.getByRole('button', { name: 'Enviar código' }).click();
+  await expect(page.getByLabel('Código de 6 dígitos')).toBeVisible();
+  await check('recuperar con el código');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Deshacer un cambio de correo' }).click();
+  await check('deshacer un cambio de correo');
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  await check('crear cuenta');
+  await page.getByRole('button', { name: 'aviso de privacidad' }).click();
+  await check('aviso desde el registro');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByLabel('Correo', { exact: true }).fill(who.email);
+  await page.getByLabel('Nombre visible', { exact: true }).fill(who.displayName);
+  await page.getByLabel('Contraseña', { exact: true }).fill('Tundra7Oso');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Crear cuenta' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await check('crear cuenta con error');
+  await page.getByLabel('Contraseña', { exact: true }).fill(who.password);
+  await page.getByRole('button', { name: 'Crear cuenta' }).click();
+  await expect(page.getByRole('heading', { name: 'Verifica tu correo' })).toBeVisible();
+  await check('verificar');
+  await page.getByLabel('Código de 6 dígitos').fill(codeOf(await lastMail(who.email, /Tu código para Ventisca/)));
+  await page.getByRole('button', { name: 'Verificar' }).click();
+  await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
+  await check('perfil');
+  for (const section of ['Cambiar la contraseña', 'Cambiar el correo', 'Borrar la cuenta']) {
+    await page.getByRole('button', { name: section }).click();
+    await check(`perfil: ${section}`);
+  }
+  expect(clipped).toEqual({});
+});
+
+test('los beneficios que todavía no existen dicen "Próximamente", y el perfil no los muestra', async ({ page }) => {
+  const benefits = [
+    /^Tu progreso queda guardado\s+Próximamente$/,
+    /^Juega en línea con amigos\s+Próximamente$/,
+    /^Tu colección de cartas\s+Próximamente$/,
+  ];
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByRole('listitem')).toHaveText(benefits);
+  // La introducción de "Entrar" también habla en futuro.
+  await expect(page.getByText('Con tu cuenta podrás jugar en línea y guardar tu progreso.')).toBeVisible();
+  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  await expect(page.getByRole('listitem')).toHaveText(benefits);
+  // En el perfil no van: en esa columna irá el resumen del progreso (PR 9 del M7).
+  await signUp(page);
+  await expect(page.getByRole('listitem')).toHaveCount(0);
+  await expect(page.getByText('Próximamente')).toHaveCount(0);
 });

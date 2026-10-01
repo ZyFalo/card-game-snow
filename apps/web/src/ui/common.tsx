@@ -1,5 +1,6 @@
-import type { ElementKind } from '@ventisca/core';
-import { type ReactNode, useEffect, useState } from 'react';
+import { ELEMENTS, type ElementKind } from '@ventisca/core';
+import { type InputHTMLAttributes, type ReactNode, useEffect, useId, useState } from 'react';
+import { art } from '../art';
 import { ES } from '../i18n/es';
 
 const INK = '#1F2440';
@@ -47,7 +48,8 @@ export function ElementGlyph({ el, className }: { el: ElementKind; className?: s
   );
 }
 
-type IconName =
+export type IconName =
+  | 'alert'
   | 'pause'
   | 'help'
   | 'bulb'
@@ -71,6 +73,15 @@ export function Icon({ name }: { name: IconName }) {
     strokeLinejoin: 'round' as const,
   };
   switch (name) {
+    case 'alert':
+      // Toma el color del texto: va en los mensajes de error, en --danger.
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3.5 21.5 20h-19z" {...common} stroke="currentColor" />
+          <path d="M12 10v4.5" {...common} stroke="currentColor" />
+          <circle cx="12" cy="17.3" r="1.3" fill="currentColor" />
+        </svg>
+      );
     case 'pause':
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -258,4 +269,144 @@ export function useCountUp(
     return () => cancelAnimationFrame(raf);
   }, [to, from, ms, delay, enabled]);
   return value;
+}
+
+/* ---------- Formularios (docs/lineamientos-de-diseno.md, sección 4) ---------- */
+
+/**
+ * Campo con su etiqueta arriba, la ayuda debajo y, si hay error, el mensaje en lugar de la ayuda. La
+ * ayuda y el error van aparte de la etiqueta (aria-describedby): el nombre del campo es solo la etiqueta.
+ * `code` lo muestra en grande, para el código de 6 dígitos.
+ */
+export function Field({
+  label,
+  hint,
+  error,
+  code = false,
+  ...input
+}: { label: string; hint?: string; error?: string | null; code?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
+  const id = useId();
+  const described = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className={`field${code ? ' field-code' : ''}${error ? ' invalid' : ''}`}>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} aria-invalid={error ? true : undefined} aria-describedby={described} {...input} />
+      {error ? (
+        <p id={`${id}-error`} className="field-error" role="alert">
+          <Icon name="alert" />
+          <span>{error}</span>
+        </p>
+      ) : hint ? (
+        <small id={`${id}-hint`}>{hint}</small>
+      ) : null}
+    </div>
+  );
+}
+
+/** Casilla de 22 px; marcada, tinta con la marca en papel. */
+export function Check({
+  checked,
+  onChange,
+  children,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="check">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="check-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M5 12.5l4.5 4.5L19 7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+      <span>{children}</span>
+    </label>
+  );
+}
+
+export type NoticeTone = 'danger' | 'gold' | 'snow';
+
+const NOTICE_ICON: Record<NoticeTone, IconName> = { danger: 'alert', gold: 'bulb', snow: 'check' };
+
+/** Mensaje en un papel compacto con una franja de color. Los errores se anuncian al momento. */
+export function Notice({ tone, children }: { tone: NoticeTone; children: ReactNode }) {
+  return (
+    <div className={`paper notice notice-${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>
+      <Icon name={NOTICE_ICON[tone]} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/**
+ * Botón que envía un formulario. Ocupado, cambia su texto y queda deshabilitado; nunca un indicador de
+ * carga suelto. `form` lo asocia a un formulario que está en otra parte de la pantalla.
+ */
+export function SubmitButton({
+  label,
+  busy,
+  disabled,
+  form,
+  danger = false,
+  large = false,
+}: {
+  label: string;
+  busy: boolean;
+  disabled?: boolean;
+  form?: string;
+  danger?: boolean;
+  large?: boolean;
+}) {
+  return (
+    <button
+      type="submit"
+      form={form}
+      className={`btn ${danger ? 'btn-danger' : 'btn-primary'}${large ? ' btn-lg' : ''}`}
+      disabled={busy || disabled}
+    >
+      {busy ? ES.sending : label}
+    </button>
+  );
+}
+
+/** Los tres ninjas de pie, como en la portada. Decorativos. */
+export function NinjaTrio() {
+  return (
+    <div className="ninja-trio" aria-hidden="true">
+      {ELEMENTS.map((el) => (
+        <img key={el} src={art.ninja(el)} alt="" />
+      ))}
+    </div>
+  );
+}
+
+/** Dos o tres puntos concretos, con un ícono o un número de paso y, si hace falta, una etiqueta de estado. */
+export function Points({ items }: { items: { mark: IconName | number; text: string; tag?: string }[] }) {
+  return (
+    <ul className="points">
+      {items.map((item) => (
+        <li key={item.text}>
+          <span className="mark" aria-hidden="true">
+            {typeof item.mark === 'number' ? item.mark : <Icon name={item.mark} />}
+          </span>
+          <span>{item.text}</span>
+          {item.tag ? (
+            <>
+              {' '}
+              <span className="tag">{item.tag}</span>
+            </>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }

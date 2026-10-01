@@ -32,6 +32,7 @@ import { type AccountLimits, accountLimits } from './limits';
 import type { Mail, Mailer } from './mailer';
 import { checkName, cleanName, nameKey } from './names';
 import { checkPassword, decoyHash, hashPassword, verifyPassword } from './passwords';
+import { SESSION_COOKIE, sessionReader, type UserRow } from './session';
 import { fingerprint, newCode, newSessionToken, sameFingerprint } from './tokens';
 
 /*
@@ -60,7 +61,6 @@ export interface AccountsOptions {
 
 type Purpose = (typeof EMAIL_CODE_PURPOSES)[number];
 
-export const SESSION_COOKIE = 'ventisca_session';
 const SESSION_DAYS = 30;
 /** R-43: el código vence a los 15 min, admite 5 intentos y solo se puede pedir otro tras 60 s. */
 export const CODE_MINUTES = 15;
@@ -78,7 +78,6 @@ const isEmail = (email: string) => z.email().safeParse(email).success;
 
 const checkEmail: CheckEmail = { status: 'check_email' };
 
-type UserRow = typeof users.$inferSelect;
 const publicUser = (u: UserRow): Session['user'] => ({
   id: u.id,
   email: u.email,
@@ -270,18 +269,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     });
   }
 
-  async function sessionUser(req: FastifyRequest): Promise<{ sessionId: string; user: UserRow } | null> {
-    const token = req.cookies[SESSION_COOKIE];
-    if (!token) return null;
-    const sessionId = fingerprint(secret, 'session', token);
-    const [row] = await db
-      .select({ user: users })
-      .from(sessions)
-      .innerJoin(users, eq(users.id, sessions.userId))
-      .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, now())))
-      .limit(1);
-    return row ? { sessionId, user: row.user } : null;
-  }
+  const sessionUser = sessionReader(db, secret, now);
 
   /* ---------- Contraseña con límite de intentos ---------- */
 

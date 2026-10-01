@@ -24,6 +24,8 @@ export interface AppOptions {
    * (`accounts.appUrl`) como origen válido de las peticiones que cambian estado (D-65).
    */
   devOrigin?: string | null;
+  /** Semilla del sorteo de cada caja (R-27); las pruebas la fijan. Por defecto, una aleatoria por caja. */
+  boxSeed?: () => number;
 }
 
 /**
@@ -37,7 +39,7 @@ export const privateLogger = (level: string, stream?: NodeJS.WritableStream) => 
 });
 
 export function buildApp(options: AppOptions) {
-  const { ping, webDist, logger, accounts, commit = null, publicConfig, devOrigin } = options;
+  const { ping, webDist, logger, accounts, commit = null, publicConfig, devOrigin, boxSeed } = options;
   // Railway pone un solo proxy delante: la IP real es la última de X-Forwarded-For. Confiar en más de un
   // salto dejaría que cualquiera inventara su IP y esquivara los límites por IP.
   // Se confía solo en el salto 0 (el proxy de Railway, conectado directo); equivale a un salto.
@@ -68,7 +70,7 @@ export function buildApp(options: AppOptions) {
   if (accounts) {
     app.register(accountsRoutes, accounts);
     // El progreso vive en la cuenta (D-34): usa la misma base, el mismo secreto y el mismo reloj.
-    app.register(progressRoutes, { db: accounts.db, secret: accounts.secret, now: accounts.now });
+    app.register(progressRoutes, { db: accounts.db, secret: accounts.secret, now: accounts.now, seed: boxSeed });
   }
 
   if (webDist && existsSync(webDist)) {

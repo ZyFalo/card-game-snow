@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { bankFor, CAMINO_CARDS, STARTER_CARDS } from '@ventisca/core';
-import { apiErrorSchema, type Progress, progressSchema, sessionSchema } from '@ventisca/protocol';
+import { bankFor, CAMINO_CARDS, openBox, rngFrom, STARTER_CARDS } from '@ventisca/core';
+import { apiErrorSchema, boxResultSchema, type Progress, progressSchema, sessionSchema } from '@ventisca/protocol';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Captcha } from '../src/accounts/captcha';
@@ -9,12 +9,12 @@ import { SESSION_COOKIE } from '../src/accounts/session';
 import { fingerprint } from '../src/accounts/tokens';
 import { buildApp } from '../src/app';
 import { creditRound } from '../src/progress/store';
-import { coinLedger, profiles, sessions, users } from '../src/schema';
+import { coinLedger, collection, profiles, sessions, users } from '../src/schema';
 import { adminUrl, useTempDatabase } from './support/database';
 
 /*
- * Progreso en la cuenta (PRD de v2, D-34): carta de camino, libro de monedas y colección, con las
- * reglas R-29 y R-30 resueltas en el servidor y contra un Postgres de verdad.
+ * Progreso en la cuenta (PRD de v2, D-34): carta de camino, libro de monedas, cajas y colección, con
+ * las reglas R-25 a R-30 resueltas en el servidor y contra un Postgres de verdad.
  */
 describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   const ctx = useTempDatabase({ migrate: true });
@@ -29,6 +29,8 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   };
   const captcha: Captcha = { available: true, verify: async () => true };
 
+  /** Semilla de las cajas: fija cuando una prueba quiere saber qué cartas salen. */
+  let seed: (() => number) | undefined;
   const makeApp = () =>
     buildApp({
       ping: async () => {},
@@ -42,10 +44,12 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
         appUrl: 'https://ventisca.test',
         now: () => NOW,
       },
+      ...(seed ? { boxSeed: seed } : {}),
     });
   let app: ReturnType<typeof makeApp>;
   beforeEach(() => {
     sent = [];
+    seed = undefined;
     app = makeApp();
   });
   afterEach(async () => {
@@ -79,6 +83,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   const progress = async (cookie: string): Promise<Progress> =>
     progressSchema.parse((await get('/api/progress', cookie)).json());
   const choose = (cookie: string, element: string) => post('/api/progress/camino', { element }, cookie);
+  const buy = (cookie: string, element: string, size: number) => post('/api/progress/boxes', { element, size }, cookie);
 
   /** Una cuenta con su camino elegido y, si se pide, monedas cobradas por rondas de una partida. */
   async function player(element = 'fire', rounds: (1 | 2 | 3 | 'bonus')[] = []) {
@@ -101,6 +106,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     it('sin sesión, nada del progreso responde', async () => {
       expect((await get('/api/progress')).statusCode).toBe(401);
       expect((await post('/api/progress/camino', { element: 'fire' })).statusCode).toBe(401);
+      expect((await post('/api/progress/boxes', { element: 'fire', size: 1 })).statusCode).toBe(401);
     });
 
     it('D-34: una cuenta nueva todavía no tiene camino, monedas ni cartas', async () => {
@@ -257,6 +263,136 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     it('sin carta de camino no hay perfil donde cobrar', async () => {
       const { userId } = await signUp();
       await expect(pay(userId, randomUUID(), 1)).rejects.toThrow();
+      expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(0);
+    });
+  });
+
+  describe('Cajas (R-27, R-28)', () => {
+    it('R-28: sin carta de camino no se puede comprar', async () => {
+      const { cookie } = await signUp();
+      const res = await buy(cookie, 'fire', 1);
+      expect(res.statusCode).toBe(409);
+      expect(errorOf(res)).toBe('camino_required');
+    });
+
+    it('R-28: sin monedas suficientes la compra se rechaza y no cambia nada', async () => {
+      const { cookie } = await player('fire', [1]); // 60 monedas; la caja más barata cuesta 100.
+      const before = await progress(cookie);
+      const res = await buy(cookie, 'fire', 1);
+      expect(res.statusCode).toBe(409);
+      expect(errorOf(res)).toBe('not_enough_coins');
+      expect(await progress(cookie)).toEqual(before);
+    });
+
+    it('R-28: una caja cobra su precio y suma sus cartas, del elemento elegido, a la colección', async () => {
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']); // 420 monedas
+      const before = await progress(cookie);
+      const res = await buy(cookie, 'water', 2);
+      expect(res.statusCode).toBe(200);
+      const { cards, progress: after } = boxResultSchema.parse(res.json());
+      expect(cards).toHaveLength(2);
+      const water = new Set(bankFor('water').map((c) => c.id));
+      expect(cards.every((id) => water.has(id))).toBe(true);
+      expect(after.coins).toBe(420 - 180);
+      expect(after.boxesOpened).toBe(1);
+      expect(totalCards(after)).toBe(totalCards(before) + 2);
+      for (const id of new Set(cards)) {
+        expect(after.collection[id]).toBe((before.collection[id] ?? 0) + cards.filter((c) => c === id).length);
+      }
+      expect(await progress(cookie)).toEqual(after);
+    });
+
+    it('R-28: las cajas de 1, 2 y 3 cartas cuestan 100, 180 y 250 monedas', async () => {
+      const who = await player('snow', [1, 2, 3, 'bonus']);
+      await creditRound(db(), { userId: who.userId, matchId: randomUUID(), round: 2, doubled: false }, NOW);
+      await buy(who.cookie, 'snow', 1); // 540 monedas
+      expect((await progress(who.cookie)).coins).toBe(440);
+      await buy(who.cookie, 'snow', 2);
+      expect((await progress(who.cookie)).coins).toBe(260);
+      await buy(who.cookie, 'snow', 3);
+      const after = await progress(who.cookie);
+      expect(after.coins).toBe(10);
+      expect(after.boxesOpened).toBe(3);
+      expect(totalCards(after)).toBe(4 + 1 + 2 + 3);
+    });
+
+    it('R-27: las cartas las sortea el servidor con el motor: la misma semilla da las mismas cartas', async () => {
+      await app.close();
+      seed = () => 20261001;
+      app = makeApp();
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      const { cards } = boxResultSchema.parse((await buy(cookie, 'fire', 3)).json());
+      expect(cards).toEqual(openBox('fire', 3, rngFrom(20261001)).map((c) => c.id));
+    });
+
+    it('R-25: una carta repetida suma copias a las que ya había', async () => {
+      await app.close();
+      seed = () => 7; // La misma semilla en las dos compras: sale la misma carta.
+      app = makeApp();
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      const before = await progress(cookie);
+      const first = boxResultSchema.parse((await buy(cookie, 'water', 1)).json());
+      const second = boxResultSchema.parse((await buy(cookie, 'water', 1)).json());
+      expect(second.cards).toEqual(first.cards);
+      const card = first.cards[0] as string;
+      const had = before.collection[card] ?? 0;
+      expect(first.progress.collection[card]).toBe(had + 1);
+      expect(second.progress.collection[card]).toBe(had + 2);
+      // Sigue siendo una sola carta distinta más, o ninguna si ya la tenía.
+      expect(Object.keys(second.progress.collection)).toHaveLength(
+        Object.keys(before.collection).length + (had ? 0 : 1),
+      );
+    });
+
+    it('R-28: compras simultáneas no gastan de más: con 300 monedas solo se compra una caja de 250', async () => {
+      const { cookie } = await player('fire', [1, 2, 3]); // 300 monedas
+      await warmPool();
+      const results = await Promise.all(Array.from({ length: 8 }, () => buy(cookie, 'fire', 3)));
+      expect(results.filter((r) => r.statusCode === 200)).toHaveLength(1);
+      expect(results.filter((r) => r.statusCode === 409).map(errorOf)).toEqual(Array(7).fill('not_enough_coins'));
+      const after = await progress(cookie);
+      expect(after.coins).toBe(50);
+      expect(after.boxesOpened).toBe(1);
+      expect(totalCards(after)).toBe(4 + 3);
+    });
+
+    it('R-28: con 420 monedas, diez compras simultáneas de 100 dejan cuatro cajas y 20 monedas', async () => {
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      await warmPool();
+      const results = await Promise.all(Array.from({ length: 10 }, () => buy(cookie, 'snow', 1)));
+      expect(results.filter((r) => r.statusCode === 200)).toHaveLength(4);
+      expect(results.filter((r) => r.statusCode === 409).map(errorOf)).toEqual(Array(6).fill('not_enough_coins'));
+      const after = await progress(cookie);
+      expect(after.coins).toBe(20);
+      expect(after.boxesOpened).toBe(4);
+      expect(totalCards(after)).toBe(4 + 4);
+    });
+
+    it('R-28: la base tampoco deja un saldo negativo, pase lo que pase en el servidor', async () => {
+      const { userId } = await player('fire', [1]);
+      await expect(db().update(profiles).set({ coins: -1 }).where(eq(profiles.userId, userId))).rejects.toThrow();
+    });
+
+    it('una caja de un tamaño que no existe es una petición inválida', async () => {
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      for (const size of [0, 4, 1.5, '2']) {
+        const res = await post('/api/progress/boxes', { element: 'fire', size }, cookie);
+        expect(res.statusCode).toBe(400);
+        expect(errorOf(res)).toBe('bad_request');
+      }
+      expect((await progress(cookie)).coins).toBe(420);
+    });
+  });
+
+  describe('Borrar la cuenta (D-56)', () => {
+    it('D-56: borrar la cuenta borra su perfil, su colección y su libro de monedas', async () => {
+      const { cookie, userId } = await player('fire', [1, 2, 3, 'bonus']);
+      await buy(cookie, 'fire', 1);
+      expect(await db().select().from(collection).where(eq(collection.userId, userId))).not.toHaveLength(0);
+      const res = await post('/api/auth/delete', { password: 'Tundra7#Oso' }, cookie);
+      expect(res.statusCode).toBe(204);
+      expect(await db().select().from(profiles).where(eq(profiles.userId, userId))).toHaveLength(0);
+      expect(await db().select().from(collection).where(eq(collection.userId, userId))).toHaveLength(0);
       expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(0);
     });
   });

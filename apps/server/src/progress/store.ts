@@ -1,6 +1,14 @@
-import { type ClearedRound, coinsForRound, type ElementKind, starterCollection } from '@ventisca/core';
+import {
+  boxPrice,
+  type ClearedRound,
+  coinsForRound,
+  type ElementKind,
+  openBox,
+  rngFrom,
+  starterCollection,
+} from '@ventisca/core';
 import type { Progress } from '@ventisca/protocol';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import type { Db } from '../db';
 import { coinLedger, collection, type LEDGER_ROUNDS, profiles } from '../schema';
 
@@ -47,6 +55,52 @@ export async function chooseCamino(db: Db, userId: string, element: ElementKind,
     }
     const progress = await readProgress(tx, userId);
     return progress.camino === element ? progress : null;
+  });
+}
+
+export type BoxPurchase =
+  | { ok: true; cards: string[]; progress: Progress }
+  | { ok: false; error: 'camino_required' | 'not_enough_coins' };
+
+/**
+ * R-27 y R-28: compra una caja. El cobro y el sorteo van en la misma transacción, y el cobro solo
+ * pasa si alcanzan las monedas: dos compras a la vez no pueden gastar el mismo saldo, porque la
+ * segunda espera a la primera y vuelve a mirar cuánto queda. `size` debe ser un tamaño de caja válido.
+ */
+export async function buyBox(
+  db: Db,
+  userId: string,
+  element: ElementKind,
+  size: number,
+  seed: number,
+): Promise<BoxPurchase> {
+  const price = boxPrice(size);
+  return db.transaction(async (tx) => {
+    const paid = await tx
+      .update(profiles)
+      .set({ coins: sql`${profiles.coins} - ${price}`, boxesOpened: sql`${profiles.boxesOpened} + 1` })
+      .where(and(eq(profiles.userId, userId), gte(profiles.coins, price)))
+      .returning({ userId: profiles.userId });
+    if (paid.length === 0) {
+      const [profile] = await tx
+        .select({ userId: profiles.userId })
+        .from(profiles)
+        .where(eq(profiles.userId, userId))
+        .limit(1);
+      return { ok: false, error: profile ? 'not_enough_coins' : 'camino_required' };
+    }
+    // El sorteo es del motor (R-27): cada carta sale por separado entre las 20 del elemento.
+    const cards = openBox(element, size, rngFrom(seed)).map((c) => c.id);
+    const copies = new Map<string, number>();
+    for (const id of cards) copies.set(id, (copies.get(id) ?? 0) + 1);
+    await tx
+      .insert(collection)
+      .values([...copies].map(([cardId, count]) => ({ userId, cardId, count })))
+      .onConflictDoUpdate({
+        target: [collection.userId, collection.cardId],
+        set: { count: sql`${collection.count} + excluded."count"` },
+      });
+    return { ok: true, cards, progress: await readProgress(tx, userId) };
   });
 }
 

@@ -50,6 +50,8 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | Separaciones | 8, 12, 16 o 24 px |
 | Foco | `outline: 3px solid var(--water); outline-offset: 3px` en todo lo interactivo, campos y enlaces incluidos |
 
+La escala y la geometría también son variables de `:root`: `--text-title`, `--text-section`, `--text-lead`, `--text-body`, `--text-notice`, `--text-small`, `--text-btn` y `--text-btn-lg`; `--leading` y `--leading-read`; `--line`; `--radius-panel`, `--radius-control` y `--radius-check`; `--shadow-panel`, `--shadow-control`, `--shadow-primary`, `--shadow-danger` y `--shade` (la sombra de los ninjas en el suelo); `--control-h`; `--gap-1` a `--gap-4`; `--edge-x` y `--edge-top`; `--focus` y `--focus-offset`.
+
 ## 3. Piezas existentes: reutilizar
 
 - **`.screen` y `.screen-head`** (con `h1` y `p`): en toda pantalla.
@@ -61,6 +63,8 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 - **`.kbd`:** para atajos de teclado.
 - **Íconos:** los SVG del juego (`Icon` en `ui/common.tsx`). Ni emoji ni íconos externos.
 - **Retratos:** los de los ninjas (`art.bust`), cuando la pantalla habla de un personaje o de la persona.
+- **`.screen-actions`:** la fila de acciones abajo a la derecha, igual que la de "Tu equipo". Admite a su izquierda un enlace discreto (`.foot`).
+- **`.toast`:** el aviso flotante del combate. Se llamaba `.notice` hasta que ese nombre pasó al mensaje de la sección 4.
 
 ## 4. Piezas nuevas para formularios
 
@@ -80,6 +84,8 @@ Se derivan de las existentes y viven junto a ellas en `ui/common.tsx` y `styles.
 - **Botón de peligro (`.btn-danger`):** la misma construcción de `.btn`, con fondo `--danger`, texto `--paper-hi` y sombra 3px 3px 0 `--ink`. Siempre pide confirmación.
 - **Ocupado:** el botón cambia su texto ("Enviando…") y queda deshabilitado. Nunca un indicador de carga suelto.
 
+En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para los dígitos grandes), `Check`, `Notice` (tonos `danger`, `gold` y `snow`) y `SubmitButton` (con `busy` y `danger`). Los enlaces son `.link`, y `.link-quiet` el discreto.
+
 ## 5. Composición de pantallas
 
 - **Estructura común:**
@@ -89,6 +95,7 @@ Se derivan de las existentes y viven junto a ellas en `ui/common.tsx` y `styles.
 - **Formularios:** nunca un panel solo flotando en el centro.
   - **Composición en dos columnas:** a la izquierda, el panel del formulario, de 440 a 480 px de ancho; a la derecha, la ilustración (los tres ninjas, o el de la carta de camino de la persona) y dos o tres beneficios concretos, por ejemplo "Tu progreso queda guardado", "Juega en línea con amigos" y "Tu colección de cartas".
   - **Verificar un código:** el código ocupa el centro, con dígitos grandes en la tipografía de títulos.
+  - **En el código:** `NinjaTrio` (los tres ninjas de pie) y `Points` (dos o tres puntos, con un ícono o un número de paso), en `ui/common.tsx`.
 - **Texto largo** (aviso de privacidad, ayuda):
   - pantalla completa de lectura, en una columna de 680 a 720 px;
   - cuerpo de 15 a 16 px con interlineado 1,6, y títulos de sección en la tipografía de títulos a 20 px;
@@ -124,7 +131,7 @@ Se derivan de las existentes y viven junto a ellas en `ui/common.tsx` y `styles.
 
 ## 9. Correcciones pendientes en las pantallas de cuenta
 
-Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`.
+Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el resultado, junto a "Tu equipo", está en `diseno/capturas/`.
 
 - **Entrar y Crear cuenta:** hoy son un panel flotante arriba al centro, con la mitad inferior vacía y aspecto de formulario web.
   - Recomponer en dos columnas, con ilustración y beneficios (sección 5).

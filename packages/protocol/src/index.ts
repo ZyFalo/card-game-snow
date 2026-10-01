@@ -28,6 +28,9 @@ export const errorCodeSchema = z.enum([
   'captcha_unavailable',
   'email_taken',
   'bad_origin',
+  'camino_required',
+  'camino_already_chosen',
+  'not_enough_coins',
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
@@ -156,3 +159,33 @@ export type User = z.infer<typeof userSchema>;
 /** Respuesta de verificar, iniciar sesión y `GET /api/auth/me`. */
 export const sessionSchema = z.object({ user: userSchema });
 export type Session = z.infer<typeof sessionSchema>;
+
+/* ---------- Progreso en la cuenta (D-34; R-25 a R-32) ---------- */
+
+export const elementSchema = z.enum(['fire', 'water', 'snow']);
+export type Element = z.infer<typeof elementSchema>;
+
+/**
+ * El progreso de una cuenta (`GET /api/progress`). `camino` es null hasta que la persona elige su
+ * carta de camino (R-30); hasta entonces no tiene monedas ni cartas. `collection` dice cuántas copias
+ * tiene de cada carta del banco (R-25), por id de carta; las que no tiene no aparecen.
+ */
+export const progressSchema = z.object({
+  camino: elementSchema.nullable(),
+  coins: z.number().int().nonnegative(),
+  boxesOpened: z.number().int().nonnegative(),
+  collection: z.record(z.string(), z.number().int().positive()),
+});
+export type Progress = z.infer<typeof progressSchema>;
+
+/** `POST /api/progress/camino`: el elemento de la carta de camino (R-30). La elección es permanente. */
+export const chooseCaminoSchema = z.object({ element: elementSchema });
+export type ChooseCaminoBody = z.infer<typeof chooseCaminoSchema>;
+
+/** `POST /api/progress/boxes`: compra una caja de `size` cartas del elemento elegido (R-28). */
+export const buyBoxSchema = z.object({ element: elementSchema, size: z.number().int().positive() });
+export type BuyBoxBody = z.infer<typeof buyBoxSchema>;
+
+/** Respuesta de comprar una caja: las cartas que salieron, en orden, y el progreso ya actualizado. */
+export const boxResultSchema = z.object({ cards: z.array(z.string()), progress: progressSchema });
+export type BoxResult = z.infer<typeof boxResultSchema>;

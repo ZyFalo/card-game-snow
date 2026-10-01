@@ -64,9 +64,11 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
 ## Despliegue (Railway)
 
 - **Dónde:** https://ventisca.wpena.dev, en Railway (plan Hobby, región EE. UU. Este), con su Postgres. La base no tiene copias de seguridad: es un riesgo aceptado, a revisar antes de que el proyecto crezca.
-- **Cómo se despliega:** con cada push a `main`, es decir, al fusionar un PR.
+- **Cómo se despliega:** con cada push a `main`, es decir, al fusionar un PR, toque lo que toque (D-64).
   - Railway espera a que pase la CI ("Wait for CI") y construye la imagen del Dockerfile.
-  - `railway.json` manda sobre el panel. Fija el comando de arranque, la comprobación de salud (`/api/health`), los reinicios, la región y qué cambios redespliegan (los de documentación no).
+  - `railway.json` manda sobre el panel. Fija el comando de arranque, la comprobación de salud (`/api/health`), los reinicios y la región.
+  - `railway.json` no lleva `watchPatterns`. Con una lista de rutas vigiladas, Railway saltó el despliegue del PR #12 ("No changes to watched files"), aunque cambiaba archivos de `apps/web/`, y producción quedó un commit atrás. Además, un PR solo de documentación dejaría producción atrás a propósito, y `pnpm check:prod` exige que corra el último commit de `main`.
+  - Si Railway vuelve a saltarse un despliegue con ese mensaje, revisa si el servicio tiene "Watch Paths" propias en el panel (Settings).
 - **Migraciones:** el servidor las aplica al arrancar. Si fallan, el despliegue nuevo no pasa la comprobación de salud y sigue sirviendo el anterior.
 - **Variables:** se cargan en el panel del servicio (Variables), nunca en el repositorio.
   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`.

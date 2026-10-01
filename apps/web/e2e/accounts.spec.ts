@@ -234,6 +234,10 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
     };
     st.setState({ screen: 'results', phase: 'ended', results: { state: st.getState().match } });
   });
+  // La invitación habla en futuro: jugar en línea y guardar el progreso todavía no existen.
+  await expect(
+    page.getByText('¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.'),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('heading', { name: 'Crear una cuenta' })).toBeVisible();
 });
@@ -304,6 +308,8 @@ test('los beneficios que todavía no existen dicen "Próximamente", y el perfil 
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
+  // La introducción de "Entrar" también habla en futuro.
+  await expect(page.getByText('Con tu cuenta podrás jugar en línea y guardar tu progreso.')).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
   // En el perfil no van: en esa columna irá el resumen del progreso (PR 9 del M7).

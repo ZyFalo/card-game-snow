@@ -343,7 +343,7 @@ export const ACCOUNT_TEXT = {
   passwordHint: 'De 8 a 128 caracteres, con una mayúscula, un número y un símbolo.',
   code: 'Código de 6 dígitos',
   loginTitle: 'Entrar',
-  loginIntro: 'Con tu cuenta juegas en línea y tu progreso queda guardado.',
+  loginIntro: 'Con tu cuenta podrás jugar en línea y guardar tu progreso.',
   loginSubmit: 'Entrar',
   toRegister: 'Crear una cuenta',
   toRecover: '¿Olvidaste tu contraseña?',
@@ -406,7 +406,7 @@ export const ACCOUNT_TEXT = {
   deleteDone: 'Tu cuenta se borró.',
   send: 'Enviar',
   cancel: 'Cancelar',
-  invite: '¿Te gustó? Crea una cuenta para jugar en línea con más personas y guardar tu progreso.',
+  invite: '¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.',
   inviteButton: 'Crear una cuenta',
   passwordsDiffer: 'Las dos contraseñas no coinciden.',
 } as const;

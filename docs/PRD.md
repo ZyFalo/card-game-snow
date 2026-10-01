@@ -5,8 +5,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.9 |
-| Última actualización | 30 de septiembre de 2026 |
+| Versión | 0.10.10 |
+| Última actualización | 1 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
 | Contexto | Proyecto de clase: recrear con IA el juego favorito de la infancia |
@@ -997,6 +997,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-64 | Cada push a `main` se despliega: `railway.json` es la fuente de verdad, sin `watchPatterns`, y en el panel de Railway quedan vacíos Watch Paths, Custom Build Command, Custom Start Command y Root Directory (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-63 | Toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo"; sus e2e incluyen la prueba de desbordes | ✅ | 2026-09-30 |
 | D-62 | El correo de contacto es ventisca@wpena.dev, con Cloudflare Email Routing; ventisca.wpena.dev no recibe correo (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
 | D-61 | El límite por IP sube a 50 intentos fallidos cada 15 min; el de 5 por cuenta sigue (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
@@ -1042,6 +1043,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.10 | 2026-10-01 | D-64: cada push a `main` se despliega. Railway había saltado los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación, por unas rutas vigiladas propias del panel (`/apps/server/**`) que dejó la importación del monorepo. `railway.json` queda como fuente de verdad, sin `watchPatterns`; en el panel se vaciaron Watch Paths y Custom Build Command, y se activó "Wait for CI" |
 | 0.10.9 | 2026-09-30 | Lineamientos de diseño (D-63): las pantallas de cuenta se recomponen como pantallas del juego, en dos columnas, con los tres ninjas, las acciones abajo a la derecha y el código de verificación al centro. El aviso de privacidad pasa a una pantalla de lectura; ya no se corta al abrirlo desde el registro. Los beneficios de la cuenta que todavía no existen llevan la etiqueta "Próximamente", y la introducción de "Entrar" y la invitación de los resultados hablan en futuro. Piezas nuevas de formulario en `ui/common.tsx`, tokens de escala y geometría, y una prueba e2e que falla si una pantalla de cuenta corta texto |
 | 0.10.8 | 2026-09-30 | D-62: el aviso de privacidad da como contacto ventisca@wpena.dev, que Cloudflare Email Routing reenvía al buzón del responsable, y lo declara entre quienes procesan datos. `docs/traspaso.md` anota los registros de DNS de wpena.dev y por qué ventisca.wpena.dev no recibe correo |
 | 0.10.7 | 2026-09-30 | Cuentas en el cliente (M7, paso 7): la portada ofrece "Jugar sin cuenta" y "Entrar", con pantallas de registro, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (R-43 a R-50). El aviso de privacidad se publica en el juego y Turnstile se carga solo en el registro. Los resultados del sandbox invitan a crear una cuenta. Las e2e corren contra el servidor de verdad, con Postgres, y leen los códigos de los correos guardados en una carpeta |

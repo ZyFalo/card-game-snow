@@ -77,7 +77,11 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - `RESEND_API_KEY`: con permiso solo de envío, restringida a ventisca.wpena.dev.
   - `TURNSTILE_SECRET_KEY` y `TURNSTILE_SITE_KEY`: el widget de Turnstile de ventisca.wpena.dev.
   - Sin `RESEND_API_KEY` o sin `TURNSTILE_SECRET_KEY`, en producción el registro responde `email_unavailable` o `captcha_unavailable`.
-- **DNS (D-58):** en wpena.dev hay dos registros: el CNAME `ventisca`, que apunta a Railway, y el TXT de verificación. El CNAME va en **"Solo DNS"** (nube gris en Cloudflare), nunca con el proxy. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad.
+- **DNS de wpena.dev (en Cloudflare):**
+  - **El juego (D-58):** el CNAME `ventisca` apunta a Railway, y el TXT `_railway-verify.ventisca` verifica el dominio. El CNAME va en **"Solo DNS"** (nube gris en Cloudflare), nunca con el proxy. Con el proxy, Cloudflare ve todo el tráfico, inyecta su analítica en la página y agrega reportes de red hacia sus servidores, y nada de eso está declarado en el aviso de privacidad.
+  - **El envío de correos (Resend):** el TXT `resend._domainkey.ventisca` (DKIM) y `send.ventisca`, con el MX de rebotes y el SPF del envío.
+  - **El correo de contacto (D-62):** wpena.dev usa Cloudflare Email Routing, con sus registros MX y SPF en la raíz, bloqueados por Cloudflare. Recibe `ventisca@wpena.dev` y lo reenvía al buzón del responsable. En la raíz también hay un DMARC en `p=none`.
+  - **No actives la recepción de Resend en ventisca.wpena.dev:** pediría un MX en `ventisca`, y un nombre con CNAME no admite otros registros, así que chocaría con el CNAME del juego.
 - **Comprobar un despliegue:** `pnpm check:prod`. Revisa:
   - el DNS sin el proxy;
   - un certificado válido con más de 14 días de vigencia (el emisor se muestra como dato);

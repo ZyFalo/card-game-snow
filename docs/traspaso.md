@@ -109,6 +109,7 @@ Estado al 30 de septiembre de 2026: **v0.10, con el hito M7 en curso**. Es el mo
   - **PR 8:** suma la comprobación de `Origin` en las peticiones que cambian algo.
   - **PR 9:** el perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
 - **M8:** quita "Próximamente" de "Juega en línea con amigos".
+- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). Vuelven al presente cuando existan las dos cosas: el progreso con el PR 9 y el juego en línea con el M8.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

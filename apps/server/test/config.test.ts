@@ -14,6 +14,7 @@ describe('Configuración del servidor', () => {
       databaseUrl: base.DATABASE_URL,
       sessionSecret: base.SESSION_SECRET,
       appUrl: base.APP_URL,
+      devOrigin: null,
       resendApiKey: null,
       mailOutboxDir: null,
       turnstileSecretKey: null,
@@ -54,6 +55,14 @@ describe('Configuración del servidor', () => {
       /MAIL_OUTBOX_DIR/,
     );
     expect(loadConfig({ ...base, MAIL_OUTBOX_DIR: '/tmp/correos' }).mailOutboxDir).toBe('/tmp/correos');
+  });
+
+  it('D-65: el origen de desarrollo no se acepta en producción', () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', DEV_ORIGIN: 'http://localhost:5173' })).toThrow(
+      /DEV_ORIGIN/,
+    );
+    expect(loadConfig({ ...base, DEV_ORIGIN: 'http://localhost:5173' }).devOrigin).toBe('http://localhost:5173');
+    expect(() => loadConfig({ ...base, DEV_ORIGIN: 'http://localhost:5173/' })).toThrow(/DEV_ORIGIN/);
   });
 
   it('SESSION_SECRET necesita al menos 32 caracteres', () => {

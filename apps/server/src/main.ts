@@ -34,6 +34,7 @@ const app = buildApp({
   publicConfig: publicConfigFrom(config),
   webDist: WEB_DIST,
   logger: privateLogger(config.logLevel),
+  devOrigin: config.devOrigin,
   accounts: {
     db: database.db,
     mailer,

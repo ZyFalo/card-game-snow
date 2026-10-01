@@ -4,6 +4,7 @@ import fastifyStatic from '@fastify/static';
 import { apiError, type Health, type PublicConfig } from '@ventisca/protocol';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { type AccountsOptions, accountsRoutes } from './accounts/routes';
+import { originGuard } from './origin';
 
 export interface AppOptions {
   /** Comprueba que la base de datos responde. */
@@ -17,6 +18,11 @@ export interface AppOptions {
   logger: FastifyServerOptions['logger'];
   /** Cuentas (R-43 a R-45). Sin ellas, el servidor solo sirve la salud y el juego. */
   accounts?: AccountsOptions;
+  /**
+   * Solo desarrollo: el origen del cliente de Vite, que pasa /api al servidor. Se suma al del juego
+   * (`accounts.appUrl`) como origen válido de las peticiones que cambian estado (D-65).
+   */
+  devOrigin?: string | null;
 }
 
 /**
@@ -29,11 +35,14 @@ export const privateLogger = (level: string, stream?: NodeJS.WritableStream) => 
   ...(stream ? { stream } : {}),
 });
 
-export function buildApp({ ping, webDist, logger, accounts, commit = null, publicConfig }: AppOptions) {
+export function buildApp({ ping, webDist, logger, accounts, commit = null, publicConfig, devOrigin }: AppOptions) {
   // Railway pone un solo proxy delante: la IP real es la última de X-Forwarded-For. Confiar en más de un
   // salto dejaría que cualquiera inventara su IP y esquivara los límites por IP.
   // Se confía solo en el salto 0 (el proxy de Railway, conectado directo); equivale a un salto.
   const app = Fastify({ logger, trustProxy: (_address: string, hop: number) => hop === 0 });
+
+  // Antes que cualquier ruta: lo que cambia estado solo se acepta desde el propio juego (D-65).
+  if (accounts) originGuard(app, [new URL(accounts.appUrl).origin, ...(devOrigin ? [devOrigin] : [])]);
 
   app.get('/api/health', async (req, reply) => {
     try {

@@ -27,6 +27,7 @@ export const errorCodeSchema = z.enum([
   'captcha_failed',
   'captcha_unavailable',
   'email_taken',
+  'bad_origin',
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 

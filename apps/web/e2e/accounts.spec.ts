@@ -208,7 +208,7 @@ test('el aviso de privacidad se lee desde la portada y desde el registro', async
   await expect(page.getByText(/@gmail\.com/)).toHaveCount(0);
   await expect(
     page.getByText(
-      'Cloudflare recibe los mensajes que escribes a ventisca@wpena.dev y los reenvía al buzón del responsable. Según Cloudflare, no lee ni guarda su contenido.',
+      'Cloudflare recibe los mensajes que escribes a ventisca@wpena.dev y los reenvía al buzón del responsable. Según Cloudflare, no lee ni guarda su contenido. Su panel muestra al responsable quién escribió y cuándo, durante un tiempo que Cloudflare no publica.',
     ),
   ).toBeVisible();
   // R-50: el código para deshacer un cambio de correo vale 7 días, no 15 minutos como los demás.

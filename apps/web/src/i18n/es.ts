@@ -482,7 +482,7 @@ export const PRIVACY_NOTICE = {
         'Railway aloja el servidor y la base de datos en Estados Unidos.',
         'Resend envía los correos con tus códigos y avisos desde São Paulo (Brasil), y guarda cada correo (dirección, asunto y contenido) durante 30 días en Estados Unidos. No medimos si abres los correos ni en qué enlaces haces clic.',
         'Cloudflare Turnstile, solo en la página de registro, comprueba que no seas un programa automático. Recibe tu IP y datos técnicos de tu navegador, y los usa para detectar programas automáticos y para mejorar esa detección. Cloudflare no publica cuánto tiempo los guarda y dice que no los usa para publicidad.',
-        'Cloudflare recibe los mensajes que escribes a ventisca@wpena.dev y los reenvía al buzón del responsable. Según Cloudflare, no lee ni guarda su contenido.',
+        'Cloudflare recibe los mensajes que escribes a ventisca@wpena.dev y los reenvía al buzón del responsable. Según Cloudflare, no lee ni guarda su contenido. Su panel muestra al responsable quién escribió y cuándo, durante un tiempo que Cloudflare no publica.',
       ],
     },
     {

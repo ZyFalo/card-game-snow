@@ -18,6 +18,9 @@ export type AccountView =
   | 'profile'
   | 'privacy';
 
+/** El campo al que apunta un error, para mostrarlo debajo de él (lineamientos, sección 4). */
+export type AccountField = 'email' | 'displayName' | 'password' | 'repeat' | 'code' | 'current';
+
 export interface AccountState {
   /** `offline`: no hay servidor (sin red, o el build de un solo archivo); se juega sin cuenta. */
   status: 'unknown' | 'offline' | 'ready';
@@ -32,7 +35,10 @@ export interface AccountState {
   turnstileSiteKey: string | null;
   busy: boolean;
   error: string | null;
-  info: string | null;
+  /** Sin campo, el error va en un mensaje arriba del formulario. */
+  errorField: AccountField | null;
+  /** `gold`: algo en curso (te mandamos un código); `snow`: algo terminado. */
+  info: { text: string; tone: 'gold' | 'snow' } | null;
 }
 /** intro: aparición de la ronda; planning: el jugador planifica; resolving: se anima el turno. */
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
@@ -139,6 +145,7 @@ export const initialState = (): AppState => ({
     turnstileSiteKey: null,
     busy: false,
     error: null,
+    errorField: null,
     info: null,
   },
 });

@@ -1,7 +1,7 @@
 import { publicConfigSchema, sessionSchema, type User } from '@ventisca/protocol';
 import { ACCOUNT_ERRORS, ACCOUNT_TEXT } from '../i18n/es';
 import { type ApiResult, api, type ClientError } from '../net/api';
-import { type AccountState, type AccountView, store } from './store';
+import { type AccountField, type AccountState, type AccountView, store } from './store';
 
 /*
  * Cuentas en el cliente (PRD de v2, R-43 a R-50). La UI solo llama a estas funciones; el servidor
@@ -46,18 +46,46 @@ export function errorMessage(error: ClientError): string {
   }
 }
 
-/** Corre una llamada con el formulario ocupado; si falla, muestra su mensaje. */
-async function run<T>(call: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> {
-  patch({ busy: true, error: null, info: null });
+/**
+ * El campo que causó el error, si lo hay. Un correo o una contraseña incorrectos al entrar no apuntan a
+ * ninguno de los dos, para no delatar cuál falló (D-59); en el perfil, `credentials` dice a qué campo va.
+ */
+export function errorField(error: ClientError, credentials?: AccountField): AccountField | null {
+  switch (error.code) {
+    case 'bad_request':
+      return error.reason === 'email' || error.reason === 'same_email' ? 'email' : null;
+    case 'email_taken':
+      return 'email';
+    case 'name_not_allowed':
+    case 'name_taken':
+      return 'displayName';
+    case 'weak_password':
+      return 'password';
+    case 'invalid_code':
+    case 'code_expired':
+    case 'too_many_attempts':
+      return 'code';
+    case 'invalid_credentials':
+      return credentials ?? null;
+    default:
+      return null;
+  }
+}
+
+/** Corre una llamada con el formulario ocupado; si falla, muestra su mensaje, junto a su campo si lo hay. */
+async function run<T>(call: () => Promise<ApiResult<T>>, credentials?: AccountField): Promise<ApiResult<T>> {
+  patch({ busy: true, error: null, errorField: null, info: null });
   const res = await call();
   if (!res.ok) {
-    patch({ busy: false, error: errorMessage(res.error) });
+    patch({ busy: false, error: errorMessage(res.error), errorField: errorField(res.error, credentials) });
     if (res.error.code === 'unauthorized') patch({ user: null, view: 'login' });
     return res;
   }
   patch({ busy: false });
   return res;
 }
+
+const passwordsDiffer = () => patch({ error: ACCOUNT_TEXT.passwordsDiffer, errorField: 'repeat', info: null });
 
 /** Al abrir el juego: ¿hay servidor, hay sesión? Sin servidor se juega sin cuenta. */
 export async function initAccount(): Promise<void> {
@@ -75,20 +103,20 @@ export function openAccount(view?: AccountView): void {
   const { account } = store.getState();
   const next = view ?? (account.user ? 'profile' : 'login');
   store.setState({ screen: 'account' });
-  patch({ view: next, previous: account.view, error: null, info: null, pendingEmail: null });
+  patch({ view: next, previous: account.view, error: null, errorField: null, info: null, pendingEmail: null });
 }
 
 export function showView(view: AccountView, extra: Partial<AccountState> = {}): void {
   const { account } = store.getState();
-  patch({ view, previous: account.view, error: null, info: null, ...extra });
+  patch({ view, previous: account.view, error: null, errorField: null, info: null, ...extra });
 }
 
 export function closeAccount(): void {
   store.setState({ screen: 'title' });
-  patch({ error: null, info: null });
+  patch({ error: null, errorField: null, info: null });
 }
 
-const signedIn = (user: User) => patch({ user, view: 'profile', email: '', error: null });
+const signedIn = (user: User) => patch({ user, view: 'profile', email: '', error: null, errorField: null });
 
 export async function register(form: {
   email: string;
@@ -112,7 +140,7 @@ export async function verify(code: string): Promise<void> {
 export async function resendCode(): Promise<void> {
   const { email } = store.getState().account;
   const res = await run(() => api.post('/api/auth/resend', { email }));
-  if (res.ok) patch({ info: ACCOUNT_TEXT.resendDone });
+  if (res.ok) patch({ info: { text: ACCOUNT_TEXT.resendDone, tone: 'gold' } });
 }
 
 export async function login(email: string, password: string): Promise<void> {
@@ -120,7 +148,7 @@ export async function login(email: string, password: string): Promise<void> {
   if (res.ok) signedIn(res.data.user);
   // Sin verificar: pasa al código, con la opción de pedir otro.
   else if (res.error.code === 'email_not_verified') {
-    showView('verify', { email: email.trim(), error: ACCOUNT_ERRORS.email_not_verified });
+    showView('verify', { email: email.trim(), info: { text: ACCOUNT_ERRORS.email_not_verified, tone: 'gold' } });
   }
 }
 
@@ -137,7 +165,7 @@ export async function recoverRequest(email: string): Promise<void> {
 
 export async function recoverConfirm(code: string, password: string, repeat: string): Promise<void> {
   if (password !== repeat) {
-    patch({ error: ACCOUNT_TEXT.passwordsDiffer });
+    passwordsDiffer();
     return;
   }
   const { email } = store.getState().account;
@@ -148,39 +176,46 @@ export async function recoverConfirm(code: string, password: string, repeat: str
 /** R-50: sin sesión, deshace un cambio de correo con el código que llegó al correo anterior. */
 export async function revertEmail(email: string, code: string, password: string, repeat: string): Promise<void> {
   if (password !== repeat) {
-    patch({ error: ACCOUNT_TEXT.passwordsDiffer });
+    passwordsDiffer();
     return;
   }
   const res = await run(() => api.post('/api/auth/email/revert', { email, code, password }));
-  if (res.ok) showView('login', { info: ACCOUNT_TEXT.revertDone });
+  if (res.ok) showView('login', { info: { text: ACCOUNT_TEXT.revertDone, tone: 'snow' } });
 }
 
 export async function changePassword(current: string, next: string, repeat: string): Promise<boolean> {
   if (next !== repeat) {
-    patch({ error: ACCOUNT_TEXT.passwordsDiffer });
+    passwordsDiffer();
     return false;
   }
-  const res = await run(() => api.post('/api/auth/password', { currentPassword: current, newPassword: next }));
-  if (res.ok) patch({ info: ACCOUNT_TEXT.changePasswordDone });
+  const res = await run(
+    () => api.post('/api/auth/password', { currentPassword: current, newPassword: next }),
+    'current',
+  );
+  if (res.ok) patch({ info: { text: ACCOUNT_TEXT.changePasswordDone, tone: 'snow' } });
   return res.ok;
 }
 
 export async function changeEmailRequest(password: string, newEmail: string): Promise<void> {
-  const res = await run(() => api.post('/api/auth/email/request', { password, newEmail }));
-  if (res.ok) patch({ pendingEmail: newEmail.trim(), info: ACCOUNT_TEXT.changeEmailSent });
+  const res = await run(() => api.post('/api/auth/email/request', { password, newEmail }), 'current');
+  if (res.ok) patch({ pendingEmail: newEmail.trim(), info: { text: ACCOUNT_TEXT.changeEmailSent, tone: 'gold' } });
 }
 
 export async function changeEmailConfirm(code: string): Promise<void> {
   const res = await run(() => api.post('/api/auth/email/confirm', { code }, sessionSchema));
   if (res.ok)
-    patch({ user: res.data.user, pendingEmail: null, info: ACCOUNT_TEXT.changeEmailDone(res.data.user.email) });
+    patch({
+      user: res.data.user,
+      pendingEmail: null,
+      info: { text: ACCOUNT_TEXT.changeEmailDone(res.data.user.email), tone: 'snow' },
+    });
 }
 
 export function cancelEmailChange(): void {
-  patch({ pendingEmail: null, error: null, info: null });
+  patch({ pendingEmail: null, error: null, errorField: null, info: null });
 }
 
 export async function deleteAccount(password: string): Promise<void> {
-  const res = await run(() => api.post('/api/auth/delete', { password }));
-  if (res.ok) patch({ user: null, view: 'login', info: ACCOUNT_TEXT.deleteDone });
+  const res = await run(() => api.post('/api/auth/delete', { password }), 'current');
+  if (res.ok) patch({ user: null, view: 'login', info: { text: ACCOUNT_TEXT.deleteDone, tone: 'snow' } });
 }

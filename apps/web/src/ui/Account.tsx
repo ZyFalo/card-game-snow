@@ -1,5 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react';
-import { art } from '../art';
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { PRIVACY_NOTICE, ACCOUNT_TEXT as T } from '../i18n/es';
 import {
   cancelEmailChange,
@@ -18,88 +17,96 @@ import {
   showView,
   verify,
 } from '../state/account';
-import { useApp } from '../state/store';
-import { Modal } from './common';
+import { type AccountField, useApp } from '../state/store';
+import { Check, Field, type IconName, NinjaTrio, Notice, Points, SubmitButton } from './common';
 import { Turnstile } from './Turnstile';
 
-/* Pantalla de cuenta del modo en línea (PRD de v2, R-43 a R-50). */
+/*
+ * Pantalla de cuenta del modo en línea (PRD de v2, R-43 a R-50), compuesta según
+ * docs/lineamientos-de-diseno.md: encabezado arriba a la izquierda, el formulario en un panel con los
+ * ninjas y los beneficios a la derecha, y las acciones abajo a la derecha, como en "Tu equipo".
+ */
 
 export function AccountScreen() {
   const view = useApp((s) => s.account.view);
+  // Cada vista se monta de nuevo, así repite las entradas escalonadas.
   return (
-    <div className="screen account-screen">
-      <img className="bg" src={art.background('cumbre')} alt="" />
-      <div className="veil" />
-      <section className="paper account-panel">
-        {view === 'login' ? <LoginView /> : null}
-        {view === 'register' ? <RegisterView /> : null}
-        {view === 'verify' ? <VerifyView /> : null}
-        {view === 'recover' ? <RecoverView /> : null}
-        {view === 'recoverCode' ? <RecoverCodeView /> : null}
-        {view === 'revert' ? <RevertView /> : null}
-        {view === 'profile' ? <ProfileView /> : null}
-        {view === 'privacy' ? <PrivacyView /> : null}
-      </section>
+    <div key={view} className="screen account-screen">
+      {view === 'login' ? <LoginView /> : null}
+      {view === 'register' ? <RegisterView /> : null}
+      {view === 'verify' ? <VerifyView /> : null}
+      {view === 'recover' ? <RecoverView /> : null}
+      {view === 'recoverCode' ? <RecoverCodeView /> : null}
+      {view === 'revert' ? <RevertView /> : null}
+      {view === 'profile' ? <ProfileView /> : null}
+      {view === 'privacy' ? <PrivacyParts onBack={closeAccount} /> : null}
     </div>
   );
 }
 
-/** Error y aviso de la última acción; los lectores de pantalla los anuncian. */
+const BENEFIT_ICONS: IconName[] = ['coin', 'play', 'cards'];
+const benefits = T.benefits.map((text, i) => ({ mark: BENEFIT_ICONS[i] ?? 'check', text }));
+const steps = (texts: readonly string[]) => texts.map((text, i) => ({ mark: i + 1, text }));
+
+function Head({ title, intro }: { title: string; intro?: string }) {
+  return (
+    <div className="screen-head">
+      <h1 className="display">{title}</h1>
+      {intro ? <p>{intro}</p> : null}
+    </div>
+  );
+}
+
+/** El panel del formulario a la izquierda; a la derecha, los puntos y los tres ninjas. */
+function FormBody({ aside, children }: { aside: ReactNode; children: ReactNode }) {
+  return (
+    <div className="account-body">
+      <section className="paper account-form">{children}</section>
+      <div className="account-aside">
+        {aside}
+        <NinjaTrio />
+      </div>
+    </div>
+  );
+}
+
+function Actions({ children }: { children: ReactNode }) {
+  return <div className="screen-actions">{children}</div>;
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="btn btn-lg" onClick={onClick}>
+      {T.back}
+    </button>
+  );
+}
+
+/** El error sin campo y el aviso de la última acción; los errores de un campo van debajo de él. */
 function Messages() {
   const error = useApp((s) => s.account.error);
+  const field = useApp((s) => s.account.errorField);
   const info = useApp((s) => s.account.info);
   return (
     <>
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {info ? (
-        <p className="form-info" role="status">
-          {info}
-        </p>
-      ) : null}
+      {error && !field ? <Notice tone="danger">{error}</Notice> : null}
+      {info ? <Notice tone={info.tone}>{info.text}</Notice> : null}
     </>
   );
 }
 
-function Field({
-  label,
-  hint,
-  ...input
-}: { label: string; hint?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  const id = useId();
-  // La ayuda va aparte de la etiqueta (aria-describedby): el nombre del campo es solo la etiqueta.
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...input} />
-      {hint ? <small id={`${id}-hint`}>{hint}</small> : null}
-    </div>
-  );
+function useFieldError() {
+  const error = useApp((s) => s.account.error);
+  const field = useApp((s) => s.account.errorField);
+  return (f: AccountField) => (field === f ? error : null);
 }
 
-function Form({ onSubmit, children }: { onSubmit: () => void; children: ReactNode }) {
-  const submit = (ev: FormEvent) => {
-    ev.preventDefault();
-    onSubmit();
-  };
-  return (
-    <form className="form" onSubmit={submit} noValidate>
-      {children}
-    </form>
-  );
-}
+const useBusy = () => useApp((s) => s.account.busy);
 
-function Submit({ label, disabled }: { label: string; disabled?: boolean }) {
-  const busy = useApp((s) => s.account.busy);
-  return (
-    <button type="submit" className="btn btn-primary" disabled={busy || disabled}>
-      {label}
-    </button>
-  );
-}
+const onSubmit = (fn: () => void) => (ev: FormEvent) => {
+  ev.preventDefault();
+  fn();
+};
 
 const codeInput = {
   inputMode: 'numeric' as const,
@@ -109,47 +116,55 @@ const codeInput = {
 };
 
 function LoginView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   return (
     <>
-      <h1 className="display">{T.loginTitle}</h1>
-      <p>{T.loginIntro}</p>
-      <Messages />
-      <Form onSubmit={() => void login(email, password)}>
-        <Field
-          label={T.email}
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Field
-          label={T.password}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Submit label={T.loginSubmit} />
-      </Form>
-      <div className="account-links">
-        <button type="button" className="link" onClick={() => showView('register')}>
-          {T.toRegister}
-        </button>
-        <button type="button" className="link" onClick={() => showView('recover')}>
-          {T.toRecover}
-        </button>
-        <button type="button" className="link" onClick={() => showView('revert')}>
+      <Head title={T.loginTitle} intro={T.loginIntro} />
+      <FormBody aside={<Points items={benefits} />}>
+        <Messages />
+        <form id={formId} className="form" noValidate onSubmit={onSubmit(() => void login(email, password))}>
+          <Field
+            label={T.email}
+            type="email"
+            autoComplete="email"
+            value={email}
+            error={fieldError('email')}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Field
+            label={T.password}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="button" className="link forgot" onClick={() => showView('recover')}>
+            {T.toRecover}
+          </button>
+        </form>
+      </FormBody>
+      <Actions>
+        <button type="button" className="link link-quiet foot" onClick={() => showView('revert')}>
           {T.toRevert}
         </button>
-      </div>
-      <BackToTitle />
+        <BackButton onClick={closeAccount} />
+        <button type="button" className="btn btn-lg" onClick={() => showView('register')}>
+          {T.toRegister}
+        </button>
+        <SubmitButton large form={formId} label={T.loginSubmit} busy={busy} />
+      </Actions>
     </>
   );
 }
 
 function RegisterView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const siteKey = useApp((s) => s.account.turnstileSiteKey);
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -159,6 +174,14 @@ function RegisterView() {
   // El token del captcha vale una vez: tras cada envío se remonta el widget para pedir otro.
   const [captchaKey, setCaptchaKey] = useState(0);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const privacyLink = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // Al cerrar el aviso, el foco vuelve al enlace que lo abrió.
+  useEffect(() => {
+    if (privacyOpen) wasOpen.current = true;
+    else if (wasOpen.current) privacyLink.current?.focus();
+  }, [privacyOpen]);
 
   const submit = async () => {
     // Sin clave de Turnstile (desarrollo) el servidor no pide captcha.
@@ -171,63 +194,65 @@ function RegisterView() {
 
   return (
     <>
-      <h1 className="display">{T.registerTitle}</h1>
-      <Messages />
-      <Form onSubmit={() => void submit()}>
-        <Field
-          label={T.email}
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Field
-          label={T.displayName}
-          hint={T.displayNameHint}
-          autoComplete="nickname"
-          maxLength={32}
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        <Field
-          label={T.password}
-          hint={T.passwordHint}
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <label className="check">
-          <input type="checkbox" checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} />
-          <span>
-            {T.acceptPrivacy}{' '}
-            <button type="button" className="link" onClick={() => setPrivacyOpen(true)}>
-              {T.privacy.toLowerCase()}
-            </button>
-            .
-          </span>
-        </label>
-        {siteKey ? (
-          <>
-            <Turnstile key={captchaKey} siteKey={siteKey} onToken={setToken} />
-            {token ? null : <small className="captcha-wait">{T.captchaWaiting}</small>}
-          </>
-        ) : null}
-        <Submit label={T.registerSubmit} disabled={siteKey !== null && !token} />
-      </Form>
-      <button type="button" className="btn account-back" onClick={() => showView('login')}>
-        {T.back}
-      </button>
-      {privacyOpen ? (
-        <Modal label={PRIVACY_NOTICE.title} onClose={() => setPrivacyOpen(false)}>
-          <PrivacyText />
-          <div className="modal-actions">
-            <button type="button" className="btn btn-primary" onClick={() => setPrivacyOpen(false)}>
-              {T.back}
-            </button>
-          </div>
-        </Modal>
-      ) : null}
+      {/* Con el aviso abierto encima, lo de abajo no recibe foco ni clics, pero conserva lo escrito. */}
+      <div className="contents" inert={privacyOpen}>
+        <Head title={T.registerTitle} intro={T.registerIntro} />
+        <FormBody aside={<Points items={benefits} />}>
+          <Messages />
+          <form id={formId} className="form" noValidate onSubmit={onSubmit(() => void submit())}>
+            <Field
+              label={T.email}
+              type="email"
+              autoComplete="email"
+              value={email}
+              error={fieldError('email')}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Field
+              label={T.displayName}
+              hint={T.displayNameHint}
+              autoComplete="nickname"
+              maxLength={32}
+              value={displayName}
+              error={fieldError('displayName')}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+            <Field
+              label={T.password}
+              hint={T.passwordHint}
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              error={fieldError('password')}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Check checked={acceptPrivacy} onChange={setAcceptPrivacy}>
+              {T.acceptPrivacy}{' '}
+              <button ref={privacyLink} type="button" className="link" onClick={() => setPrivacyOpen(true)}>
+                {T.privacy.toLowerCase()}
+              </button>
+              .
+            </Check>
+            {siteKey ? (
+              <div className="field">
+                <Turnstile key={captchaKey} siteKey={siteKey} onToken={setToken} />
+                {token ? null : <small>{T.captchaWaiting}</small>}
+              </div>
+            ) : null}
+          </form>
+        </FormBody>
+        <Actions>
+          <BackButton onClick={() => showView('login')} />
+          <SubmitButton
+            large
+            form={formId}
+            label={T.registerSubmit}
+            busy={busy}
+            disabled={siteKey !== null && !token}
+          />
+        </Actions>
+      </div>
+      {privacyOpen ? <PrivacyDialog onClose={() => setPrivacyOpen(false)} /> : null}
     </>
   );
 }
@@ -243,59 +268,76 @@ function useCooldown(seconds: number) {
   return [left, () => setLeft(seconds)] as const;
 }
 
+/** Verificar un código: el código ocupa el centro, en dígitos grandes. */
 function VerifyView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const email = useApp((s) => s.account.email);
   const [code, setCode] = useState('');
   const [left, restart] = useCooldown(60);
   return (
     <>
-      <h1 className="display">{T.verifyTitle}</h1>
-      <p>{T.verifyIntro(email)}</p>
-      <Messages />
-      <Form onSubmit={() => void verify(code.trim())}>
-        <Field label={T.code} {...codeInput} value={code} onChange={(e) => setCode(e.target.value)} />
-        <Submit label={T.verifySubmit} />
-      </Form>
-      <div className="profile-actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={left > 0}
-          onClick={() => {
-            restart();
-            void resendCode();
-          }}
-        >
-          {left > 0 ? T.resendWait(left) : T.resend}
-        </button>
-        <button type="button" className="btn" onClick={() => showView('login')}>
-          {T.back}
-        </button>
+      <Head title={T.verifyTitle} intro={T.verifyIntro(email)} />
+      <div className="code-stage">
+        <section className="paper code-panel">
+          <Messages />
+          <form id={formId} className="form" noValidate onSubmit={onSubmit(() => void verify(code.trim()))}>
+            <Field
+              code
+              label={T.code}
+              {...codeInput}
+              value={code}
+              error={fieldError('code')}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          </form>
+          <button
+            type="button"
+            className="btn"
+            disabled={left > 0}
+            onClick={() => {
+              restart();
+              void resendCode();
+            }}
+          >
+            {left > 0 ? T.resendWait(left) : T.resend}
+          </button>
+        </section>
       </div>
+      <Actions>
+        <BackButton onClick={() => showView('login')} />
+        <SubmitButton large form={formId} label={T.verifySubmit} busy={busy} />
+      </Actions>
     </>
   );
 }
 
 function RecoverView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [email, setEmail] = useState('');
   return (
     <>
-      <h1 className="display">{T.recoverTitle}</h1>
-      <p>{T.recoverIntro}</p>
-      <Messages />
-      <Form onSubmit={() => void recoverRequest(email)}>
-        <Field
-          label={T.email}
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Submit label={T.recoverSubmit} />
-      </Form>
-      <button type="button" className="btn account-back" onClick={() => showView('login')}>
-        {T.back}
-      </button>
+      <Head title={T.recoverTitle} intro={T.recoverIntro} />
+      <FormBody aside={<Points items={steps(T.recoverSteps)} />}>
+        <Messages />
+        <form id={formId} className="form" noValidate onSubmit={onSubmit(() => void recoverRequest(email))}>
+          <Field
+            label={T.email}
+            type="email"
+            autoComplete="email"
+            value={email}
+            error={fieldError('email')}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </form>
+      </FormBody>
+      <Actions>
+        <BackButton onClick={() => showView('login')} />
+        <SubmitButton large form={formId} label={T.recoverSubmit} busy={busy} />
+      </Actions>
     </>
   );
 }
@@ -311,6 +353,7 @@ function NewPasswordFields({
   onValue: (v: string) => void;
   onRepeat: (v: string) => void;
 }) {
+  const fieldError = useFieldError();
   return (
     <>
       <Field
@@ -319,6 +362,7 @@ function NewPasswordFields({
         type="password"
         autoComplete="new-password"
         value={value}
+        error={fieldError('password')}
         onChange={(e) => onValue(e.target.value)}
       />
       <Field
@@ -326,6 +370,7 @@ function NewPasswordFields({
         type="password"
         autoComplete="new-password"
         value={repeat}
+        error={fieldError('repeat')}
         onChange={(e) => onRepeat(e.target.value)}
       />
     </>
@@ -333,52 +378,83 @@ function NewPasswordFields({
 }
 
 function RecoverCodeView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const email = useApp((s) => s.account.email);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   return (
     <>
-      <h1 className="display">{T.recoverTitle}</h1>
-      <p>{T.recoverCodeIntro(email)}</p>
-      <Messages />
-      <Form onSubmit={() => void recoverConfirm(code.trim(), password, repeat)}>
-        <Field label={T.code} {...codeInput} value={code} onChange={(e) => setCode(e.target.value)} />
-        <NewPasswordFields value={password} repeat={repeat} onValue={setPassword} onRepeat={setRepeat} />
-        <Submit label={T.recoverCodeSubmit} />
-      </Form>
-      <button type="button" className="btn account-back" onClick={() => showView('login')}>
-        {T.back}
-      </button>
+      <Head title={T.recoverTitle} intro={T.recoverCodeIntro(email)} />
+      <FormBody aside={<Points items={steps(T.recoverSteps)} />}>
+        <Messages />
+        <form
+          id={formId}
+          className="form"
+          noValidate
+          onSubmit={onSubmit(() => void recoverConfirm(code.trim(), password, repeat))}
+        >
+          <Field
+            label={T.code}
+            {...codeInput}
+            value={code}
+            error={fieldError('code')}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <NewPasswordFields value={password} repeat={repeat} onValue={setPassword} onRepeat={setRepeat} />
+        </form>
+      </FormBody>
+      <Actions>
+        <BackButton onClick={() => showView('login')} />
+        <SubmitButton large form={formId} label={T.recoverCodeSubmit} busy={busy} />
+      </Actions>
     </>
   );
 }
 
 function RevertView() {
+  const formId = useId();
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   return (
     <>
-      <h1 className="display">{T.revertTitle}</h1>
-      <p>{T.revertIntro}</p>
-      <Messages />
-      <Form onSubmit={() => void revertEmail(email, code.trim(), password, repeat)}>
-        <Field
-          label={T.revertEmail}
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Field label={T.code} {...codeInput} value={code} onChange={(e) => setCode(e.target.value)} />
-        <NewPasswordFields value={password} repeat={repeat} onValue={setPassword} onRepeat={setRepeat} />
-        <Submit label={T.revertSubmit} />
-      </Form>
-      <button type="button" className="btn account-back" onClick={() => showView('login')}>
-        {T.back}
-      </button>
+      <Head title={T.revertTitle} intro={T.revertIntro} />
+      <FormBody aside={<Points items={steps(T.revertSteps)} />}>
+        <Messages />
+        <form
+          id={formId}
+          className="form"
+          noValidate
+          onSubmit={onSubmit(() => void revertEmail(email, code.trim(), password, repeat))}
+        >
+          <Field
+            label={T.revertEmail}
+            type="email"
+            autoComplete="email"
+            value={email}
+            error={fieldError('email')}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Field
+            label={T.code}
+            {...codeInput}
+            value={code}
+            error={fieldError('code')}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <NewPasswordFields value={password} repeat={repeat} onValue={setPassword} onRepeat={setRepeat} />
+        </form>
+      </FormBody>
+      <Actions>
+        <BackButton onClick={() => showView('login')} />
+        <SubmitButton large form={formId} label={T.revertSubmit} busy={busy} />
+      </Actions>
     </>
   );
 }
@@ -394,74 +470,107 @@ function ProfileView() {
     cancelEmailChange();
     setOpen(open === s ? null : s);
   };
+  const row = (s: Exclude<Section, null>, title: string, detail: string | null, action: string) => (
+    <div className="account-row">
+      <div>
+        <b>{title}</b>
+        {detail ? <span>{detail}</span> : null}
+      </div>
+      <button type="button" className="btn" aria-expanded={open === s} onClick={() => toggle(s)}>
+        {action}
+      </button>
+    </div>
+  );
   return (
     <>
-      <h1 className="display">{T.profileTitle(user.displayName)}</h1>
-      <p className="profile-email">{user.email}</p>
-      <p>{T.profileIntro}</p>
-      <Messages />
-      <div className="profile-actions">
-        <button type="button" className="btn" aria-expanded={open === 'password'} onClick={() => toggle('password')}>
-          {T.changePassword}
-        </button>
-        <button type="button" className="btn" aria-expanded={open === 'email'} onClick={() => toggle('email')}>
-          {T.changeEmail}
-        </button>
-        <button type="button" className="btn" onClick={() => void logout()}>
+      <Head title={T.profileTitle(user.displayName)} intro={T.profileIntro} />
+      <FormBody aside={<Points items={benefits} />}>
+        <Messages />
+        {row('password', T.password, null, T.changePassword)}
+        {open === 'password' ? (
+          <Opened>
+            <ChangePasswordForm onDone={() => setOpen(null)} />
+          </Opened>
+        ) : null}
+        {row('email', T.email, user.email, T.changeEmail)}
+        {open === 'email' ? <Opened>{pendingEmail ? <ConfirmEmailForm /> : <ChangeEmailForm />}</Opened> : null}
+        {row('delete', T.accountRow, T.accountRowDetail, T.deleteAccount)}
+        {open === 'delete' ? (
+          <Opened>
+            <DeleteForm />
+          </Opened>
+        ) : null}
+      </FormBody>
+      <Actions>
+        <BackButton onClick={closeAccount} />
+        <button type="button" className="btn btn-lg" onClick={() => void logout()}>
           {T.logout}
         </button>
-        <button
-          type="button"
-          className="btn btn-danger"
-          aria-expanded={open === 'delete'}
-          onClick={() => toggle('delete')}
-        >
-          {T.deleteAccount}
-        </button>
-      </div>
-      {open === 'password' ? <ChangePasswordForm onDone={() => setOpen(null)} /> : null}
-      {open === 'email' ? pendingEmail ? <ConfirmEmailForm /> : <ChangeEmailForm /> : null}
-      {open === 'delete' ? <DeleteForm /> : null}
-      <BackToTitle />
+      </Actions>
     </>
   );
 }
 
+/** La sección abierta del perfil; si el panel se desplaza, la trae a la vista. */
+function Opened({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Sin devolver nada: en Chromium, scrollIntoView devuelve una promesa y React la tomaría por limpieza.
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: 'nearest' });
+  }, []);
+  return (
+    <div ref={ref} className="account-open">
+      {children}
+    </div>
+  );
+}
+
 function ChangePasswordForm({ onDone }: { onDone: () => void }) {
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [current, setCurrent] = useState('');
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   return (
-    <Form
-      onSubmit={() =>
-        void changePassword(current, password, repeat).then((ok) => {
-          if (ok) onDone();
-        })
-      }
+    <form
+      className="form"
+      noValidate
+      onSubmit={onSubmit(
+        () =>
+          void changePassword(current, password, repeat).then((ok) => {
+            if (ok) onDone();
+          }),
+      )}
     >
       <Field
         label={T.currentPassword}
         type="password"
         autoComplete="current-password"
         value={current}
+        error={fieldError('current')}
         onChange={(e) => setCurrent(e.target.value)}
       />
       <NewPasswordFields value={password} repeat={repeat} onValue={setPassword} onRepeat={setRepeat} />
-      <Submit label={T.changePassword} />
-    </Form>
+      <div className="form-actions">
+        <SubmitButton label={T.savePassword} busy={busy} />
+      </div>
+    </form>
   );
 }
 
 function ChangeEmailForm() {
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [password, setPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   return (
-    <Form onSubmit={() => void changeEmailRequest(password, newEmail)}>
+    <form className="form" noValidate onSubmit={onSubmit(() => void changeEmailRequest(password, newEmail))}>
       <Field
         label={T.newEmail}
         type="email"
         autoComplete="email"
         value={newEmail}
+        error={fieldError('email')}
         onChange={(e) => setNewEmail(e.target.value)}
       />
       <Field
@@ -469,80 +578,115 @@ function ChangeEmailForm() {
         type="password"
         autoComplete="current-password"
         value={password}
+        error={fieldError('current')}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <Submit label={T.send} />
-    </Form>
+      <div className="form-actions">
+        <SubmitButton label={T.send} busy={busy} />
+      </div>
+    </form>
   );
 }
 
 function ConfirmEmailForm() {
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [code, setCode] = useState('');
   return (
-    <Form onSubmit={() => void changeEmailConfirm(code.trim())}>
-      <Field label={T.code} {...codeInput} value={code} onChange={(e) => setCode(e.target.value)} />
-      <Submit label={T.changeEmailSubmit} />
-      <button type="button" className="btn" onClick={cancelEmailChange}>
-        {T.cancel}
-      </button>
-    </Form>
+    <form className="form" noValidate onSubmit={onSubmit(() => void changeEmailConfirm(code.trim()))}>
+      <Field
+        label={T.code}
+        {...codeInput}
+        value={code}
+        error={fieldError('code')}
+        onChange={(e) => setCode(e.target.value)}
+      />
+      <div className="form-actions">
+        <button type="button" className="btn" onClick={cancelEmailChange}>
+          {T.cancel}
+        </button>
+        <SubmitButton label={T.changeEmailSubmit} busy={busy} />
+      </div>
+    </form>
   );
 }
 
+/** Borrar pide confirmar con la contraseña: el botón de peligro nunca actúa con un solo clic. */
 function DeleteForm() {
+  const busy = useBusy();
+  const fieldError = useFieldError();
   const [password, setPassword] = useState('');
   return (
-    <Form onSubmit={() => void deleteAccount(password)}>
-      <p className="form-warning">{T.deleteWarning}</p>
+    <form className="form" noValidate onSubmit={onSubmit(() => void deleteAccount(password))}>
+      <Notice tone="danger">{T.deleteWarning}</Notice>
       <Field
         label={T.currentPassword}
         type="password"
         autoComplete="current-password"
         value={password}
+        error={fieldError('current')}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <Submit label={T.deleteSubmit} />
-    </Form>
+      <div className="form-actions">
+        <SubmitButton danger label={T.deleteSubmit} busy={busy} />
+      </div>
+    </form>
   );
 }
 
-export function PrivacyText() {
-  return (
-    <div className="privacy">
-      <h2 className="display">{PRIVACY_NOTICE.title}</h2>
-      <p className="privacy-since">{PRIVACY_NOTICE.since}</p>
-      {PRIVACY_NOTICE.sections.map((s) => (
-        <section key={s.title || 'intro'}>
-          {s.title ? <h3>{s.title}</h3> : null}
-          {'items' in s ? (
-            <ul>
-              {s.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          ) : null}
-          {s.body.map((p) => (
-            <p key={p}>{p}</p>
-          ))}
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function PrivacyView() {
+/** El aviso de privacidad como pantalla de lectura: su columna se desplaza y el texto nunca se corta. */
+function PrivacyParts({ onBack, readingRef }: { onBack: () => void; readingRef?: RefObject<HTMLElement | null> }) {
   return (
     <>
-      <PrivacyText />
-      <BackToTitle />
+      <Head title={PRIVACY_NOTICE.title} intro={PRIVACY_NOTICE.since} />
+      <div className="reading-body">
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: una región que se desplaza debe poder enfocarse para leerla con el teclado (WCAG 2.1.1). */}
+        <section ref={readingRef} className="paper reading" tabIndex={0} aria-label={PRIVACY_NOTICE.title}>
+          {PRIVACY_NOTICE.sections.map((s) => (
+            <section key={s.title || 'intro'}>
+              {s.title ? <h2>{s.title}</h2> : null}
+              {'items' in s ? (
+                <ul>
+                  {s.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {s.body.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+            </section>
+          ))}
+        </section>
+        <NinjaTrio />
+      </div>
+      <Actions>
+        <BackButton onClick={onBack} />
+      </Actions>
     </>
   );
 }
 
-function BackToTitle() {
+/** El aviso abierto desde el registro: la misma pantalla de lectura, encima, sin perder lo escrito. */
+function PrivacyDialog({ onClose }: { onClose: () => void }) {
+  const reading = useRef<HTMLElement>(null);
+  useEffect(() => {
+    reading.current?.focus();
+  }, []);
   return (
-    <button type="button" className="btn account-back" onClick={closeAccount}>
-      {T.back}
-    </button>
+    <div
+      className="screen account-screen"
+      role="dialog"
+      aria-modal="true"
+      aria-label={PRIVACY_NOTICE.title}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
+    >
+      <PrivacyParts onBack={onClose} readingRef={reading} />
+    </div>
   );
 }

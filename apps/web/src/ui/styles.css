@@ -363,6 +363,209 @@ button {
   color: #c9d0e6;
 }
 
+/* Formularios (docs/lineamientos-de-diseno.md, sección 4) */
+.form {
+  display: grid;
+  gap: var(--gap-3);
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--gap-1);
+}
+
+.field label {
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink);
+}
+
+.field input {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--gap-2);
+  font: 500 var(--text-lead) / 1.2 var(--font-ui);
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+  user-select: text;
+}
+
+.field input::placeholder {
+  color: var(--ink-3);
+}
+
+.field input:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.field small {
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.field.invalid input {
+  border-color: var(--danger);
+  box-shadow: var(--shadow-danger);
+}
+
+.field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-1);
+  margin: 0;
+  font: 700 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--danger);
+}
+
+.field-error svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* El código de 6 dígitos, en grande y en la tipografía de títulos. */
+.field-code label {
+  text-align: center;
+}
+
+.field-code input {
+  height: 76px;
+  font: var(--text-title) / 1 var(--font-display);
+  letter-spacing: 0.32em;
+  text-align: center;
+}
+
+.check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+}
+
+/* La casilla real queda encima del cuadro, invisible: recibe el clic y el foco. */
+.check input {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.check-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--paper-hi);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-check);
+}
+
+.check-box svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+}
+
+.check input:checked + .check-box {
+  background: var(--ink);
+}
+
+.check input:checked + .check-box svg {
+  opacity: 1;
+}
+
+.check input:focus-visible + .check-box {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.link {
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: var(--line);
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.link-quiet {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.notice {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-2);
+  margin: 0;
+  padding: var(--gap-2) var(--gap-3) var(--gap-2) calc(var(--gap-3) + 10px);
+  font: 700 var(--text-notice) / 1.4 var(--font-ui);
+  color: var(--ink);
+}
+
+/* La franja de color, recortada como el resto del papel. */
+.notice::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: var(--tone);
+  border-right: var(--line) solid var(--ink);
+  border-radius: calc(var(--radius-panel) - var(--line)) 0 0 calc(var(--radius-panel) - var(--line));
+}
+
+.notice svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.notice-danger {
+  --tone: var(--danger);
+}
+
+.notice-danger svg {
+  color: var(--danger);
+}
+
+.notice-gold {
+  --tone: var(--gold);
+}
+
+.notice-snow {
+  --tone: var(--snow);
+}
+
+.btn-danger {
+  color: var(--paper-hi);
+  background: var(--danger);
+}
+
 /* ---------- Pantallas ---------- */
 .screen {
   position: absolute;
@@ -1753,185 +1956,236 @@ button {
 }
 
 /* ---------- Cuentas (modo en línea) ---------- */
+/* Composición de la sección 5 de los lineamientos: encabezado, banda central y acciones abajo. */
 
-.account-screen .bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.account-screen .veil {
-  position: absolute;
-  inset: 0;
-  background: rgba(234, 240, 244, 0.82);
-}
-
-.account-panel {
-  position: absolute;
-  left: calc(50% - 300px);
-  top: 36px;
-  width: 600px;
-  max-height: 648px;
-  padding: 26px 32px 24px;
-  overflow: auto;
-  font: 500 15px / 1.45 var(--font-ui);
-}
-
-.account-panel h1 {
-  margin: 0 0 6px;
-  font-size: 32px;
-  line-height: 1.1;
-}
-
-.account-panel > p {
-  margin: 0 0 14px;
-  color: var(--ink-2);
-}
-
-.form {
+.account-screen {
   display: grid;
-  gap: 12px;
-  margin: 8px 0 16px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--gap-4);
+  padding: var(--edge-top) var(--edge-x);
 }
 
-.field {
+.account-screen .screen-head {
+  position: static;
+}
+
+/* Formularios: el panel a la izquierda; a la derecha, los ninjas y los beneficios. */
+.account-body {
   display: grid;
-  gap: 4px;
-  font: 700 14px / 1.3 var(--font-ui);
+  grid-template-columns: 480px minmax(0, 1fr);
+  gap: calc(var(--gap-4) * 2);
+  min-height: 0;
 }
 
-.field input {
-  min-height: 42px;
-  padding: 8px 12px;
-  font: 500 16px / 1.3 var(--font-ui);
-  color: var(--ink);
-  background: var(--paper-hi);
-  border: 2px solid var(--ink);
-  border-radius: 8px;
+.account-form {
+  align-self: start;
+  display: grid;
+  gap: var(--gap-3);
+  max-height: 100%;
+  min-height: 0;
+  padding: var(--gap-4);
+  overflow-y: auto;
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
 }
 
-.field input:focus-visible,
-.check input:focus-visible,
-.link:focus-visible {
-  outline: 3px solid var(--water);
-  outline-offset: 2px;
+.account-aside {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--gap-4);
+  min-height: 0;
 }
 
-.field small,
-.captcha-wait {
-  font: 500 13px / 1.35 var(--font-ui);
-  color: var(--ink-3);
+.account-aside .points {
+  padding-top: var(--gap-4);
 }
 
-.check {
+.account-aside .ninja-trio {
+  align-self: end;
+  justify-self: end;
+}
+
+.points {
+  display: grid;
+  gap: var(--gap-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.points li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font: 500 14px / 1.35 var(--font-ui);
+  gap: var(--gap-2);
+  font: 700 var(--text-lead) / 1.35 var(--font-ui);
 }
 
-.check input {
-  width: 20px;
-  height: 20px;
+.points .mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  font: var(--text-section) / 1 var(--font-display);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
 }
 
-.link {
-  padding: 0;
-  font: inherit;
-  font-weight: 700;
-  color: var(--water-lo);
-  text-decoration: underline;
-  background: none;
-  border: 0;
-  cursor: pointer;
+.points .mark svg {
+  width: 24px;
+  height: 24px;
 }
 
-.form-error,
-.form-info,
-.form-warning {
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border: 2px solid currentcolor;
-  border-radius: 8px;
-  font: 700 14px / 1.4 var(--font-ui);
+.ninja-trio {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-1);
 }
 
-.form-error,
-.form-warning {
-  color: var(--danger);
-  background: #fbe6e6;
+.ninja-trio img {
+  width: 110px;
+  animation: bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 10px 0 var(--shade));
 }
 
-.form-info {
-  color: var(--snow-lo);
-  background: var(--snow-soft);
+.ninja-trio img:nth-child(2) {
+  width: 124px;
+  animation-delay: -0.8s;
 }
 
-.account-links {
+.ninja-trio img:nth-child(3) {
+  animation-delay: -1.6s;
+}
+
+/* Verificar un código: el código ocupa el centro. */
+.code-stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.code-panel {
+  display: grid;
+  gap: var(--gap-3);
+  justify-items: center;
+  width: 480px;
+  padding: var(--gap-4);
+}
+
+.code-panel > * {
+  width: 100%;
+}
+
+.code-panel > .btn {
+  width: auto;
+}
+
+/* Perfil: una fila por dato, con su acción. */
+.account-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.account-row b {
+  display: block;
+  font: 700 var(--text-body) / 1.3 var(--font-ui);
+}
+
+.account-row span {
+  display: block;
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.account-row + .account-row,
+.account-open + .account-row {
+  padding-top: var(--gap-3);
+  border-top: var(--line) solid var(--paper-lo);
+}
+
+/* Envoltorio sin caja propia: sirve para volver inerte una vista entera sin cambiar su composición. */
+.contents {
+  display: contents;
+}
+
+.forgot {
+  justify-self: start;
+}
+
+.form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
-  margin-bottom: 16px;
-}
-
-.account-back {
-  margin-top: 4px;
-}
-
-.profile-email {
-  font-weight: 700;
-}
-
-.profile-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.btn-danger {
-  color: var(--danger);
-  border-color: var(--danger);
-  box-shadow: 3px 3px 0 var(--danger);
+  gap: var(--gap-2);
 }
 
 .turnstile {
   min-height: 65px;
 }
 
-.privacy h2 {
-  margin: 0 0 4px;
-  font-size: 28px;
-}
-
-.privacy h3 {
-  margin: 16px 0 4px;
-  font: 700 16px / 1.3 var(--font-ui);
-}
-
-.privacy p,
-.privacy li {
-  margin: 0 0 8px;
-  font: 500 14px / 1.5 var(--font-ui);
-}
-
-.privacy-since {
-  color: var(--ink-3);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.title-account,
-.results-invite {
+.screen-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: flex-end;
+  gap: var(--gap-3);
+}
+
+.screen-actions .foot {
+  margin-right: auto;
+  font-size: var(--text-small);
+}
+
+/* Texto largo (aviso de privacidad): pantalla de lectura con su columna. */
+.reading-body {
+  display: grid;
+  grid-template-columns: 700px minmax(0, 1fr);
+  gap: calc(var(--gap-4) * 2);
+  min-height: 0;
+}
+
+.reading-body .ninja-trio {
+  align-self: end;
+  justify-self: center;
+}
+
+.reading {
+  min-height: 0;
+  padding: var(--gap-4) 28px;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.reading:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.reading h2 {
+  margin: var(--gap-4) 0 var(--gap-1);
+  font: var(--text-section) / 1.2 var(--font-display);
+}
+
+.reading section:first-child h2 {
+  margin-top: 0;
+}
+
+.reading p,
+.reading li {
+  margin: 0 0 var(--gap-2);
+  font: 500 var(--text-lead) / var(--leading-read) var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.reading ul {
+  margin: 0 0 var(--gap-2);
+  padding-left: var(--gap-4);
+}
+
+.reading section:last-child p:last-child {
+  margin-bottom: 0;
 }
 
 .results-invite {
@@ -1939,12 +2193,38 @@ button {
   left: calc(50% - 380px);
   width: 760px;
   top: 430px;
-  padding: 14px 18px;
-  font: 700 15px / 1.4 var(--font-ui);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+  padding: var(--gap-2) var(--gap-3);
+  font: 700 var(--text-body) / 1.4 var(--font-ui);
 }
 
 .title-foot .link {
-  margin-left: 14px;
+  margin-left: var(--gap-3);
   font-weight: 500;
   color: inherit;
+}
+
+.account-body > :nth-child(1),
+.code-stage,
+.reading-body > :nth-child(1) {
+  animation: riseIn 0.45s 0.2s backwards;
+}
+
+.account-body > :nth-child(2),
+.reading-body > :nth-child(2) {
+  animation: riseIn 0.6s 0.28s backwards;
+}
+
+.screen-actions {
+  animation: riseIn 0.45s 0.4s backwards;
+}
+
+.reduced .account-body > *,
+.reduced .code-stage,
+.reduced .reading-body > *,
+.reduced .screen-actions,
+.reduced .ninja-trio img {
+  animation: none;
 }

@@ -83,7 +83,8 @@ async function signUp(page: Page, who = person()) {
 async function logIn(page: Page, email: string, password: string) {
   await page.getByLabel('Correo', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
-  await page.locator('form').getByRole('button', { name: 'Entrar' }).click();
+  // En la pantalla de cuenta, "Entrar" es el botón que envía el formulario, abajo a la derecha.
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
 }
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
@@ -133,7 +134,7 @@ test('R-46: recuperar la contraseña con el código del correo', async ({ page }
   const who = await signUp(page);
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await page.getByRole('button', { name: 'Olvidé mi contraseña' }).click();
+  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
   await page.getByLabel('Correo', { exact: true }).fill(who.email);
   await page.getByRole('button', { name: 'Enviar código' }).click();
   const code = codeOf(await lastMail(who.email, /recuperar tu contraseña/));

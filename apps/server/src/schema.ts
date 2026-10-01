@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
 /*
  * Esquema de Postgres (Drizzle, D-52). Cada tabla llega con la función que la usa. Tras cambiarlo,
@@ -69,5 +69,72 @@ export const emailCodes = pgTable(
     index('email_codes_user_purpose_idx').on(t.userId, t.purpose),
     check('email_codes_purpose_check', sql`${t.purpose} in ('verify', 'recover', 'change_email', 'revert_email')`),
     index('email_codes_purpose_new_email_idx').on(t.purpose, t.newEmail),
+  ],
+);
+
+/* ---------- Progreso en la cuenta (D-34; R-25 a R-32) ---------- */
+
+export const CAMINO_ELEMENTS = ['fire', 'water', 'snow'] as const;
+
+/**
+ * Estado del progreso. La fila nace cuando la persona elige su carta de camino (R-30), que es
+ * permanente: sin fila, todavía no eligió. Se borra con la cuenta (D-56).
+ */
+export const profiles = pgTable(
+  'profiles',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    caminoElement: text('camino_element', { enum: CAMINO_ELEMENTS }).notNull(),
+    coins: integer('coins').notNull().default(0),
+    boxesOpened: integer('boxes_opened').notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check('profiles_camino_element_check', sql`${t.caminoElement} in ('fire', 'water', 'snow')`),
+    // El saldo nunca baja de cero: ni dos compras a la vez pueden gastar de más (R-28).
+    check('profiles_coins_check', sql`${t.coins} >= 0`),
+    check('profiles_boxes_opened_check', sql`${t.boxesOpened} >= 0`),
+  ],
+);
+
+/** Cartas del banco que tiene cada persona, con sus copias repetidas (R-25, R-26). */
+export const collection = pgTable(
+  'collection',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.userId, { onDelete: 'cascade' }),
+    /** Id de la carta en el banco de `packages/core` (por ejemplo, `fire-18`). */
+    cardId: text('card_id').notNull(),
+    count: integer('count').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.cardId] }), check('collection_count_check', sql`${t.count} > 0`)],
+);
+
+export const LEDGER_ROUNDS = ['1', '2', '3', 'bonus'] as const;
+
+/**
+ * Libro de monedas (R-29, D-31): un renglón por cada ronda cobrada. La restricción única hace que una
+ * ronda no se pague dos veces, aunque el cobro llegue repetido tras una reconexión o un reinicio.
+ * `match_id` apuntará a `matches` cuando existan las partidas en línea (M8).
+ */
+export const coinLedger = pgTable(
+  'coin_ledger',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.userId, { onDelete: 'cascade' }),
+    matchId: uuid('match_id').notNull(),
+    round: text('round', { enum: LEDGER_ROUNDS }).notNull(),
+    amount: integer('amount').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('coin_ledger_user_match_round_key').on(t.userId, t.matchId, t.round),
+    check('coin_ledger_round_check', sql`${t.round} in ('1', '2', '3', 'bonus')`),
+    check('coin_ledger_amount_check', sql`${t.amount} > 0`),
   ],
 );

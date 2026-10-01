@@ -15,6 +15,13 @@
       "when": 1790799439914,
       "tag": "0001_deshacer_cambio_de_correo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790878447632,
+      "tag": "0002_progreso",
+      "breakpoints": true
     }
   ]
 }

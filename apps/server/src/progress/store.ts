@@ -1,8 +1,8 @@
-import { type ElementKind, starterCollection } from '@ventisca/core';
+import { type ClearedRound, coinsForRound, type ElementKind, starterCollection } from '@ventisca/core';
 import type { Progress } from '@ventisca/protocol';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db';
-import { collection, profiles } from '../schema';
+import { coinLedger, collection, type LEDGER_ROUNDS, profiles } from '../schema';
 
 /*
  * Progreso en la cuenta (D-34): las reglas R-25 a R-30 las resuelve el servidor con `packages/core`, y
@@ -47,5 +47,33 @@ export async function chooseCamino(db: Db, userId: string, element: ElementKind,
     }
     const progress = await readProgress(tx, userId);
     return progress.camino === element ? progress : null;
+  });
+}
+
+/**
+ * R-29 y D-31: acredita las monedas de una ronda superada. El libro tiene una sola fila por persona,
+ * partida y ronda, así que un cobro repetido (una reconexión, un reinicio del servidor) no paga otra
+ * vez: devuelve `credited: false`. `doubled`: la persona ya tiene los 9 logros. Sin perfil, falla.
+ */
+export async function creditRound(
+  db: Db,
+  payment: { userId: string; matchId: string; round: ClearedRound; doubled: boolean },
+  now: Date,
+): Promise<{ credited: boolean; amount: number }> {
+  const { userId, matchId } = payment;
+  const amount = coinsForRound(payment.round, payment.doubled);
+  const round = String(payment.round) as (typeof LEDGER_ROUNDS)[number];
+  return db.transaction(async (tx) => {
+    const entered = await tx
+      .insert(coinLedger)
+      .values({ userId, matchId, round, amount, createdAt: now })
+      .onConflictDoNothing()
+      .returning({ id: coinLedger.id });
+    if (entered.length === 0) return { credited: false, amount: 0 };
+    await tx
+      .update(profiles)
+      .set({ coins: sql`${profiles.coins} + ${amount}` })
+      .where(eq(profiles.userId, userId));
+    return { credited: true, amount };
   });
 }

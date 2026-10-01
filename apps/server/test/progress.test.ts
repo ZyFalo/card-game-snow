@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { bankFor, CAMINO_CARDS, STARTER_CARDS } from '@ventisca/core';
 import { apiErrorSchema, type Progress, progressSchema, sessionSchema } from '@ventisca/protocol';
 import { eq, sql } from 'drizzle-orm';
@@ -7,12 +8,13 @@ import type { Mail, Mailer } from '../src/accounts/mailer';
 import { SESSION_COOKIE } from '../src/accounts/session';
 import { fingerprint } from '../src/accounts/tokens';
 import { buildApp } from '../src/app';
-import { profiles, sessions, users } from '../src/schema';
+import { creditRound } from '../src/progress/store';
+import { coinLedger, profiles, sessions, users } from '../src/schema';
 import { adminUrl, useTempDatabase } from './support/database';
 
 /*
- * Progreso en la cuenta (PRD de v2, D-34): la carta de camino y la colección, con la regla R-30 resuelta
- * en el servidor y contra un Postgres de verdad.
+ * Progreso en la cuenta (PRD de v2, D-34): carta de camino, libro de monedas y colección, con las
+ * reglas R-29 y R-30 resueltas en el servidor y contra un Postgres de verdad.
  */
 describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   const ctx = useTempDatabase({ migrate: true });
@@ -78,10 +80,12 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     progressSchema.parse((await get('/api/progress', cookie)).json());
   const choose = (cookie: string, element: string) => post('/api/progress/camino', { element }, cookie);
 
-  /** Una cuenta con su camino ya elegido. */
-  async function player(element = 'fire') {
+  /** Una cuenta con su camino elegido y, si se pide, monedas cobradas por rondas de una partida. */
+  async function player(element = 'fire', rounds: (1 | 2 | 3 | 'bonus')[] = []) {
     const who = await signUp();
     await choose(who.cookie, element);
+    const matchId = randomUUID();
+    for (const round of rounds) await creditRound(db(), { userId: who.userId, matchId, round, doubled: false }, NOW);
     return who;
   }
   const totalCards = (p: Progress) => Object.values(p.collection).reduce((a, b) => a + b, 0);
@@ -190,6 +194,70 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
       expect(res.statusCode).toBe(400);
       expect(errorOf(res)).toBe('bad_request');
       expect((await progress(cookie)).camino).toBeNull();
+    });
+  });
+
+  describe('Libro de monedas (R-29, D-31)', () => {
+    const pay = (userId: string, matchId: string, round: 1 | 2 | 3 | 'bonus', doubled = false) =>
+      creditRound(db(), { userId, matchId, round, doubled }, NOW);
+
+    it('R-29: cada ronda paga lo suyo: 60, 120 y 120, y 120 por el bonus', async () => {
+      const { cookie, userId } = await player();
+      const matchId = randomUUID();
+      expect(await pay(userId, matchId, 1)).toEqual({ credited: true, amount: 60 });
+      expect(await pay(userId, matchId, 2)).toEqual({ credited: true, amount: 120 });
+      expect(await pay(userId, matchId, 3)).toEqual({ credited: true, amount: 120 });
+      expect(await pay(userId, matchId, 'bonus')).toEqual({ credited: true, amount: 120 });
+      expect((await progress(cookie)).coins).toBe(420);
+      expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(4);
+    });
+
+    it('D-31: una ronda no se cobra dos veces, aunque el cobro llegue repetido', async () => {
+      const { cookie, userId } = await player();
+      const matchId = randomUUID();
+      expect(await pay(userId, matchId, 1)).toEqual({ credited: true, amount: 60 });
+      expect(await pay(userId, matchId, 1)).toEqual({ credited: false, amount: 0 });
+      expect((await progress(cookie)).coins).toBe(60);
+      expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(1);
+    });
+
+    it('D-31: veinte cobros simultáneos de la misma ronda pagan una sola vez', async () => {
+      const { cookie, userId } = await player();
+      const matchId = randomUUID();
+      await warmPool();
+      const results = await Promise.all(Array.from({ length: 20 }, () => pay(userId, matchId, 2)));
+      expect(results.filter((r) => r.credited)).toHaveLength(1);
+      expect((await progress(cookie)).coins).toBe(120);
+    });
+
+    it('D-31: la misma ronda de otra partida sí se cobra', async () => {
+      const { cookie, userId } = await player();
+      await pay(userId, randomUUID(), 1);
+      await pay(userId, randomUUID(), 1);
+      expect((await progress(cookie)).coins).toBe(120);
+    });
+
+    it('R-29: con los 9 logros, la ronda paga el doble', async () => {
+      const { cookie, userId } = await player();
+      expect(await pay(userId, randomUUID(), 1, true)).toEqual({ credited: true, amount: 120 });
+      expect((await progress(cookie)).coins).toBe(120);
+    });
+
+    it('D-31: el cobro de una persona no toca el saldo de otra', async () => {
+      const a = await player();
+      const b = await player();
+      const matchId = randomUUID();
+      await pay(a.userId, matchId, 1);
+      expect((await progress(a.cookie)).coins).toBe(60);
+      expect((await progress(b.cookie)).coins).toBe(0);
+      // La misma partida y la misma ronda sí se le pagan a la otra persona (D-48).
+      expect(await pay(b.userId, matchId, 1)).toEqual({ credited: true, amount: 60 });
+    });
+
+    it('sin carta de camino no hay perfil donde cobrar', async () => {
+      const { userId } = await signUp();
+      await expect(pay(userId, randomUUID(), 1)).rejects.toThrow();
+      expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(0);
     });
   });
 });

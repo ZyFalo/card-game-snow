@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 
 /*
- * Despliegue en Railway: railway.json manda sobre el panel. Fija el comando de arranque para que un
- * ajuste del panel no lo pise (Railway puso uno con pnpm, que la imagen no trae). Estas pruebas
- * evitan que se desalinee del Dockerfile y que la salud apunte a una ruta que no existe.
+ * Despliegue en Railway: railway.json es la fuente de verdad (D-64). Fija el comando de arranque,
+ * porque al importar el monorepo Railway puso en el panel uno con pnpm, que la imagen no trae. El
+ * panel puede pisar a railway.json sin que se note, así que sus campos equivalentes deben quedar
+ * vacíos. Estas pruebas evitan que el archivo se desalinee del Dockerfile y que la salud apunte a
+ * una ruta que no existe.
  */
 const root = (file: string) => fileURLToPath(new URL(`../../../${file}`, import.meta.url));
 const railway = JSON.parse(readFileSync(root('railway.json'), 'utf8')) as {
@@ -41,8 +43,8 @@ describe('Despliegue en Railway (railway.json)', () => {
   });
 
   it('D-64: no limita qué cambios redespliegan, así que cada push a main se despliega', () => {
-    // Con una lista de rutas vigiladas, Railway saltó el despliegue del PR #12 ("watched paths not
-    // modified") y producción quedó un commit atrás; pnpm check:prod exige que corra el último de main.
+    // Con una lista de rutas vigiladas, un PR solo de documentación dejaría producción atrás a
+    // propósito, y pnpm check:prod exige que corra el último commit de main.
     expect(railway.build).not.toHaveProperty('watchPatterns');
   });
 

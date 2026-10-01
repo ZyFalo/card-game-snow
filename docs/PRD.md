@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.10 |
+| Versión | 0.10.11 |
 | Última actualización | 1 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -997,6 +997,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-65 | Las peticiones que cambian estado solo se aceptan desde el origen del juego: la cookie `SameSite=Lax` no distingue los subdominios de wpena.dev (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-64 | Cada push a `main` se despliega: `railway.json` es la fuente de verdad, sin `watchPatterns`, y en el panel de Railway quedan vacíos Watch Paths, Custom Build Command, Custom Start Command y Root Directory (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-63 | Toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo"; sus e2e incluyen la prueba de desbordes | ✅ | 2026-09-30 |
 | D-62 | El correo de contacto es ventisca@wpena.dev, con Cloudflare Email Routing; ventisca.wpena.dev no recibe correo (`docs/PRD-v2.md`) | ✅ | 2026-09-30 |
@@ -1043,6 +1044,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.11 | 2026-10-01 | Progreso en el servidor (M7, paso 8): la carta de camino con su inventario inicial (R-30), el libro de monedas que no paga dos veces la misma ronda (R-29, D-31) y las cajas sorteadas en el servidor con el motor, sin poder gastar de más con compras simultáneas (R-27, R-28). Tablas `profiles`, `collection` y `coin_ledger`, que se borran con la cuenta (D-56). D-65: las peticiones que cambian estado solo se aceptan desde el origen del juego |
 | 0.10.10 | 2026-10-01 | D-64: cada push a `main` se despliega. Railway había saltado los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación, por unas rutas vigiladas propias del panel (`/apps/server/**`) que dejó la importación del monorepo. `railway.json` queda como fuente de verdad, sin `watchPatterns`; en el panel se vaciaron Watch Paths y Custom Build Command, y se activó "Wait for CI" |
 | 0.10.9 | 2026-09-30 | Lineamientos de diseño (D-63): las pantallas de cuenta se recomponen como pantallas del juego, en dos columnas, con los tres ninjas, las acciones abajo a la derecha y el código de verificación al centro. El aviso de privacidad pasa a una pantalla de lectura; ya no se corta al abrirlo desde el registro. Los beneficios de la cuenta que todavía no existen llevan la etiqueta "Próximamente", y la introducción de "Entrar" y la invitación de los resultados hablan en futuro. Piezas nuevas de formulario en `ui/common.tsx`, tokens de escala y geometría, y una prueba e2e que falla si una pantalla de cuenta corta texto |
 | 0.10.8 | 2026-09-30 | D-62: el aviso de privacidad da como contacto ventisca@wpena.dev, que Cloudflare Email Routing reenvía al buzón del responsable, y lo declara entre quienes procesan datos. `docs/traspaso.md` anota los registros de DNS de wpena.dev y por qué ventisca.wpena.dev no recibe correo |
@@ -1153,7 +1155,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 - `balance.json` suma un bloque `economy` (monedas por ronda, precios y banco) y otro `starter`. El motor sigue puro.
 - `createMatch` recibe la reserva de cada ninja (`decks`) en lugar de leer el mazo fijo, y `ReplayData` la guarda para que las repeticiones sigan siendo deterministas (R-23).
 - Las cajas se sortean con un RNG propio, fuera de la partida. En v2 lo hará el servidor, para evitar trampas.
-- **Implementado en:** `packages/core/src/cards.ts` y `economy.ts` (puros, con pruebas). Hasta v0.10.1, el perfil vivía en el navegador (`apps/web/src/state/profile.ts`) y la interfaz en `apps/web/src/ui/Progression.tsx` (camino, colección, tienda y revelado). En v0.10.2 salieron del sandbox, y en el M7 vuelven conectados a la cuenta.
+- **Implementado en:** `packages/core/src/cards.ts` y `economy.ts` (puros, con pruebas). Hasta v0.10.1, el perfil vivía en el navegador (`apps/web/src/state/profile.ts`) y la interfaz en `apps/web/src/ui/Progression.tsx` (camino, colección, tienda y revelado). En v0.10.2 salieron del sandbox, y en el M7 vuelven conectados a la cuenta: desde v0.10.11 el servidor guarda el progreso en `apps/server/src/progress/` y resuelve las reglas con esas mismas funciones puras.
 - Hace falta un logro-contador en la interfaz ("3 de 9 logros: completa los 9 para ganar monedas dobles") y una pantalla de colección con las 20 cartas por elemento (las que no tienes, en silueta).
 
 ## Apéndice A — Balance: valores y fuentes

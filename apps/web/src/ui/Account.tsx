@@ -44,8 +44,16 @@ export function AccountScreen() {
   );
 }
 
-const BENEFIT_ICONS: IconName[] = ['coin', 'play', 'cards'];
-const benefits = T.benefits.map((text, i) => ({ mark: BENEFIT_ICONS[i] ?? 'check', text }));
+/**
+ * Lo que da una cuenta. `soon` marca "Próximamente" lo que todavía no existe: quítalo cuando llegue cada
+ * uno. El progreso y la colección llegan con el PR 9 del M7; el juego en línea, con el M8.
+ */
+const BENEFITS: { mark: IconName; text: string; soon: boolean }[] = [
+  { mark: 'coin', text: T.benefits.progress, soon: true },
+  { mark: 'play', text: T.benefits.online, soon: true },
+  { mark: 'cards', text: T.benefits.collection, soon: true },
+];
+const benefits = BENEFITS.map(({ mark, text, soon }) => ({ mark, text, tag: soon ? T.soon : undefined }));
 const steps = (texts: readonly string[]) => texts.map((text, i) => ({ mark: i + 1, text }));
 
 function Head({ title, intro }: { title: string; intro?: string }) {
@@ -57,8 +65,8 @@ function Head({ title, intro }: { title: string; intro?: string }) {
   );
 }
 
-/** El panel del formulario a la izquierda; a la derecha, los puntos y los tres ninjas. */
-function FormBody({ aside, children }: { aside: ReactNode; children: ReactNode }) {
+/** El panel del formulario a la izquierda; a la derecha, los tres ninjas y, si los hay, los puntos. */
+function FormBody({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
   return (
     <div className="account-body">
       <section className="paper account-form">{children}</section>
@@ -484,7 +492,8 @@ function ProfileView() {
   return (
     <>
       <Head title={T.profileTitle(user.displayName)} intro={T.profileIntro} />
-      <FormBody aside={<Points items={benefits} />}>
+      {/* Sin beneficios: en la columna derecha irá el resumen del progreso (PR 9 del M7). */}
+      <FormBody>
         <Messages />
         {row('password', T.password, null, T.changePassword)}
         {open === 'password' ? (

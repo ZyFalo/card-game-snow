@@ -294,3 +294,20 @@ test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta text
   }
   expect(clipped).toEqual({});
 });
+
+test('los beneficios que todavía no existen dicen "Próximamente", y el perfil no los muestra', async ({ page }) => {
+  const benefits = [
+    /^Tu progreso queda guardado\s+Próximamente$/,
+    /^Juega en línea con amigos\s+Próximamente$/,
+    /^Tu colección de cartas\s+Próximamente$/,
+  ];
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByRole('listitem')).toHaveText(benefits);
+  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  await expect(page.getByRole('listitem')).toHaveText(benefits);
+  // En el perfil no van: en esa columna irá el resumen del progreso (PR 9 del M7).
+  await signUp(page);
+  await expect(page.getByRole('listitem')).toHaveCount(0);
+  await expect(page.getByText('Próximamente')).toHaveCount(0);
+});

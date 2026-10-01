@@ -60,6 +60,7 @@ La escala y la geometría también son variables de `:root`: `--text-title`, `--
 - **`.seg`:** para elegir entre dos y cuatro opciones.
 - **`.toggle`:** para ajustes de sí o no.
 - **`.chip`:** para datos compactos.
+- **`.tag`:** una etiqueta de estado, como "Próximamente": un `.chip` en pequeño, con el mismo borde y radio, texto de 13 px en `--ink-2` y fondo `--paper-lo`. Va junto a un texto o dentro de una lista.
 - **`.kbd`:** para atajos de teclado.
 - **Íconos:** los SVG del juego (`Icon` en `ui/common.tsx`). Ni emoji ni íconos externos.
 - **Retratos:** los de los ninjas (`art.bust`), cuando la pantalla habla de un personaje o de la persona.
@@ -95,7 +96,8 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 - **Formularios:** nunca un panel solo flotando en el centro.
   - **Composición en dos columnas:** a la izquierda, el panel del formulario, de 440 a 480 px de ancho; a la derecha, la ilustración (los tres ninjas, o el de la carta de camino de la persona) y dos o tres beneficios concretos, por ejemplo "Tu progreso queda guardado", "Juega en línea con amigos" y "Tu colección de cartas".
   - **Verificar un código:** el código ocupa el centro, con dígitos grandes en la tipografía de títulos.
-  - **En el código:** `NinjaTrio` (los tres ninjas de pie) y `Points` (dos o tres puntos, con un ícono o un número de paso), en `ui/common.tsx`.
+  - **En el código:** `NinjaTrio` (los tres ninjas de pie) y `Points` (dos o tres puntos, con un ícono o un número de paso y, si hace falta, una etiqueta `.tag`), en `ui/common.tsx`.
+  - **Beneficios que todavía no existen:** llevan la etiqueta "Próximamente", que se quita cuando llega cada uno.
 - **Texto largo** (aviso de privacidad, ayuda):
   - pantalla completa de lectura, en una columna de 680 a 720 px;
   - cuerpo de 15 a 16 px con interlineado 1,6, y títulos de sección en la tipografía de títulos a 20 px;

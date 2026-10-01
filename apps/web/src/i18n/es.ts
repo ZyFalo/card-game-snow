@@ -351,7 +351,13 @@ export const ACCOUNT_TEXT = {
   registerTitle: 'Crear una cuenta',
   registerIntro: 'Solo te pedimos un correo, un nombre visible y una contraseña.',
   /** Lo que da una cuenta (lineamientos, sección 5). */
-  benefits: ['Tu progreso queda guardado', 'Juega en línea con amigos', 'Tu colección de cartas'],
+  benefits: {
+    progress: 'Tu progreso queda guardado',
+    online: 'Juega en línea con amigos',
+    collection: 'Tu colección de cartas',
+  },
+  /** Marca de un beneficio que todavía no existe. */
+  soon: 'Próximamente',
   registerSubmit: 'Crear cuenta',
   acceptPrivacy: 'Leí y acepto el',
   captchaWaiting: 'Comprobando que no eres un programa…',

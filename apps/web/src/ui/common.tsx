@@ -389,8 +389,8 @@ export function NinjaTrio() {
   );
 }
 
-/** Dos o tres puntos concretos, con un ícono o un número de paso. */
-export function Points({ items }: { items: { mark: IconName | number; text: string }[] }) {
+/** Dos o tres puntos concretos, con un ícono o un número de paso y, si hace falta, una etiqueta de estado. */
+export function Points({ items }: { items: { mark: IconName | number; text: string; tag?: string }[] }) {
   return (
     <ul className="points">
       {items.map((item) => (
@@ -399,6 +399,12 @@ export function Points({ items }: { items: { mark: IconName | number; text: stri
             {typeof item.mark === 'number' ? item.mark : <Icon name={item.mark} />}
           </span>
           <span>{item.text}</span>
+          {item.tag ? (
+            <>
+              {' '}
+              <span className="tag">{item.tag}</span>
+            </>
+          ) : null}
         </li>
       ))}
     </ul>

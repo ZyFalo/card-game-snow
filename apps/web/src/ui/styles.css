@@ -229,6 +229,20 @@ button {
   opacity: 0.8;
 }
 
+/* Etiqueta de estado: un .chip en pequeño, para marcar algo dentro de una lista o junto a un texto. */
+.tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--gap-1);
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink-2);
+  background: var(--paper-lo);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  white-space: nowrap;
+}
+
 .icon-btn {
   display: grid;
   place-items: center;
@@ -1988,9 +2002,10 @@ button {
   font: 500 var(--text-body) / var(--leading) var(--font-ui);
 }
 
+/* Los puntos arriba, si los hay; los ninjas siempre abajo a la derecha. */
 .account-aside {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--gap-4);
   min-height: 0;
 }
@@ -2000,8 +2015,8 @@ button {
 }
 
 .account-aside .ninja-trio {
-  align-self: end;
-  justify-self: end;
+  align-self: flex-end;
+  margin-top: auto;
 }
 
 .points {

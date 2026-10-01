@@ -10,7 +10,10 @@ import type { FastifyInstance } from 'fastify';
  * puede falsificar.
  */
 
-/** Métodos de lectura: no cambian nada, así que no se comprueban. */
+/**
+ * Métodos de lectura: no cambian nada, así que no se comprueban. Ojo en el M8: una conexión WebSocket
+ * empieza con un GET, así que esta guarda no la cubre y necesita su propia comprobación de Origin.
+ */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** `origins`: los orígenes exactos (esquema, dominio y puerto) desde los que se sirve el juego. */

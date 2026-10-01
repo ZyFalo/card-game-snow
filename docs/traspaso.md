@@ -32,7 +32,8 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
   - Progreso en la cuenta (`/api/progress`, D-34), con las reglas R-25 a R-30 resueltas por `packages/core`:
     - `GET /api/progress`: camino, monedas, cajas abiertas y colección;
     - `POST /api/progress/camino`: elige la carta de camino, que es permanente, y da el inventario inicial (R-30);
-    - `POST /api/progress/boxes`: compra una caja; el servidor cobra y sortea las cartas (R-27, R-28).
+    - `POST /api/progress/boxes`: compra una caja; el servidor cobra y sortea las cartas (R-27, R-28). El cliente manda un identificador por compra: si reintenta con el mismo, recibe el resultado original y no paga de nuevo (D-66).
+    - El libro de monedas (`coin_ledger`) guarda todos los movimientos del saldo: los cobros de rondas, positivos, y las compras, negativas, con sus cartas.
     - El cobro de las rondas no tiene ruta: `creditRound` (`apps/server/src/progress/store.ts`) lo hará al resolver las partidas en línea (M8). El libro de monedas impide pagar dos veces la misma ronda (D-31).
     - Los logros y las estadísticas llegan con las partidas (M8 y M9).
 - **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.
@@ -98,7 +99,7 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
   - las cabeceras sin Cloudflare;
   - la redirección de HTTP a HTTPS;
   - la salud y el 404;
-  - que corra el último commit de main (`/api/health` lo informa);
+  - que corra el último commit de main (`/api/health` lo informa); la lectura de `main` se reintenta, porque a veces falla sin que el despliegue tenga nada que ver;
   - un turno jugado en Chromium sin pedir nada a otros dominios.
 
   Sale con código 1 si algo falla.
@@ -115,8 +116,10 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 en curso**. Es el modo e
 ## Pendiente, según los PRD
 
 - **M7, en pasos pequeños (PRD de v2):** falta el progreso en el cliente (PR 9): elegir la carta de camino, la colección y la tienda, conectados a `/api/progress`. El despliegue, las cuentas y el progreso en el servidor ya están hechos.
-  - **PR 9:** el perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
+  - **PR 9:** al comprar una caja, el botón se deshabilita mientras espera, y un reintento usa el mismo identificador de compra (D-66). El perfil muestra el resumen del progreso en su columna derecha, donde hoy solo están los ninjas. Quita "Próximamente" de "Tu progreso queda guardado" y de "Tu colección de cartas".
 - **M8:** quita "Próximamente" de "Juega en línea con amigos".
+  - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
+  - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
 - **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). Vuelven al presente cuando existan las dos cosas: el progreso con el PR 9 y el juego en línea con el M8.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.

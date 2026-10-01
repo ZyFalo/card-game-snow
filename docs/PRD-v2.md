@@ -4,7 +4,7 @@ Versión 1.9: aprobada para implementar · 1 de octubre de 2026 · William Andre
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, y la 1.9 agrega D-65, la comprobación de origen, y precisa las tablas del progreso.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, y la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso.
 
 ## Resumen y alcance
 
@@ -18,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, y D-65, la comprobación de origen. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, y D-66, las compras en el libro de monedas. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -53,6 +53,7 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-62 | El correo de contacto del aviso de privacidad es ventisca@wpena.dev: Cloudflare Email Routing lo recibe en wpena.dev y lo reenvía al buzón del responsable, y el aviso lo declara. ventisca.wpena.dev no recibe correo: la recepción de Resend pediría un MX en ese nombre, que choca con el CNAME del juego. | Tomada |
 | D-64 | Cada push a `main` se despliega, toque lo que toque: `pnpm check:prod` exige que producción corra el último commit de `main`, y con una lista de rutas vigiladas un PR solo de documentación la dejaría atrás a propósito. Por eso `railway.json` no lleva `watchPatterns`. `railway.json` es la fuente de verdad del despliegue, y en el panel de Railway deben quedar vacíos "Watch Paths", "Custom Build Command", "Custom Start Command" y "Root Directory", porque el panel puede pisarla sin que se note. Así pasó: las "Watch Paths" que dejó la importación del monorepo (`/apps/server/**`) hicieron que Railway saltara los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación. | Tomada |
 | D-65 | Las peticiones que cambian estado solo se aceptan desde el propio juego: deben traer el `Origin` de `APP_URL`. La cookie de sesión es `SameSite=Lax`, pero para `SameSite` todo wpena.dev es el mismo sitio, así que viaja en las peticiones que mande una página de cualquier otro subdominio; el origen sí las distingue, y una página no puede falsificarlo. Sin `Origin` decide `Sec-Fetch-Site`, y sin ninguna de las dos cabeceras la petición pasa, porque no viene de un navegador y no lleva la cookie de nadie. | Aprobada |
+| D-66 | El libro de monedas registra también los gastos. Cada compra de caja deja un movimiento negativo con un identificador de compra que genera el cliente, único por cuenta, y con las cartas que salieron. Si llega un reintento con el mismo identificador, el servidor devuelve el resultado original, guardado en ese movimiento, y no cobra de nuevo: así una respuesta perdida no compra dos cajas. No hace falta una tabla nueva, y el saldo es siempre la suma del libro. | Aprobada |
 
 ## Experiencia del jugador
 
@@ -189,7 +190,7 @@ El cliente anima los eventos de `turn.result` con la misma escena de hoy y compa
 
 ## Modelo de datos en Postgres
 
-Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasan por un libro contable, para que un pago nunca se repita tras una reconexión o un reinicio.
+Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasan por un libro contable, para que un pago nunca se repita tras una reconexión o un reinicio, ni una compra tras un reintento (D-66).
 
 | Tabla | Campos clave | Para qué |
 | --- | --- | --- |
@@ -198,7 +199,7 @@ Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasa
 | `email_codes` | hash del código, user_id, propósito (verificar, recuperar o cambiar correo), correo nuevo (solo al cambiarlo), intentos, expires_at y used_at | Códigos de un solo uso (R-43) |
 | `profiles` | user_id, coins, camino_element, boxes_opened | Estado del progreso. La fila nace al elegir la carta de camino (R-30), y el saldo no puede ser negativo |
 | `collection` | user_id, card_id, count | Cartas y duplicados (R-26) |
-| `coin_ledger` | user_id, match_id, round, amount; única por (user_id, match_id, round) | Cobro por ronda sin duplicados (D-31). `match_id` apuntará a `matches` cuando existan las partidas (M8) |
+| `coin_ledger` | user_id y amount; en un cobro, match_id y round, única por (user_id, match_id, round); en una compra, purchase_id y cards, única por (user_id, purchase_id) | Todos los movimientos del saldo: los cobros por ronda, sin duplicados (D-31), y las compras de cajas, que un reintento no cobra dos veces (D-66). `match_id` apuntará a `matches` cuando existan las partidas (M8) |
 | `achievements` | user_id, achievement_id, unlocked_at | Logros |
 | `matches` | id, room_code, difficulty, seed, status, turn, state_snapshot (jsonb), hash | Partidas y su estado por turno (D-49) |
 | `match_players` | match_id, user_id (vacío para el bot o para una cuenta borrada, D-56), ninja, joined_at, left_at | Quién jugó qué ninja |
@@ -223,8 +224,9 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 - [ ] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas
 - [ ] Salas con código para 2 o 3 personas, con el bot en el ninja libre
+- [ ] La conexión WebSocket comprueba su propio `Origin`, con su prueba: la comprobación de D-65 no revisa las lecturas, y un WebSocket empieza con una (`GET`)
 - [ ] Reloj del servidor de 15 s (D-46) y planificación simultánea con fantasmas compartidos
-- [ ] Cobro por ronda solo para quien estaba conectado (D-31 y D-48) y logros por persona
+- [ ] Cobro por ronda solo para quien estaba conectado (D-31 y D-48) y logros por persona. Si una ronda paga el doble (R-29), lo decide el servidor contando los 9 logros en su propia tabla; nunca lo recibe del cliente
 - [ ] Desconexión y reconexión, estado guardado por turno y recuperación tras un reinicio
 - [ ] Pruebas con dos y tres clientes en local, reconexión y reinicio del servidor a mitad de partida
 

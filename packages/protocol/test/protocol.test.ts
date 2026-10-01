@@ -41,16 +41,25 @@ describe('Protocolo: progreso en la cuenta', () => {
     expect(progressSchema.safeParse({ ...progress, camino: 'tierra' }).success).toBe(false);
   });
 
+  const purchaseId = '0b9f4c2e-6f0a-4c56-9d3e-2a7c1e5b8d41';
+
   it('elegir el camino y comprar una caja piden un elemento del juego', () => {
     expect(chooseCaminoSchema.safeParse({ element: 'fire' }).success).toBe(true);
     expect(chooseCaminoSchema.safeParse({ element: 'tierra' }).success).toBe(false);
-    expect(buyBoxSchema.safeParse({ element: 'water', size: 2 }).success).toBe(true);
-    expect(buyBoxSchema.safeParse({ element: 'tierra', size: 2 }).success).toBe(false);
+    expect(buyBoxSchema.safeParse({ element: 'water', size: 2, purchaseId }).success).toBe(true);
+    expect(buyBoxSchema.safeParse({ element: 'tierra', size: 2, purchaseId }).success).toBe(false);
   });
 
   it('el tamaño de una caja es un entero positivo', () => {
     for (const size of [0, -1, 1.5, '2', null]) {
-      expect(buyBoxSchema.safeParse({ element: 'fire', size }).success).toBe(false);
+      expect(buyBoxSchema.safeParse({ element: 'fire', size, purchaseId }).success).toBe(false);
+    }
+  });
+
+  it('D-66: cada compra lleva su identificador, un UUID que genera el cliente', () => {
+    expect(buyBoxSchema.safeParse({ element: 'fire', size: 1 }).success).toBe(false);
+    for (const id of ['', 'mi-compra', 12345, null]) {
+      expect(buyBoxSchema.safeParse({ element: 'fire', size: 1, purchaseId: id }).success).toBe(false);
     }
   });
 

@@ -182,8 +182,16 @@ export type Progress = z.infer<typeof progressSchema>;
 export const chooseCaminoSchema = z.object({ element: elementSchema });
 export type ChooseCaminoBody = z.infer<typeof chooseCaminoSchema>;
 
-/** `POST /api/progress/boxes`: compra una caja de `size` cartas del elemento elegido (R-28). */
-export const buyBoxSchema = z.object({ element: elementSchema, size: z.number().int().positive() });
+/**
+ * `POST /api/progress/boxes`: compra una caja de `size` cartas del elemento elegido (R-28).
+ * `purchaseId` lo genera el cliente, uno por compra: si la respuesta se pierde y el cliente reintenta
+ * con el mismo identificador, el servidor devuelve el resultado original y no cobra de nuevo (D-66).
+ */
+export const buyBoxSchema = z.object({
+  element: elementSchema,
+  size: z.number().int().positive(),
+  purchaseId: z.uuid(),
+});
 export type BuyBoxBody = z.infer<typeof buyBoxSchema>;
 
 /** Respuesta de comprar una caja: las cartas que salieron, en orden, y el progreso ya actualizado. */

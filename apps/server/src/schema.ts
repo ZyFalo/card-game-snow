@@ -116,9 +116,13 @@ export const collection = pgTable(
 export const LEDGER_ROUNDS = ['1', '2', '3', 'bonus'] as const;
 
 /**
- * Libro de monedas (R-29, D-31): un renglón por cada ronda cobrada. La restricción única hace que una
- * ronda no se pague dos veces, aunque el cobro llegue repetido tras una reconexión o un reinicio.
- * `match_id` apuntará a `matches` cuando existan las partidas en línea (M8).
+ * Libro de monedas: un renglón por cada movimiento del saldo, que es siempre la suma del libro.
+ * - Un cobro de ronda (R-29, D-31) es positivo y lleva la partida y la ronda. Su restricción única
+ *   hace que una ronda no se pague dos veces, aunque el cobro llegue repetido tras una reconexión o
+ *   un reinicio. `match_id` apuntará a `matches` cuando existan las partidas en línea (M8).
+ * - Una compra de caja (R-28, D-66) es negativa y lleva el identificador que generó el cliente y las
+ *   cartas que salieron. Su restricción única hace que un reintento con el mismo identificador no
+ *   cobre de nuevo: se devuelve el resultado guardado aquí.
  */
 export const coinLedger = pgTable(
   'coin_ledger',
@@ -127,14 +131,22 @@ export const coinLedger = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => profiles.userId, { onDelete: 'cascade' }),
-    matchId: uuid('match_id').notNull(),
-    round: text('round', { enum: LEDGER_ROUNDS }).notNull(),
     amount: integer('amount').notNull(),
+    matchId: uuid('match_id'),
+    round: text('round', { enum: LEDGER_ROUNDS }),
+    purchaseId: uuid('purchase_id'),
+    /** Las cartas que salieron de la caja, en orden. */
+    cards: text('cards').array(),
     createdAt: createdAt(),
   },
   (t) => [
     unique('coin_ledger_user_match_round_key').on(t.userId, t.matchId, t.round),
+    unique('coin_ledger_user_purchase_key').on(t.userId, t.purchaseId),
     check('coin_ledger_round_check', sql`${t.round} in ('1', '2', '3', 'bonus')`),
-    check('coin_ledger_amount_check', sql`${t.amount} > 0`),
+    // Cada renglón es un cobro de ronda o una compra, nunca las dos cosas ni ninguna.
+    check(
+      'coin_ledger_kind_check',
+      sql`(${t.matchId} is not null and ${t.round} is not null and ${t.purchaseId} is null and ${t.cards} is null and ${t.amount} > 0) or (${t.purchaseId} is not null and ${t.cards} is not null and ${t.matchId} is null and ${t.round} is null and ${t.amount} < 0)`,
+    ),
   ],
 );

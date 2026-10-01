@@ -8,7 +8,7 @@ import {
   starterCollection,
 } from '@ventisca/core';
 import type { Progress } from '@ventisca/protocol';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db';
 import { coinLedger, collection, type LEDGER_ROUNDS, profiles } from '../schema';
 
@@ -63,34 +63,47 @@ export type BoxPurchase =
   | { ok: false; error: 'camino_required' | 'not_enough_coins' };
 
 /**
- * R-27 y R-28: compra una caja. El cobro y el sorteo van en la misma transacción, y el cobro solo
- * pasa si alcanzan las monedas: dos compras a la vez no pueden gastar el mismo saldo, porque la
- * segunda espera a la primera y vuelve a mirar cuánto queda. `size` debe ser un tamaño de caja válido.
+ * R-27, R-28 y D-66: compra una caja. `size` debe ser un tamaño de caja válido.
+ *
+ * La compra bloquea el perfil, así que las compras de una misma cuenta pasan de una en una: dos a la
+ * vez no pueden gastar el mismo saldo, porque la segunda espera a la primera y mira cuánto quedó.
+ *
+ * Cada compra deja en el libro un movimiento negativo con el identificador que generó el cliente y
+ * las cartas que salieron. Si llega un reintento con el mismo identificador, se devuelve ese resultado
+ * y no se cobra de nuevo: la respuesta de la primera vez pudo perderse en el camino.
  */
 export async function buyBox(
   db: Db,
-  userId: string,
-  element: ElementKind,
-  size: number,
+  purchase: { userId: string; purchaseId: string; element: ElementKind; size: number },
   seed: number,
+  now: Date,
 ): Promise<BoxPurchase> {
+  const { userId, purchaseId, element, size } = purchase;
   const price = boxPrice(size);
   return db.transaction(async (tx) => {
-    const paid = await tx
-      .update(profiles)
-      .set({ coins: sql`${profiles.coins} - ${price}`, boxesOpened: sql`${profiles.boxesOpened} + 1` })
-      .where(and(eq(profiles.userId, userId), gte(profiles.coins, price)))
-      .returning({ userId: profiles.userId });
-    if (paid.length === 0) {
-      const [profile] = await tx
-        .select({ userId: profiles.userId })
-        .from(profiles)
-        .where(eq(profiles.userId, userId))
-        .limit(1);
-      return { ok: false, error: profile ? 'not_enough_coins' : 'camino_required' };
-    }
+    const [profile] = await tx
+      .select({ coins: profiles.coins })
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .for('update');
+    if (!profile) return { ok: false, error: 'camino_required' };
+
+    const [original] = await tx
+      .select({ cards: coinLedger.cards })
+      .from(coinLedger)
+      .where(and(eq(coinLedger.userId, userId), eq(coinLedger.purchaseId, purchaseId)))
+      .limit(1);
+    if (original) return { ok: true, cards: original.cards ?? [], progress: await readProgress(tx, userId) };
+
+    if (profile.coins < price) return { ok: false, error: 'not_enough_coins' };
+
     // El sorteo es del motor (R-27): cada carta sale por separado entre las 20 del elemento.
     const cards = openBox(element, size, rngFrom(seed)).map((c) => c.id);
+    await tx
+      .update(profiles)
+      .set({ coins: sql`${profiles.coins} - ${price}`, boxesOpened: sql`${profiles.boxesOpened} + 1` })
+      .where(eq(profiles.userId, userId));
+    await tx.insert(coinLedger).values({ userId, purchaseId, amount: -price, cards, createdAt: now });
     const copies = new Map<string, number>();
     for (const id of cards) copies.set(id, (copies.get(id) ?? 0) + 1);
     await tx
@@ -107,7 +120,10 @@ export async function buyBox(
 /**
  * R-29 y D-31: acredita las monedas de una ronda superada. El libro tiene una sola fila por persona,
  * partida y ronda, así que un cobro repetido (una reconexión, un reinicio del servidor) no paga otra
- * vez: devuelve `credited: false`. `doubled`: la persona ya tiene los 9 logros. Sin perfil, falla.
+ * vez: devuelve `credited: false`. Sin perfil, falla.
+ *
+ * `doubled`: la persona ya tiene los 9 logros. En el M8 lo calculará el servidor desde su propia
+ * tabla de logros, al resolver la partida; nunca debe llegar del cliente.
  */
 export async function creditRound(
   db: Db,

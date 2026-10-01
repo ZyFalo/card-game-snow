@@ -68,7 +68,8 @@ export async function progressRoutes(app: FastifyInstance, opts: ProgressOptions
     if (!user) return reply;
     const parsed = buyBoxSchema.safeParse(req.body);
     if (!parsed.success || !BOX_SIZES.includes(parsed.data.size)) return reply.code(400).send(apiError('bad_request'));
-    const result = await buyBox(db, user.id, parsed.data.element, parsed.data.size, seed());
+    const { element, size, purchaseId } = parsed.data;
+    const result = await buyBox(db, { userId: user.id, purchaseId, element, size }, seed(), now());
     if (!result.ok) return reply.code(409).send(apiError(result.error));
     const body: BoxResult = { cards: result.cards, progress: result.progress };
     return body;

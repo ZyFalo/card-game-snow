@@ -83,7 +83,9 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   const progress = async (cookie: string): Promise<Progress> =>
     progressSchema.parse((await get('/api/progress', cookie)).json());
   const choose = (cookie: string, element: string) => post('/api/progress/camino', { element }, cookie);
-  const buy = (cookie: string, element: string, size: number) => post('/api/progress/boxes', { element, size }, cookie);
+  /** Compra una caja. Cada compra lleva su identificador, que genera el cliente (D-66). */
+  const buy = (cookie: string, element: string, size: number, purchaseId: string = randomUUID()) =>
+    post('/api/progress/boxes', { element, size, purchaseId }, cookie);
 
   /** Una cuenta con su camino elegido y, si se pide, monedas cobradas por rondas de una partida. */
   async function player(element = 'fire', rounds: (1 | 2 | 3 | 'bonus')[] = []) {
@@ -376,11 +378,129 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     it('una caja de un tamaño que no existe es una petición inválida', async () => {
       const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
       for (const size of [0, 4, 1.5, '2']) {
-        const res = await post('/api/progress/boxes', { element: 'fire', size }, cookie);
+        const res = await post('/api/progress/boxes', { element: 'fire', size, purchaseId: randomUUID() }, cookie);
         expect(res.statusCode).toBe(400);
         expect(errorOf(res)).toBe('bad_request');
       }
       expect((await progress(cookie)).coins).toBe(420);
+    });
+  });
+
+  describe('El libro registra las compras (D-66)', () => {
+    const ledger = (userId: string) => db().select().from(coinLedger).where(eq(coinLedger.userId, userId));
+    const purchases = async (userId: string) => (await ledger(userId)).filter((r) => r.purchaseId !== null);
+
+    it('D-66: una compra deja en el libro un movimiento negativo, con su identificador y sus cartas', async () => {
+      const { cookie, userId } = await player('fire', [1, 2, 3, 'bonus']);
+      const purchaseId = randomUUID();
+      const { cards } = boxResultSchema.parse((await buy(cookie, 'fire', 2, purchaseId)).json());
+      const rows = await ledger(userId);
+      expect(rows.find((r) => r.purchaseId === purchaseId)).toMatchObject({
+        amount: -180,
+        cards,
+        matchId: null,
+        round: null,
+      });
+      // Con los gastos en el libro, el saldo es siempre la suma de sus movimientos.
+      expect((await progress(cookie)).coins).toBe(rows.reduce((sum, r) => sum + r.amount, 0));
+    });
+
+    it('D-66: un reintento con el mismo identificador devuelve el resultado original y no cobra de nuevo', async () => {
+      const { cookie, userId } = await player('fire', [1, 2, 3, 'bonus']);
+      const purchaseId = randomUUID();
+      const first = boxResultSchema.parse((await buy(cookie, 'water', 3, purchaseId)).json());
+      const retry = await buy(cookie, 'water', 3, purchaseId);
+      expect(retry.statusCode).toBe(200);
+      expect(boxResultSchema.parse(retry.json())).toEqual(first);
+      const after = await progress(cookie);
+      expect(after.coins).toBe(420 - 250);
+      expect(after.boxesOpened).toBe(1);
+      expect(totalCards(after)).toBe(4 + 3);
+      expect(await purchases(userId)).toHaveLength(1);
+    });
+
+    it('D-66: ocho reintentos simultáneos del mismo identificador compran una sola caja', async () => {
+      const { cookie, userId } = await player('fire', [1, 2, 3, 'bonus']);
+      const purchaseId = randomUUID();
+      await warmPool();
+      const results = await Promise.all(Array.from({ length: 8 }, () => buy(cookie, 'snow', 1, purchaseId)));
+      expect(results.map((r) => r.statusCode)).toEqual(Array(8).fill(200));
+      const drawn = results.map((r) => boxResultSchema.parse(r.json()).cards.join());
+      expect(new Set(drawn).size).toBe(1);
+      const after = await progress(cookie);
+      expect(after.coins).toBe(320);
+      expect(after.boxesOpened).toBe(1);
+      expect(totalCards(after)).toBe(4 + 1);
+      expect(await purchases(userId)).toHaveLength(1);
+    });
+
+    it('D-66: el reintento se reconoce aunque ya no alcancen las monedas', async () => {
+      const { cookie } = await player('fire', [1, 2]); // 180 monedas: justo una caja de 2.
+      const purchaseId = randomUUID();
+      const first = boxResultSchema.parse((await buy(cookie, 'fire', 2, purchaseId)).json());
+      expect(first.progress.coins).toBe(0);
+      const retry = await buy(cookie, 'fire', 2, purchaseId);
+      expect(retry.statusCode).toBe(200);
+      expect(boxResultSchema.parse(retry.json()).cards).toEqual(first.cards);
+      // Otra compra, con otro identificador, sí se rechaza.
+      expect(errorOf(await buy(cookie, 'fire', 2))).toBe('not_enough_coins');
+    });
+
+    it('D-66: el mismo identificador con otra caja devuelve la compra original, sin cobrar otra', async () => {
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      const purchaseId = randomUUID();
+      const first = boxResultSchema.parse((await buy(cookie, 'fire', 1, purchaseId)).json());
+      const other = boxResultSchema.parse((await buy(cookie, 'water', 3, purchaseId)).json());
+      expect(other.cards).toEqual(first.cards);
+      expect(other.progress.coins).toBe(320);
+    });
+
+    it('D-66: el identificador es único por cuenta: el mismo en otra cuenta es otra compra', async () => {
+      const a = await player('fire', [1, 2, 3, 'bonus']);
+      const b = await player('fire', [1, 2, 3, 'bonus']);
+      const purchaseId = randomUUID();
+      expect((await buy(a.cookie, 'fire', 1, purchaseId)).statusCode).toBe(200);
+      expect((await buy(b.cookie, 'fire', 1, purchaseId)).statusCode).toBe(200);
+      expect((await progress(a.cookie)).coins).toBe(320);
+      expect((await progress(b.cookie)).coins).toBe(320);
+    });
+
+    it('D-66: una compra rechazada no deja nada en el libro, y su identificador sirve después', async () => {
+      const { cookie, userId } = await player('fire', [1]); // 60 monedas
+      const purchaseId = randomUUID();
+      expect(errorOf(await buy(cookie, 'fire', 1, purchaseId))).toBe('not_enough_coins');
+      expect(await purchases(userId)).toHaveLength(0);
+      await creditRound(db(), { userId, matchId: randomUUID(), round: 2, doubled: false }, NOW); // 180 monedas
+      expect((await buy(cookie, 'fire', 1, purchaseId)).statusCode).toBe(200);
+      expect((await progress(cookie)).coins).toBe(80);
+    });
+
+    it('el identificador de la compra debe ser un UUID', async () => {
+      const { cookie } = await player('fire', [1, 2, 3, 'bonus']);
+      for (const purchaseId of [undefined, '', 'mi-compra', 12345]) {
+        const res = await post('/api/progress/boxes', { element: 'fire', size: 1, purchaseId }, cookie);
+        expect(res.statusCode).toBe(400);
+        expect(errorOf(res)).toBe('bad_request');
+      }
+      expect((await progress(cookie)).coins).toBe(420);
+    });
+
+    it('D-66: en el libro, un renglón es un cobro de ronda o una compra, nunca las dos cosas ni ninguna', async () => {
+      const { userId } = await player('fire');
+      const insert = (row: Partial<typeof coinLedger.$inferInsert>) =>
+        db()
+          .insert(coinLedger)
+          .values({ userId, amount: 60, ...row });
+      // Un cobro de ronda no lleva identificador de compra, y es positivo.
+      await expect(
+        insert({ matchId: randomUUID(), round: '1', purchaseId: randomUUID(), cards: [] }),
+      ).rejects.toThrow();
+      await expect(insert({ matchId: randomUUID(), round: '1', amount: -60 })).rejects.toThrow();
+      // Una compra lleva sus cartas, y es negativa.
+      await expect(insert({ purchaseId: randomUUID(), cards: ['fire-01'], amount: 100 })).rejects.toThrow();
+      await expect(insert({ purchaseId: randomUUID(), amount: -100 })).rejects.toThrow();
+      // Un movimiento suelto, sin ronda ni compra, tampoco entra.
+      await expect(insert({})).rejects.toThrow();
     });
   });
 

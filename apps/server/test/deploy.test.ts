@@ -10,6 +10,7 @@ import { buildApp } from '../src/app';
  */
 const root = (file: string) => fileURLToPath(new URL(`../../../${file}`, import.meta.url));
 const railway = JSON.parse(readFileSync(root('railway.json'), 'utf8')) as {
+  build: { watchPatterns?: string[] };
   deploy: { startCommand?: string; healthcheckPath?: string };
 };
 
@@ -37,6 +38,12 @@ describe('Despliegue en Railway (railway.json)', () => {
     };
     const installed = readFileSync(root('Dockerfile'), 'utf8').match(/@node-rs\/argon2@(\S+)/)?.[1];
     expect(installed).toBe(pkg.dependencies['@node-rs/argon2']);
+  });
+
+  it('D-64: no limita qué cambios redespliegan, así que cada push a main se despliega', () => {
+    // Con una lista de rutas vigiladas, Railway saltó el despliegue del PR #12 ("watched paths not
+    // modified") y producción quedó un commit atrás; pnpm check:prod exige que corra el último de main.
+    expect(railway.build).not.toHaveProperty('watchPatterns');
   });
 
   it('la comprobación de salud apunta a una ruta que responde', async () => {

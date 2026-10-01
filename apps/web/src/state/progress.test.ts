@@ -1,7 +1,7 @@
 import type { Progress, User } from '@ventisca/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACCOUNT_ERRORS, PROGRESS_TEXT } from '../i18n/es';
-import { logout } from './account';
+import { login, logout, pickCamino, showView } from './account';
 import { buyBox, chooseCamino, loadProgress } from './progress';
 import { initialState, store } from './store';
 
@@ -173,6 +173,40 @@ describe('Carta de camino en el cliente (R-30)', () => {
   });
 });
 
+describe('Elegir el camino desde su pantalla (R-30)', () => {
+  beforeEach(async () => {
+    await loaded(progress({ camino: null, coins: 0, collection: {} }));
+    showView('camino');
+  });
+
+  it('R-30: al quedar elegido vuelve al perfil, con el aviso', async () => {
+    const picking = pickCamino('snow');
+    await last().reply(200, progress({ camino: 'snow' }));
+    expect(await picking).toBe(true);
+    expect(store.getState().account).toMatchObject({
+      view: 'profile',
+      info: { text: 'Listo: elegiste el Camino de la Nieve y recibiste tu mazo inicial.', tone: 'snow' },
+    });
+  });
+
+  it('R-30: si el servidor lo rechaza, sigue en la pantalla con el mensaje', async () => {
+    const picking = pickCamino('snow');
+    await last().reply(500, fail('internal'));
+    expect(await picking).toBe(false);
+    expect(store.getState().account).toMatchObject({ view: 'camino', info: null });
+    expect(state().error).toBe(ACCOUNT_ERRORS.generic);
+  });
+
+  it('R-30: si la persona salió de la pantalla mientras esperaba, se queda donde está', async () => {
+    const picking = pickCamino('snow');
+    showView('privacy');
+    await last().reply(200, progress({ camino: 'snow' }));
+    expect(await picking).toBe(true);
+    expect(store.getState().account).toMatchObject({ view: 'privacy', info: null });
+    expect(state().data?.camino).toBe('snow');
+  });
+});
+
 describe('Compra de cajas en el cliente (R-28, D-66)', () => {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const box = (cards: string[], over: Partial<Progress> = {}) => ({ cards, progress: progress(over) });
@@ -301,5 +335,41 @@ describe('Compra de cajas en el cliente (R-28, D-66)', () => {
     await last().reply(200, box(['water-12'], { coins: 400, collection }));
     await second;
     expect(state().reveal).toMatchObject({ cards: ['water-12'], fresh: [true] });
+  });
+});
+
+describe('Al entrar (PRD de v2, "Primera vez en línea")', () => {
+  beforeEach(() => {
+    store.setState((s) => ({ account: { ...s.account, user: null }, screen: 'account' }));
+  });
+
+  async function enter(reply: (progressCall: Call) => Promise<void>) {
+    const entering = login('ana@example.com', 'Tundra7#Oso');
+    await last().reply(200, { user: USER });
+    expect(last()).toMatchObject({ method: 'GET', path: '/api/progress' });
+    await reply(last());
+    await entering;
+    return store.getState().account;
+  }
+
+  it('quien todavía no eligió su camino va a elegirlo', async () => {
+    const account = await enter((call) => call.reply(200, progress({ camino: null, coins: 0, collection: {} })));
+    expect(account).toMatchObject({ user: USER, view: 'camino', busy: false });
+  });
+
+  it('quien ya lo eligió va a su perfil', async () => {
+    const account = await enter((call) => call.reply(200, progress()));
+    expect(account).toMatchObject({ user: USER, view: 'profile', busy: false });
+  });
+
+  it('si la sesión termina mientras se lee el progreso, vuelve a "Entrar" con el aviso', async () => {
+    const account = await enter((call) => call.reply(401, fail('unauthorized')));
+    expect(account).toMatchObject({ user: null, view: 'login', busy: false, error: ACCOUNT_ERRORS.unauthorized });
+  });
+
+  it('si el progreso no se pudo leer, va a su perfil, donde puede reintentar', async () => {
+    const account = await enter((call) => call.reply('lost'));
+    expect(account).toMatchObject({ user: USER, view: 'profile', busy: false });
+    expect(state().status).toBe('error');
   });
 });

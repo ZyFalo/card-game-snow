@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
-import { PRIVACY_NOTICE, ACCOUNT_TEXT as T } from '../i18n/es';
+import { PROGRESS_TEXT as P, PRIVACY_NOTICE, ACCOUNT_TEXT as T } from '../i18n/es';
 import {
   cancelEmailChange,
   changeEmailConfirm,
@@ -9,6 +9,7 @@ import {
   deleteAccount,
   login,
   logout,
+  openProgress,
   recoverConfirm,
   recoverRequest,
   register,
@@ -18,7 +19,18 @@ import {
   verify,
 } from '../state/account';
 import { type AccountField, useApp } from '../state/store';
-import { Check, Field, type IconName, NinjaTrio, Notice, Points, SubmitButton } from './common';
+import {
+  ScreenActions as Actions,
+  Check,
+  Field,
+  ScreenHead as Head,
+  type IconName,
+  NinjaTrio,
+  Notice,
+  Points,
+  SubmitButton,
+} from './common';
+import { CaminoView, CollectionView, ProgressSummary } from './Progress';
 import { Turnstile } from './Turnstile';
 
 /*
@@ -31,7 +43,7 @@ export function AccountScreen() {
   const view = useApp((s) => s.account.view);
   // Cada vista se monta de nuevo, así repite las entradas escalonadas.
   return (
-    <div key={view} className="screen account-screen">
+    <div key={view} className={`screen account-screen${view === 'collection' ? ' collection-screen' : ''}`}>
       {view === 'login' ? <LoginView /> : null}
       {view === 'register' ? <RegisterView /> : null}
       {view === 'verify' ? <VerifyView /> : null}
@@ -40,46 +52,42 @@ export function AccountScreen() {
       {view === 'revert' ? <RevertView /> : null}
       {view === 'profile' ? <ProfileView /> : null}
       {view === 'privacy' ? <PrivacyParts onBack={closeAccount} /> : null}
+      {view === 'camino' ? <CaminoView /> : null}
+      {view === 'collection' ? <CollectionView /> : null}
     </div>
   );
 }
 
 /**
  * Lo que da una cuenta. `soon` marca "Próximamente" lo que todavía no existe: quítalo cuando llegue cada
- * uno. El progreso y la colección llegan con el PR 9 del M7; el juego en línea, con el M8.
+ * uno. El juego en línea llega con el M8.
  */
 const BENEFITS: { mark: IconName; text: string; soon: boolean }[] = [
-  { mark: 'coin', text: T.benefits.progress, soon: true },
+  { mark: 'coin', text: T.benefits.progress, soon: false },
   { mark: 'play', text: T.benefits.online, soon: true },
-  { mark: 'cards', text: T.benefits.collection, soon: true },
+  { mark: 'cards', text: T.benefits.collection, soon: false },
 ];
 const benefits = BENEFITS.map(({ mark, text, soon }) => ({ mark, text, tag: soon ? T.soon : undefined }));
 const steps = (texts: readonly string[]) => texts.map((text, i) => ({ mark: i + 1, text }));
 
-function Head({ title, intro }: { title: string; intro?: string }) {
-  return (
-    <div className="screen-head">
-      <h1 className="display">{title}</h1>
-      {intro ? <p>{intro}</p> : null}
-    </div>
-  );
-}
-
-/** El panel del formulario a la izquierda; a la derecha, los tres ninjas y, si los hay, los puntos. */
-function FormBody({ aside, children }: { aside?: ReactNode; children: ReactNode }) {
+/**
+ * El panel del formulario a la izquierda; a la derecha, los tres ninjas y, si los hay, los puntos. Con
+ * `summary`, la columna derecha es el resumen del progreso, que trae su propia ilustración.
+ */
+function FormBody({ aside, summary, children }: { aside?: ReactNode; summary?: ReactNode; children: ReactNode }) {
   return (
     <div className="account-body">
       <section className="paper account-form">{children}</section>
       <div className="account-aside">
-        {aside}
-        <NinjaTrio />
+        {summary ?? (
+          <>
+            {aside}
+            <NinjaTrio />
+          </>
+        )}
       </div>
     </div>
   );
-}
-
-function Actions({ children }: { children: ReactNode }) {
-  return <div className="screen-actions">{children}</div>;
 }
 
 function BackButton({ onClick }: { onClick: () => void }) {
@@ -472,6 +480,7 @@ type Section = 'password' | 'email' | 'delete' | null;
 function ProfileView() {
   const user = useApp((s) => s.account.user);
   const pendingEmail = useApp((s) => s.account.pendingEmail);
+  const progress = useApp((s) => s.progress.data);
   const [open, setOpen] = useState<Section>(null);
   if (!user) return null;
   const toggle = (s: Section) => {
@@ -492,8 +501,7 @@ function ProfileView() {
   return (
     <>
       <Head title={T.profileTitle(user.displayName)} intro={T.profileIntro} />
-      {/* Sin beneficios: en la columna derecha irá el resumen del progreso (PR 9 del M7). */}
-      <FormBody>
+      <FormBody summary={<ProgressSummary />}>
         <Messages />
         {row('password', T.password, null, T.changePassword)}
         {open === 'password' ? (
@@ -515,6 +523,16 @@ function ProfileView() {
         <button type="button" className="btn btn-lg" onClick={() => void logout()}>
           {T.logout}
         </button>
+        {/* El primario lleva al progreso: a elegir el camino o, ya elegido, a la colección y la tienda. */}
+        {progress ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={() => openProgress(progress.camino ? 'collection' : 'camino')}
+          >
+            {progress.camino ? P.toCollection : P.toCamino}
+          </button>
+        ) : null}
       </Actions>
     </>
   );

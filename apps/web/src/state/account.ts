@@ -1,8 +1,9 @@
+import type { ElementKind } from '@ventisca/core';
 import { publicConfigSchema, sessionSchema, type User } from '@ventisca/protocol';
-import { ACCOUNT_ERRORS, ACCOUNT_TEXT } from '../i18n/es';
+import { ACCOUNT_ERRORS, ACCOUNT_TEXT, CAMINO_TITLE, PROGRESS_TEXT } from '../i18n/es';
 import { type ApiResult, api, type ClientError } from '../net/api';
 import { errorMessage } from './errors';
-import { loadProgress } from './progress';
+import { chooseCamino, clearProgressError, loadProgress } from './progress';
 import { clearSession } from './session';
 import { type AccountField, type AccountState, type AccountView, store } from './store';
 
@@ -87,10 +88,37 @@ export function closeAccount(): void {
   patch({ error: null, errorField: null, info: null });
 }
 
-/** Tras entrar, se lee el progreso de la cuenta. */
-function signedIn(user: User): void {
-  patch({ user, view: 'profile', email: '', error: null, errorField: null });
-  void loadProgress();
+/** Abre una pantalla del progreso: elegir el camino (R-30) o la colección con la tienda. */
+export function openProgress(view: 'camino' | 'collection'): void {
+  clearProgressError();
+  showView(view);
+  if (view === 'collection') void loadProgress();
+}
+
+/**
+ * R-30: elige el camino desde su pantalla y, si quedó elegido, vuelve al perfil con el aviso. Si la
+ * persona salió de esa pantalla mientras esperaba, se queda donde está. Devuelve si quedó elegido.
+ */
+export async function pickCamino(element: ElementKind): Promise<boolean> {
+  if (!(await chooseCamino(element))) return false;
+  if (store.getState().account.view === 'camino') {
+    showView('profile', { info: { text: PROGRESS_TEXT.caminoDone(CAMINO_TITLE[element]), tone: 'snow' } });
+  }
+  return true;
+}
+
+/**
+ * Tras entrar, se lee el progreso de la cuenta. Quien todavía no eligió su carta de camino va a
+ * elegirla (PRD de v2, "Primera vez en línea"); los demás, a su perfil.
+ */
+async function signedIn(user: User): Promise<void> {
+  patch({ user, email: '', error: null, errorField: null, busy: true });
+  await loadProgress();
+  const { account, progress } = store.getState();
+  // La sesión terminó mientras se leía el progreso: ya está de vuelta en "Entrar".
+  if (account.user?.id !== user.id) return;
+  const needsCamino = progress.status === 'ready' && progress.data?.camino === null;
+  patch({ busy: false, view: needsCamino ? 'camino' : 'profile', previous: account.view });
 }
 
 export async function register(form: {
@@ -109,7 +137,7 @@ export async function register(form: {
 export async function verify(code: string): Promise<void> {
   const { email } = store.getState().account;
   const res = await run(() => api.post('/api/auth/verify', { email, code }, sessionSchema));
-  if (res.ok) signedIn(res.data.user);
+  if (res.ok) await signedIn(res.data.user);
 }
 
 export async function resendCode(): Promise<void> {
@@ -120,7 +148,7 @@ export async function resendCode(): Promise<void> {
 
 export async function login(email: string, password: string): Promise<void> {
   const res = await run(() => api.post('/api/auth/login', { email, password }, sessionSchema));
-  if (res.ok) signedIn(res.data.user);
+  if (res.ok) await signedIn(res.data.user);
   // Sin verificar: pasa al código, con la opción de pedir otro.
   else if (res.error.code === 'email_not_verified') {
     showView('verify', { email: email.trim(), info: { text: ACCOUNT_ERRORS.email_not_verified, tone: 'gold' } });
@@ -145,7 +173,7 @@ export async function recoverConfirm(code: string, password: string, repeat: str
   }
   const { email } = store.getState().account;
   const res = await run(() => api.post('/api/auth/recover/confirm', { email, code, password }, sessionSchema));
-  if (res.ok) signedIn(res.data.user);
+  if (res.ok) await signedIn(res.data.user);
 }
 
 /** R-50: sin sesión, deshace un cambio de correo con el código que llegó al correo anterior. */

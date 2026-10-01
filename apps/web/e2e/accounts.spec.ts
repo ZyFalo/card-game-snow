@@ -1,91 +1,8 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { codeOf, lastMail, logIn, person, signUp, stubTurnstile } from './account-helpers';
 import { clippedElements, startMatch, type TestWindow } from './helpers';
 
-/*
- * Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). Los correos no se envían:
- * el servidor de pruebas los guarda en una carpeta y de ahí se leen los códigos. El script de Turnstile
- * se reemplaza por uno falso, así las pruebas no dependen de Cloudflare.
- */
-
-const OUTBOX = fileURLToPath(new URL('../.e2e-outbox', import.meta.url));
-
-interface Mail {
-  to: string;
-  subject: string;
-  text: string;
-}
-
-/** El último correo a `to` cuyo asunto contenga `subject`; espera a que llegue. */
-async function lastMail(to: string, subject: RegExp): Promise<Mail> {
-  let found: Mail | undefined;
-  await expect
-    .poll(
-      () => {
-        const files = (() => {
-          try {
-            return readdirSync(OUTBOX).sort();
-          } catch {
-            return [];
-          }
-        })();
-        found = files
-          .map((f) => JSON.parse(readFileSync(`${OUTBOX}/${f}`, 'utf8')) as Mail)
-          .filter((m) => m.to === to && subject.test(m.subject))
-          .at(-1);
-        return found !== undefined;
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
-  return found as Mail;
-}
-
-const codeOf = (mail: Mail) => mail.text.match(/^(\d{6})$/m)?.[1] ?? '';
-
-async function stubTurnstile(page: Page) {
-  await page.route('https://challenges.cloudflare.com/**', (route) =>
-    route.fulfill({
-      contentType: 'text/javascript',
-      body: "window.turnstile = { render(el, o) { setTimeout(() => o.callback('XXXX.DUMMY.TOKEN.XXXX'), 50); return 'w'; }, remove() {} };",
-    }),
-  );
-}
-
-let n = 0;
-function person() {
-  n += 1;
-  const id = `${Date.now().toString(36)}${n}`;
-  return { email: `e2e.${id}@example.com`, displayName: `Prueba ${id.slice(-6)}`, password: 'Tundra7#Oso' };
-}
-
-/** Registro y verificación por la interfaz; termina con la sesión abierta en "Mi cuenta". */
-async function signUp(page: Page, who = person()) {
-  await stubTurnstile(page);
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
-  await page.getByLabel('Correo', { exact: true }).fill(who.email);
-  await page.getByLabel('Nombre visible', { exact: true }).fill(who.displayName);
-  await page.getByLabel('Contraseña', { exact: true }).fill(who.password);
-  await page.getByRole('checkbox').check();
-  await expect(page.getByRole('button', { name: 'Crear cuenta' })).toBeEnabled();
-  await page.getByRole('button', { name: 'Crear cuenta' }).click();
-  await expect(page.getByRole('heading', { name: 'Verifica tu correo' })).toBeVisible();
-  const code = codeOf(await lastMail(who.email, /Tu código para Ventisca/));
-  await page.getByLabel('Código de 6 dígitos').fill(code);
-  await page.getByRole('button', { name: 'Verificar' }).click();
-  await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
-  return who;
-}
-
-async function logIn(page: Page, email: string, password: string) {
-  await page.getByLabel('Correo', { exact: true }).fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(password);
-  // En la pantalla de cuenta, "Entrar" es el botón que envía el formulario, abajo a la derecha.
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-}
+/* Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). */
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
   const errors: string[] = [];
@@ -94,7 +11,7 @@ test('R-44: registro, verificación con el código del correo, y la sesión sigu
   page.on('request', (r) => {
     if (r.url().includes('/api/')) apiUrls.push(r.url());
   });
-  const who = await signUp(page);
+  const who = await signUp(page, person(), 'Fuego');
   await page.reload();
   await page.getByRole('button', { name: 'Mi cuenta' }).click();
   await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
@@ -131,7 +48,7 @@ test('los errores del servidor llegan como mensajes claros', async ({ page }) =>
 });
 
 test('R-46: recuperar la contraseña con el código del correo', async ({ page }) => {
-  const who = await signUp(page);
+  const who = await signUp(page, person(), 'Agua');
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
@@ -146,7 +63,7 @@ test('R-46: recuperar la contraseña con el código del correo', async ({ page }
 });
 
 test('R-48 y R-50: cambiar el correo, y deshacerlo desde el correo anterior', async ({ page }) => {
-  const who = await signUp(page);
+  const who = await signUp(page, person(), 'Nieve');
   const newEmail = `nuevo.${who.email}`;
   await page.getByRole('button', { name: 'Cambiar el correo' }).click();
   await page.getByLabel('Correo nuevo', { exact: true }).fill(newEmail);
@@ -294,6 +211,9 @@ test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta text
   await check('verificar');
   await page.getByLabel('Código de 6 dígitos').fill(codeOf(await lastMail(who.email, /Tu código para Ventisca/)));
   await page.getByRole('button', { name: 'Verificar' }).click();
+  // Elegir el camino y las demás pantallas del progreso tienen su recorrido en progress.spec.ts.
+  await expect(page.getByRole('heading', { name: 'Elige tu camino' })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver' }).click();
   await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
   await check('perfil');
   for (const section of ['Cambiar la contraseña', 'Cambiar el correo', 'Borrar la cuenta']) {
@@ -303,11 +223,12 @@ test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta text
   expect(clipped).toEqual({});
 });
 
-test('los beneficios que todavía no existen dicen "Próximamente", y el perfil no los muestra', async ({ page }) => {
+test('el beneficio que todavía no existe dice "Próximamente", y el perfil no los muestra', async ({ page }) => {
+  // El progreso y la colección ya existen; el juego en línea llega con el M8.
   const benefits = [
-    /^Tu progreso queda guardado\s+Próximamente$/,
+    /^Tu progreso queda guardado$/,
     /^Juega en línea con amigos\s+Próximamente$/,
-    /^Tu colección de cartas\s+Próximamente$/,
+    /^Tu colección de cartas$/,
   ];
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
@@ -316,7 +237,7 @@ test('los beneficios que todavía no existen dicen "Próximamente", y el perfil 
   await expect(page.getByText('Con tu cuenta podrás jugar en línea y guardar tu progreso.')).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
-  // En el perfil no van: en esa columna irá el resumen del progreso (PR 9 del M7).
+  // En el perfil no van: esa columna es el resumen del progreso.
   await signUp(page);
   await expect(page.getByRole('listitem')).toHaveCount(0);
   await expect(page.getByText('Próximamente')).toHaveCount(0);

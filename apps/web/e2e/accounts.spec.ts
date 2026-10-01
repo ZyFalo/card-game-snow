@@ -238,7 +238,11 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
   await expect(
     page.getByText('¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.'),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Crear una cuenta' }).click();
+  // Lineamientos: un solo primario por vista ("Jugar otra vez"), y el botón de la invitación en una línea.
+  await expect(page.locator('.results-screen .btn-primary')).toHaveText(['Jugar otra vez']);
+  const invite = page.getByRole('button', { name: 'Crear una cuenta' });
+  expect((await invite.boundingBox())?.height ?? 0).toBeLessThan(50);
+  await invite.click();
   await expect(page.getByRole('heading', { name: 'Crear una cuenta' })).toBeVisible();
 });
 

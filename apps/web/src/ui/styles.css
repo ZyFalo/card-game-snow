@@ -2215,6 +2215,17 @@ button {
   font: 700 var(--text-body) / 1.4 var(--font-ui);
 }
 
+/* El texto ocupa lo que sobra y el botón queda a la derecha, en una sola línea. */
+.results-invite span {
+  flex: 1;
+  min-width: 0;
+}
+
+.results-invite .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
 .title-foot .link {
   margin-left: var(--gap-3);
   font-weight: 500;

@@ -15,7 +15,7 @@ export function BattleHud() {
       <TipBar />
       <TurnControls />
       <RoundInfo />
-      <Notice />
+      <Toast />
       <NinjaPanels />
       <Hand />
     </div>
@@ -197,11 +197,11 @@ function RoundInfo() {
   );
 }
 
-function Notice() {
+function Toast() {
   const notice = useApp((s) => s.notice);
   if (!notice) return null;
   return (
-    <div key={notice.key} className="notice" role="status">
+    <div key={notice.key} className="toast" role="status">
       {notice.text}
     </div>
   );

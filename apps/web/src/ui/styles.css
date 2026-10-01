@@ -21,6 +21,35 @@
   --page: #c9d6e1;
   --font-display: "Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif;
   --font-ui: "Zen Kaku Gothic New", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Escala de texto y geometría (docs/lineamientos-de-diseno.md, sección 2). */
+  --text-title: 40px;
+  --text-section: 20px;
+  --text-lead: 16px;
+  --text-body: 15px;
+  --text-notice: 14px;
+  --text-small: 13px;
+  --text-btn: 15px;
+  --text-btn-lg: 18px;
+  --leading: 1.45;
+  --leading-read: 1.6;
+  --line: 2px;
+  --radius-panel: 12px;
+  --radius-control: 10px;
+  --radius-check: 6px;
+  --shadow-panel: 4px 4px 0 var(--ink);
+  --shadow-control: 3px 3px 0 var(--ink);
+  --shadow-primary: 3px 3px 0 var(--fire);
+  --shadow-danger: 3px 3px 0 var(--danger);
+  --shade: rgba(31, 36, 64, 0.12);
+  --control-h: 44px;
+  --gap-1: 8px;
+  --gap-2: 12px;
+  --gap-3: 16px;
+  --gap-4: 24px;
+  --edge-x: 56px;
+  --edge-top: 34px;
+  --focus: 3px solid var(--water);
+  --focus-offset: 3px;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -117,9 +146,9 @@ button {
 
 .paper {
   background: linear-gradient(135deg, var(--paper-hi) 0 62%, #eef3f7 62% 100%);
-  border: 2px solid var(--ink);
-  border-radius: 12px;
-  box-shadow: 4px 4px 0 var(--ink);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
 }
 
 .btn {
@@ -127,14 +156,14 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 44px;
+  min-height: var(--control-h);
   padding: 9px 18px;
-  font: 700 15px / 1.2 var(--font-ui);
+  font: 700 var(--text-btn) / 1.2 var(--font-ui);
   color: var(--ink);
   background: var(--paper-hi);
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  box-shadow: 3px 3px 0 var(--ink);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
   cursor: pointer;
   transition:
     transform 0.08s ease,
@@ -158,8 +187,8 @@ button {
 .ninja-panel:focus-visible,
 .seg button:focus-visible,
 .toggle input:focus-visible + .track {
-  outline: 3px solid var(--water);
-  outline-offset: 3px;
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
 }
 
 .btn:disabled {
@@ -176,7 +205,7 @@ button {
 .btn-primary {
   background: var(--ink);
   color: var(--paper-hi);
-  box-shadow: 3px 3px 0 var(--fire);
+  box-shadow: var(--shadow-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -186,7 +215,7 @@ button {
 .btn-lg {
   min-height: 54px;
   padding: 12px 28px;
-  font-size: 18px;
+  font-size: var(--text-btn-lg);
 }
 
 .kbd {
@@ -418,7 +447,7 @@ button {
 .title-ninjas img {
   width: 150px;
   animation: bob 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 10px 0 rgba(31, 36, 64, 0.12));
+  filter: drop-shadow(0 10px 0 var(--shade));
 }
 
 .title-ninjas img:nth-child(2) {
@@ -442,21 +471,21 @@ button {
 
 .screen-head {
   position: absolute;
-  left: 56px;
-  top: 34px;
-  right: 56px;
+  left: var(--edge-x);
+  top: var(--edge-top);
+  right: var(--edge-x);
 }
 
 .screen-head h1 {
   margin: 0;
-  font-size: 40px;
+  font-size: var(--text-title);
   line-height: 1.1;
 }
 
 .screen-head p {
-  margin: 8px 0 0;
+  margin: var(--gap-1) 0 0;
   max-width: 760px;
-  font: 500 16px / 1.45 var(--font-ui);
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
   color: var(--ink-2);
 }
 
@@ -813,7 +842,7 @@ button {
   color: var(--danger);
 }
 
-.notice {
+.toast {
   position: absolute;
   left: 50%;
   top: 76px;
@@ -823,11 +852,11 @@ button {
   color: var(--paper-hi);
   background: var(--ink);
   border-radius: 8px;
-  animation: notice 2.2s ease forwards;
+  animation: toast 2.2s ease forwards;
   white-space: nowrap;
 }
 
-@keyframes notice {
+@keyframes toast {
   0% {
     opacity: 0;
     transform: translate(-50%, -6px);

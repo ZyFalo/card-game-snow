@@ -133,7 +133,7 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 
 ## 9. Correcciones pendientes en las pantallas de cuenta
 
-Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el resultado, junto a "Tu equipo", está en `diseno/capturas/`.
+Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el antes y el después de cada pantalla, junto a "Tu equipo", están en la descripción del PR #13.
 
 - **Entrar y Crear cuenta:** hoy son un panel flotante arriba al centro, con la mitad inferior vacía y aspecto de formulario web.
   - Recomponer en dos columnas, con ilustración y beneficios (sección 5).

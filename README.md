@@ -22,7 +22,7 @@ Táctico cooperativo por turnos: tres aprendices de papel (Brasa, Marea y Escarc
 - Jugable de punta a punta: 3 rondas + bonus, cartas, combos, caídas y reanimación, 2 dificultades, 3 ritmos de reloj, consejos, pausa y ayuda.
 - Cuentas (M7): registro con verificación por correo, recuperación, cambio de contraseña y de correo, y borrado. El servidor guarda el progreso de cada cuenta: la carta de camino, la colección de 60 cartas y las cajas (PRD §18 y `docs/PRD-v2.md`). Las monedas se ganarán en las partidas en línea (M8), y el sandbox no da progreso (D-34).
 - Animación: ninjas y gólems articulados por piezas, con estados de ataque, golpe, caída, reanimación, aturdido, aparición y celebración, más efectos de impacto, cinemáticas de carta, efectos de estado, coreografía medida con metas de ritmo e interfaz animada (PRD §10.2).
-- 328 pruebas del motor, el cliente y el servidor (las del servidor, contra Postgres) y 34 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
+- 336 pruebas del motor, el cliente y el servidor (las del servidor, contra Postgres) y 34 pruebas e2e de Playwright, con CI en GitHub Actions. El simulador de balance mide con la colección real del jugador (`docs/balance-report.md`).
 - Pendiente: playtest con personas, QA manual en Firefox y Safari (las e2e de v0.9.1 ya pasan en WebKit y Firefox), táctil, partidas en línea y emparejamiento (hitos M8 y M9 de v2) y jefe con progresión (v3). Detalle en `docs/PRD.md` §13.
 
 ## Stack

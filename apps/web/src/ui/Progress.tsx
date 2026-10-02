@@ -255,13 +255,17 @@ export function CollectionView() {
           <div className="shop-boxes">
             {BOX_SIZES.map((size) => {
               const price = boxPrice(size);
-              const buying = busy && pending?.element === tab && pending.size === size;
+              // La compra de esta caja está en curso o quedó sin respuesta (D-68).
+              const unconfirmed = pending?.element === tab && pending.size === size;
+              const buying = busy && unconfirmed;
               return (
                 <button
                   key={size}
                   type="button"
                   className="btn shop-box"
-                  disabled={busy || coins < price}
+                  // La que quedó sin respuesta se puede comprar de nuevo aunque el saldo ya no alcance: si
+                  // el servidor la había cobrado, el reintento devuelve esa caja sin cobrar otra.
+                  disabled={busy || (coins < price && !unconfirmed)}
                   onClick={() => void buyBox(tab, size)}
                   aria-label={buying ? P.buying : P.buy(size, t.element, price)}
                 >
@@ -275,7 +279,8 @@ export function CollectionView() {
           <p className="shop-note">
             {P.odds(oddsText())} {P.repeatedNote}
           </p>
-          {coins < CHEAPEST_BOX ? (
+          {/* Con un aviso a la vista, la pista de las monedas espera: las dos cosas no caben en el panel. */}
+          {coins < CHEAPEST_BOX && !error ? (
             <p className="shop-note">
               {P.earnHint(eco.coinsPerRound.join(', ').replace(/, (\d+)$/, ' y $1'), eco.bonusCoins)}{' '}
               <span className="tag">{ACCOUNT_TEXT.soon}</span>

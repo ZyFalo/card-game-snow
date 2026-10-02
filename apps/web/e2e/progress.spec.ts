@@ -212,6 +212,9 @@ test('D-66: si la respuesta de una compra se pierde, comprar de nuevo no cobra d
     'No llegó la respuesta. Compra de nuevo esa caja: no se cobra dos veces.',
   );
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  // D-68: el cliente volvió a leer el progreso, así que el saldo es el real, con la caja ya cobrada.
+  await expect(wallet(page)).toHaveText('320 monedas');
+  await expect(page.getByText(/^Tienes 3 cartas de Fuego/)).toBeVisible();
   expect(await clippedElements(page)).toEqual([]);
 
   await buy(page, 1).click();
@@ -225,6 +228,49 @@ test('D-66: si la respuesta de una compra se pierde, comprar de nuevo no cobra d
   const progress = await page.evaluate(() => fetch('/api/progress').then((r) => r.json()));
   expect(progress).toMatchObject({ coins: 320, boxesOpened: 1 });
   await expect(page.getByText(/^Tienes 3 cartas de Fuego/)).toBeVisible();
+});
+
+test('D-68: la caja que quedó sin respuesta se puede reintentar aunque el saldo real ya no alcance', async ({
+  page,
+}) => {
+  const who = await signUp(page, person(), 'Fuego');
+  giveCoins(who.email);
+  await openCollection(page);
+  // De las 420 monedas, una caja de 3 deja 170.
+  await buy(page, 3).click();
+  await page.getByRole('button', { name: 'Seguir' }).click();
+  await expect(wallet(page)).toHaveText('170 monedas');
+  let lose = true;
+  await page.route('**/api/progress/boxes', async (route) => {
+    if (!lose) return route.continue();
+    lose = false;
+    // El servidor recibe la compra y la cobra, pero su respuesta no llega al cliente.
+    await route.fetch();
+    await route.abort();
+  });
+  await buy(page, 1).click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'No llegó la respuesta. Compra de nuevo esa caja: no se cobra dos veces.',
+  );
+  // El saldo real: la caja de 1 ya está cobrada, y con 70 monedas no alcanza para ninguna otra.
+  await expect(wallet(page)).toHaveText('70 monedas');
+  await expect(page.getByText(/^Tienes 6 cartas de Fuego/)).toBeVisible();
+  await expect(buy(page, 2)).toBeDisabled();
+  await expect(buy(page, 3)).toBeDisabled();
+  expect(await clippedElements(page)).toEqual([]);
+  // Con el aviso a la vista, todo cabe en el panel de la tienda sin tener que desplazarlo.
+  expect(await page.locator('.shop').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+  // La que quedó sin respuesta sí se puede comprar de nuevo, como dice el aviso.
+  await expect(buy(page, 1)).toBeEnabled();
+  await buy(page, 1).click();
+  await expect(page.getByRole('dialog', { name: 'Tu caja de Fuego' }).getByRole('img')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Seguir' }).click();
+  // El servidor devolvió esa caja sin cobrar otra, y ya no queda nada por reintentar.
+  await expect(wallet(page)).toHaveText('70 monedas');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  for (const size of [1, 2, 3] as const) await expect(buy(page, size)).toBeDisabled();
+  const progress = await page.evaluate(() => fetch('/api/progress').then((r) => r.json()));
+  expect(progress).toMatchObject({ coins: 70, boxesOpened: 2 });
 });
 
 test('si el progreso no se puede leer, el perfil lo dice y deja reintentar', async ({ page }) => {

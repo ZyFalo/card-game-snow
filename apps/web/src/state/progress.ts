@@ -1,7 +1,7 @@
 import type { ElementKind } from '@ventisca/core';
 import { boxResultSchema, progressSchema } from '@ventisca/protocol';
 import { PROGRESS_TEXT } from '../i18n/es';
-import { type ApiResult, api } from '../net/api';
+import { type ApiResult, api, type ClientError } from '../net/api';
 import { errorMessage } from './errors';
 import { sessionExpired } from './session';
 import { type ProgressState, store } from './store';
@@ -72,9 +72,16 @@ export async function chooseCamino(element: ElementKind): Promise<boolean> {
 let reveals = 0;
 
 /**
- * R-28: compra una caja. El identificador de la compra se genera aquí y se conserva hasta que el
- * servidor responde que la compra quedó hecha (D-66 y D-68): si la respuesta se pierde, comprar de nuevo
- * la misma caja es un reintento, y otra caja es otra compra.
+ * La respuesta de una compra se perdió: no llegó (`offline`) o el servidor falló a mitad (`internal`).
+ * En los dos casos no se sabe si la compra quedó hecha. Cualquier otro error es una respuesta
+ * definitiva: el servidor dijo que no hubo compra.
+ */
+const purchaseLost = (error: ClientError) => error.code === 'offline' || error.code === 'internal';
+
+/**
+ * R-28: compra una caja. El identificador de la compra se genera aquí (D-66) y se borra con cualquier
+ * respuesta definitiva del servidor, sea la caja o un rechazo. Solo se conserva si la respuesta se
+ * pierde (D-68): entonces comprar de nuevo la misma caja es un reintento, y otra caja es otra compra.
  */
 export async function buyBox(element: ElementKind, size: number): Promise<void> {
   const { progress } = store.getState();
@@ -85,9 +92,15 @@ export async function buyBox(element: ElementKind, size: number): Promise<void> 
   const res = await change(() => api.post('/api/progress/boxes', purchase, boxResultSchema));
   if (!res) return;
   if (!res.ok) {
-    // Sin respuesta, o con un fallo del servidor, no se sabe si la compra quedó hecha: se dice que
-    // reintentar es seguro. Los demás errores son rechazos, y `change` ya dejó su mensaje.
-    if (res.error.code === 'offline' || res.error.code === 'internal') patch({ error: PROGRESS_TEXT.purchaseUnknown });
+    if (!purchaseLost(res.error)) {
+      // Un rechazo: `change` ya dejó su mensaje, y la compra siguiente es otra compra.
+      patch({ pending: null });
+      return;
+    }
+    // Se dice que reintentar es seguro y se vuelve a leer el progreso, para mostrar el saldo real: si
+    // el servidor sí había cobrado, las monedas y las cartas ya cambiaron.
+    patch({ error: PROGRESS_TEXT.purchaseUnknown });
+    void loadProgress();
     return;
   }
   const { cards, progress: data } = res.data;

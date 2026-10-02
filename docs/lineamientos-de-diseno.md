@@ -168,4 +168,6 @@ Llegaron con las pantallas del progreso de la cuenta: elegir el camino, la colec
 - **Nota junto a las acciones (`.screen-actions p.foot`):** una frase a la izquierda de la fila de acciones, en 15 px `--ink-2`.
 - **Colección y tienda:** las cartas ocupan la columna izquierda hasta el borde inferior; a la derecha van el panel de la tienda y, debajo, las acciones. El saldo va arriba a la derecha, junto al título.
 - **Ocupado al comprar:** el botón de la caja que se compra dice "Comprando…" y todos los de compra quedan deshabilitados hasta que llega la respuesta.
+- **Si la respuesta de una compra se pierde:** un mensaje (`.notice`) lo dice bajo los botones, y esa caja sigue habilitada para comprarla de nuevo, aunque el saldo ya no alcance.
+- **Un aviso reemplaza la pista de las monedas:** el aviso y la pista no caben a la vez en el panel de la tienda, así que la pista vuelve cuando el aviso se va.
 - **Lo que todavía no existe:** las monedas se ganarán en las partidas en línea. Hasta entonces, la tienda lo dice en futuro y con la etiqueta "Próximamente".

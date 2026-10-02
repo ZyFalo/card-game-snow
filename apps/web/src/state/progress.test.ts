@@ -207,7 +207,7 @@ describe('Elegir el camino desde su pantalla (R-30)', () => {
   });
 });
 
-describe('Compra de cajas en el cliente (R-28, D-66)', () => {
+describe('Compra de cajas en el cliente (R-28, D-66, D-68)', () => {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const box = (cards: string[], over: Partial<Progress> = {}) => ({ cards, progress: progress(over) });
 
@@ -236,7 +236,12 @@ describe('Compra de cajas en el cliente (R-28, D-66)', () => {
     await last().reply('lost');
     await first;
     // No se sabe si el servidor cobró: el mensaje dice que reintentar es seguro.
-    expect(state()).toMatchObject({ busy: false, error: PROGRESS_TEXT.purchaseUnknown, reveal: null });
+    expect(state()).toMatchObject({
+      busy: false,
+      pending: { purchaseId: id, element: 'snow', size: 1 },
+      error: PROGRESS_TEXT.purchaseUnknown,
+      reveal: null,
+    });
 
     const second = buyBox('snow', 1);
     expect(last().body).toEqual({ purchaseId: id, element: 'snow', size: 1 });
@@ -245,16 +250,66 @@ describe('Compra de cajas en el cliente (R-28, D-66)', () => {
     expect(state()).toMatchObject({ pending: null, error: null, reveal: { cards: ['snow-03'] } });
   });
 
-  it('D-66: un error del servidor tampoco dice si cobró: el reintento conserva el identificador', async () => {
+  it('D-68: tras una respuesta perdida, vuelve a leer el progreso para mostrar el saldo real', async () => {
+    await loaded();
+    const buying = buyBox('snow', 1);
+    await last().reply('lost');
+    await buying;
+    expect(last()).toMatchObject({ method: 'GET', path: '/api/progress', body: null });
+    // El servidor sí había cobrado: el progreso que vuelve ya trae el saldo y la carta.
+    const real = progress({ coins: 400, boxesOpened: 1, collection: { ...progress().collection, 'snow-03': 1 } });
+    await last().reply(200, real);
+    // La compra sigue sin confirmar: el reintento mostrará la caja, y el aviso sigue a la vista.
+    expect(state()).toMatchObject({
+      status: 'ready',
+      data: real,
+      pending: { element: 'snow', size: 1 },
+      error: PROGRESS_TEXT.purchaseUnknown,
+      reveal: null,
+    });
+  });
+
+  it('D-68: un fallo del servidor tampoco dice si cobró: se trata como una respuesta perdida', async () => {
     await loaded();
     const first = buyBox('snow', 1);
     const id = last().body?.purchaseId;
     await last().reply(500, fail('internal'));
     await first;
-    expect(state().error).toBe(PROGRESS_TEXT.purchaseUnknown);
+    expect(state()).toMatchObject({ pending: { purchaseId: id }, error: PROGRESS_TEXT.purchaseUnknown });
+    expect(last()).toMatchObject({ method: 'GET', path: '/api/progress' });
     const second = buyBox('snow', 1);
     expect(last().body?.purchaseId).toBe(id);
     await last().reply(200, box(['snow-03']));
+    await second;
+  });
+
+  it('D-68: si el reintento sale antes de que termine la relectura, queda el resultado de la compra', async () => {
+    await loaded();
+    const first = buyBox('snow', 1);
+    await last().reply('lost');
+    await first;
+    const reread = last();
+    const second = buyBox('snow', 1);
+    const bought = { coins: 400, boxesOpened: 1, collection: { ...progress().collection, 'snow-03': 1 } };
+    await last().reply(200, box(['snow-03'], bought));
+    await second;
+    // La relectura salió antes del reintento y llega después: trae el progreso de antes de la compra.
+    await reread.reply(200, progress());
+    expect(state()).toMatchObject({ status: 'ready', data: progress(bought), reveal: { cards: ['snow-03'] } });
+  });
+
+  it('D-68: una respuesta definitiva que rechaza la compra borra el identificador', async () => {
+    await loaded();
+    const first = buyBox('fire', 3);
+    const id = last().body?.purchaseId;
+    await last().reply(409, fail('not_enough_coins'));
+    await first;
+    expect(state()).toMatchObject({ busy: false, pending: null, error: ACCOUNT_ERRORS.not_enough_coins });
+    // La siguiente compra de esa misma caja ya es otra compra.
+    const second = buyBox('fire', 3);
+    expect(last().body?.purchaseId).toMatch(UUID);
+    expect(last().body?.purchaseId).not.toBe(id);
+    await last().reply(200, box(['fire-02', 'fire-03', 'fire-04']));
     await second;
   });
 
@@ -313,6 +368,15 @@ describe('Compra de cajas en el cliente (R-28, D-66)', () => {
     });
   });
 
+  it('D-68: si la sesión venció al comprar, no queda ninguna compra pendiente', async () => {
+    await loaded();
+    const buying = buyBox('fire', 1);
+    await last().reply(401, fail('unauthorized'));
+    await buying;
+    expect(state()).toMatchObject({ busy: false, pending: null, data: null });
+    expect(store.getState().account).toMatchObject({ user: null, view: 'login', error: ACCOUNT_ERRORS.unauthorized });
+  });
+
   it('las cartas nuevas se deciden con la colección que respondió el servidor', async () => {
     await loaded();
     const buying = buyBox('fire', 3);
@@ -328,11 +392,12 @@ describe('Compra de cajas en el cliente (R-28, D-66)', () => {
     const first = buyBox('water', 1);
     await last().reply('lost');
     await first;
-    // Entre el intento y el reintento se leyó el progreso, que ya incluye la carta.
+    // El progreso que se volvió a leer entre el intento y el reintento ya incluye la carta.
     const collection = { ...progress().collection, 'water-12': 1 };
-    await loaded(progress({ coins: 400, collection }));
+    await last().reply(200, progress({ coins: 400, boxesOpened: 1, collection }));
+    expect(state().data?.collection).toEqual(collection);
     const second = buyBox('water', 1);
-    await last().reply(200, box(['water-12'], { coins: 400, collection }));
+    await last().reply(200, box(['water-12'], { coins: 400, boxesOpened: 1, collection }));
     await second;
     expect(state().reveal).toMatchObject({ cards: ['water-12'], fresh: [true] });
   });

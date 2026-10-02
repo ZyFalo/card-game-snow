@@ -67,9 +67,10 @@ export interface ProgressState {
   /** Hay una petición en curso que cambia el progreso: elegir el camino o comprar una caja. */
   busy: boolean;
   /**
-   * La compra en curso o la última que quedó sin respuesta (D-66). Guarda su identificador: si la
-   * respuesta se pierde, no se sabe si el servidor cobró, y el reintento de la misma caja lo reutiliza
-   * para que el servidor devuelva el resultado original sin cobrar de nuevo.
+   * La compra en curso o, sin petición en curso, la que quedó sin respuesta (D-66 y D-68). Guarda su
+   * identificador: si la respuesta se pierde, no se sabe si el servidor cobró, y el reintento de la
+   * misma caja lo reutiliza para que el servidor devuelva el resultado original sin cobrar de nuevo.
+   * Cualquier respuesta definitiva, sea la caja o un rechazo, la deja en `null`.
    */
   pending: (Box & { purchaseId: string }) | null;
   /** El error de la última petición que cambia el progreso. */

@@ -378,6 +378,24 @@ export function SubmitButton({
   );
 }
 
+/* ---------- Composición de pantallas (lineamientos, sección 5) ---------- */
+
+/** El encabezado de una pantalla: el título y, debajo, una línea que la explica. */
+export function ScreenHead({ title, intro, children }: { title: string; intro?: string; children?: ReactNode }) {
+  return (
+    <div className="screen-head">
+      <h1 className="display">{title}</h1>
+      {intro ? <p>{intro}</p> : null}
+      {children}
+    </div>
+  );
+}
+
+/** La fila de acciones, abajo a la derecha: "Volver" a la izquierda del primario. */
+export function ScreenActions({ children }: { children: ReactNode }) {
+  return <div className="screen-actions">{children}</div>;
+}
+
 /** Los tres ninjas de pie, como en la portada. Decorativos. */
 export function NinjaTrio() {
   return (

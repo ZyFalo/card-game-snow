@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.11 |
+| Versión | 0.10.12 |
 | Última actualización | 1 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -869,7 +869,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 
 Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas y donde se marcan. Cada uno es publicable por sí solo y termina con `pnpm run ci` y `pnpm e2e` en verde.
 
-- [ ] **M7: Cuentas y servidor** (todavía sin multijugador):
+- [x] **M7: Cuentas y servidor** (todavía sin multijugador):
   - imagen de Docker en Railway, con Postgres, en ventisca.wpena.dev;
   - registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-50 del PRD de v2);
   - progreso en la cuenta (R-25 a R-32 resueltos en el servidor);
@@ -997,6 +997,8 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-68 | El cliente conserva el identificador de una compra solo si su respuesta se pierde: entonces comprar de nuevo la misma caja es un reintento, y otra caja es otra compra. Una respuesta definitiva lo borra, y tras una perdida el cliente vuelve a leer el progreso. Mientras espera, los botones de compra quedan deshabilitados (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
+| D-67 | Durante el M7, el perfil hace de inicio en línea: muestra el resumen del progreso y lleva a la colección y la tienda. Elegir la carta de camino se puede dejar para después (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-66 | El libro de monedas registra también las compras, con un identificador del cliente único por cuenta: un reintento devuelve el resultado original y no cobra de nuevo (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-65 | Las peticiones que cambian estado solo se aceptan desde el origen del juego: la cookie `SameSite=Lax` no distingue los subdominios de wpena.dev (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-64 | Cada push a `main` se despliega: `railway.json` es la fuente de verdad, sin `watchPatterns`, y en el panel de Railway quedan vacíos Watch Paths, Custom Build Command, Custom Start Command y Root Directory (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
@@ -1045,6 +1047,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.12 | 2026-10-01 | Progreso en el cliente (M7, paso 9): al verificar la cuenta se elige la carta de camino (R-30); el perfil muestra el resumen del progreso y lleva a la colección, con las 20 cartas de cada elemento y las que faltan como siluetas (R-25), y a la tienda de cajas (R-28), con el revelado de las cartas. El cliente muestra lo que responde el servidor y nunca calcula el progreso. D-67: durante el M7, el perfil hace de inicio en línea. D-68: el cliente conserva el identificador de una compra solo si su respuesta se pierde, vuelve a leer el progreso para mostrar el saldo real y deshabilita los botones mientras espera. Hasta el M8 nadie puede ganar monedas, y la tienda lo dice con "Próximamente". La introducción de "Entrar" y la invitación de los resultados ya dicen en presente que la cuenta guarda el progreso. Las piezas nuevas quedan en la sección 10 de `docs/lineamientos-de-diseno.md`. Las e2e guardan una captura y la traza de cada prueba que falla. Con esto se completa la lista del M7 |
 | 0.10.11 | 2026-10-01 | Progreso en el servidor (M7, paso 8): la carta de camino con su inventario inicial (R-30), el libro de monedas que no paga dos veces la misma ronda (R-29, D-31) y las cajas sorteadas en el servidor con el motor, sin poder gastar de más con compras simultáneas (R-27, R-28). El libro registra también las compras, y un reintento con el mismo identificador devuelve el resultado original sin cobrar de nuevo (D-66). Tablas `profiles`, `collection` y `coin_ledger`, que se borran con la cuenta (D-56). D-65: las peticiones que cambian estado solo se aceptan desde el origen del juego. `pnpm check:prod` reintenta la lectura del commit de `main` |
 | 0.10.10 | 2026-10-01 | D-64: cada push a `main` se despliega. Railway había saltado los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación, por unas rutas vigiladas propias del panel (`/apps/server/**`) que dejó la importación del monorepo. `railway.json` queda como fuente de verdad, sin `watchPatterns`; en el panel se vaciaron Watch Paths y Custom Build Command, y se activó "Wait for CI" |
 | 0.10.9 | 2026-09-30 | Lineamientos de diseño (D-63): las pantallas de cuenta se recomponen como pantallas del juego, en dos columnas, con los tres ninjas, las acciones abajo a la derecha y el código de verificación al centro. El aviso de privacidad pasa a una pantalla de lectura; ya no se corta al abrirlo desde el registro. Los beneficios de la cuenta que todavía no existen llevan la etiqueta "Próximamente", y la introducción de "Entrar" y la invitación de los resultados hablan en futuro. Piezas nuevas de formulario en `ui/common.tsx`, tokens de escala y geometría, y una prueba e2e que falla si una pantalla de cuenta corta texto |

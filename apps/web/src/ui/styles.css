@@ -22,7 +22,9 @@
   --font-display: "Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif;
   --font-ui: "Zen Kaku Gothic New", system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Escala de texto y geometría (docs/lineamientos-de-diseno.md, sección 2). */
+  --text-hero: 72px;
   --text-title: 40px;
+  --text-panel: 26px;
   --text-section: 20px;
   --text-lead: 16px;
   --text-body: 15px;
@@ -40,6 +42,7 @@
   --shadow-control: 3px 3px 0 var(--ink);
   --shadow-primary: 3px 3px 0 var(--fire);
   --shadow-danger: 3px 3px 0 var(--danger);
+  --ring: 0 0 0 3px var(--gold);
   --shade: rgba(31, 36, 64, 0.12);
   --control-h: 44px;
   --gap-1: 8px;
@@ -271,22 +274,26 @@ button {
   height: 22px;
 }
 
+/* --el-ink es el color del texto sobre --el: papel sobre fuego y agua; tinta sobre nieve, que es clara. */
 .el-fire {
   --el: var(--fire);
   --el-lo: var(--fire-lo);
   --el-soft: var(--fire-soft);
+  --el-ink: var(--paper-hi);
 }
 
 .el-water {
   --el: var(--water);
   --el-lo: var(--water-lo);
   --el-soft: var(--water-soft);
+  --el-ink: var(--paper-hi);
 }
 
 .el-snow {
   --el: var(--snow);
   --el-lo: var(--snow-lo);
   --el-soft: var(--snow-soft);
+  --el-ink: var(--ink);
 }
 
 /* Interruptores y selectores segmentados */
@@ -1695,20 +1702,6 @@ button {
   }
 }
 
-/* ---------- Progresión (§18) ---------- */
-
-/* Cara de carta */
-
-/* Elegir camino */
-
-/* Equipo */
-
-/* Colección y tienda */
-
-/* Revelado de cajas */
-
-/* Monedas en resultados */
-
 /* ---------- Coreografía (fase 3) ---------- */
 .confirm.accelerate {
   touch-action: none;
@@ -2253,4 +2246,568 @@ button {
 .reduced .screen-actions,
 .reduced .ninja-trio img {
   animation: none;
+}
+
+/* ---------- Progreso en la cuenta (PRD §18; lineamientos, sección 10) ---------- */
+
+/* Texto solo para lectores de pantalla. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Monedas: el ícono y la cantidad. Como dato suelto van en su propio chip. */
+.coins {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-1);
+  font: 700 var(--text-body) / 1 var(--font-ui);
+  white-space: nowrap;
+}
+
+.coins svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.coin-chip {
+  min-height: 36px;
+  padding: 0 var(--gap-2) 0 var(--gap-1);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+/* Cara de carta: la misma construcción de las cartas de la mano, sin ser un botón. */
+.cface {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+  overflow: hidden;
+}
+
+.cface .band {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 var(--gap-1);
+  font: 700 var(--text-small) / 1 var(--font-ui);
+  color: var(--el-ink);
+  background: var(--el);
+  border-bottom: var(--line) solid var(--ink);
+}
+
+.cface .qty {
+  padding: 2px 6px;
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-radius: var(--radius-check);
+}
+
+.cface .value {
+  font: var(--text-title) / 1 var(--font-display);
+}
+
+.cface .glyph {
+  flex: none;
+}
+
+.cface .name {
+  padding: 0 4px;
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* La marca de una carta recién salida, en una franja al pie: oro si es nueva; papel si es repetida. */
+.cface .cbadge {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 4px 0;
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink-2);
+  text-align: center;
+  background: var(--paper-lo);
+  border-top: var(--line) solid var(--ink);
+}
+
+.cface .cbadge.new {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+/* En la colección: ocupa su casilla de la cuadrícula. */
+.cface.sm {
+  width: 100%;
+  height: 100%;
+}
+
+.cface.sm .band {
+  height: 24px;
+}
+
+.cface.sm .value {
+  margin-top: 6px;
+}
+
+.cface.sm .glyph {
+  display: none;
+}
+
+.cface.sm .name {
+  margin-top: 4px;
+}
+
+.cface.md {
+  width: 132px;
+  height: 172px;
+}
+
+.cface.md .band {
+  height: 28px;
+}
+
+.cface.md .value {
+  margin-top: var(--gap-3);
+}
+
+.cface.md .glyph {
+  width: 30px;
+  height: 30px;
+  margin-top: var(--gap-1);
+}
+
+.cface.md .name {
+  margin-top: var(--gap-2);
+}
+
+.cface.lg {
+  width: 164px;
+  height: 226px;
+}
+
+.cface.lg .band {
+  height: 32px;
+}
+
+.cface.lg .value {
+  margin-top: var(--gap-3);
+  font-size: var(--text-hero);
+}
+
+.cface.lg .glyph {
+  width: 38px;
+  height: 38px;
+  margin-top: var(--gap-1);
+}
+
+.cface.lg .name {
+  margin-top: var(--gap-1);
+  font-size: var(--text-notice);
+}
+
+/* La que falta, como silueta: papel rayado, borde de trazos y sin color. */
+.cface.locked {
+  background: repeating-linear-gradient(135deg, var(--paper) 0 8px, var(--paper-lo) 8px 16px);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.cface.locked .band {
+  color: var(--ink-2);
+  background: var(--paper-lo);
+  border-bottom-style: dashed;
+}
+
+.cface.locked .value,
+.cface.locked .name {
+  color: var(--ink-3);
+}
+
+/* Elegir el camino: tres opciones, con su ninja y su carta. */
+.camino-body {
+  display: grid;
+  align-content: start;
+  gap: var(--gap-3);
+  min-height: 0;
+}
+
+.camino-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-4);
+}
+
+.camino-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-1);
+  padding: var(--gap-3);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.camino-option:hover:not(:disabled) {
+  transform: translateY(-4px);
+}
+
+.camino-option[aria-pressed="true"] {
+  box-shadow: var(--ring), var(--shadow-panel);
+  transform: translateY(-8px);
+}
+
+.camino-option:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.camino-option:disabled {
+  cursor: default;
+}
+
+.camino-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--gap-3);
+  width: 100%;
+  padding: var(--gap-2);
+  background: var(--el-soft);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.camino-top img {
+  height: 190px;
+}
+
+.camino-title {
+  margin-top: var(--gap-1);
+  font-size: var(--text-panel);
+  line-height: 1.1;
+}
+
+.camino-sub {
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--el-lo);
+}
+
+.camino-desc {
+  font: 500 var(--text-notice) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+/* Una nota a la izquierda de las acciones, en vez del enlace discreto. */
+.screen-actions p.foot {
+  margin: 0 auto 0 0;
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+/* El resumen del progreso, en la columna derecha del perfil. */
+.summary {
+  display: grid;
+  gap: var(--gap-3);
+  padding: var(--gap-4);
+}
+
+.summary header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.summary header img {
+  flex: none;
+  width: 64px;
+  height: 58px;
+  padding: 2px;
+  background: var(--el-soft);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.summary h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.1;
+}
+
+.summary .sub {
+  margin-top: 4px;
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--el-lo);
+}
+
+.summary .coin-chip {
+  margin-left: auto;
+}
+
+.summary p {
+  margin: 0;
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-2);
+  margin: 0;
+}
+
+.summary-stats div {
+  padding: var(--gap-1) var(--gap-2);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.summary-stats dt {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-1);
+  font: 700 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.summary-stats dt svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.summary-stats dd {
+  margin: 4px 0 0;
+}
+
+.summary-stats dd b {
+  display: block;
+  font: var(--text-section) / 1.2 var(--font-display);
+}
+
+.summary-stats dd span {
+  font: 500 var(--text-small) / 1.2 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.summary-loading {
+  margin: 0;
+  padding-top: var(--gap-4);
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.summary-retry {
+  display: grid;
+  justify-items: start;
+  gap: var(--gap-2);
+}
+
+/* El ninja del camino de la persona, solo y más grande que en el trío. */
+.ninja-trio.ninja-solo img {
+  width: 170px;
+}
+
+/* Colección y tienda: las cartas bajan hasta el borde; la tienda y las acciones, a la derecha. */
+.collection-screen {
+  grid-template-columns: minmax(0, 1fr) 394px;
+}
+
+/* El encabezado ocupa las dos columnas y ancla el saldo, arriba a la derecha. */
+.collection-screen .screen-head {
+  position: relative;
+  inset: auto;
+  grid-column: 1 / -1;
+}
+
+.wallet {
+  position: absolute;
+  top: var(--gap-1);
+  right: 0;
+}
+
+.collection-cards {
+  grid-row: 2 / 4;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--gap-3);
+  min-height: 0;
+}
+
+/* Pestañas de elemento: la elegida toma el color de su elemento. */
+.tabs {
+  display: flex;
+  gap: var(--gap-2);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-1);
+  min-height: var(--control-h);
+  padding: 0 var(--gap-2);
+  font: 700 var(--text-btn) / 1 var(--font-ui);
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--el-ink);
+  background: var(--el);
+  box-shadow: var(--shadow-control);
+}
+
+.tab:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* El glifo va sobre papel: sobre el color de su propio elemento no se vería. */
+.tab svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  background: var(--paper-hi);
+  border-radius: var(--radius-check);
+}
+
+.tab .count {
+  margin-left: auto;
+  font-size: var(--text-small);
+}
+
+/* Las 20 cartas del elemento. El margen deja sitio a la sombra de la última fila y columna. */
+.coll-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: var(--gap-1);
+  min-height: 0;
+  padding: 0 4px 4px 0;
+}
+
+.shop {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  display: grid;
+  gap: var(--gap-2);
+  max-height: 100%;
+  padding: var(--gap-3) var(--gap-4);
+  overflow-y: auto;
+}
+
+.shop h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.1;
+}
+
+.shop p {
+  margin: 0;
+  font: 500 var(--text-notice) / var(--leading) var(--font-ui);
+}
+
+.shop p.shop-note {
+  font-size: var(--text-small);
+  color: var(--ink-2);
+}
+
+.shop-boxes {
+  display: grid;
+  gap: var(--gap-2);
+}
+
+.shop-box {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.collection-screen .screen-actions {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* Una caja recién abierta: las cartas se voltean una por una. */
+.modal.reveal {
+  width: 640px;
+  text-align: center;
+}
+
+.reveal-cards {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-4);
+  margin: var(--gap-2) 0 var(--gap-3);
+}
+
+.reveal-slot {
+  animation: flipIn 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+
+@keyframes flipIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scaleX(0.08);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal-note {
+  margin: 0 0 var(--gap-3);
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.reveal-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.camino-body,
+.collection-cards {
+  animation: riseIn 0.45s 0.2s backwards;
+}
+
+.shop {
+  animation: riseIn 0.6s 0.28s backwards;
+}
+
+.reduced .camino-body,
+.reduced .collection-cards,
+.reduced .shop,
+.reduced .reveal-slot {
+  animation: none;
+}
+
+.reduced .camino-option {
+  transition: none;
 }

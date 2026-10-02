@@ -1,5 +1,5 @@
 import type { BonusCondition, ElementKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
-import type { User } from '@ventisca/protocol';
+import type { Progress, User } from '@ventisca/protocol';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { TIPS } from '../i18n/es';
@@ -16,7 +16,9 @@ export type AccountView =
   | 'recoverCode'
   | 'revert'
   | 'profile'
-  | 'privacy';
+  | 'privacy'
+  | 'camino'
+  | 'collection';
 
 /** El campo al que apunta un error, para mostrarlo debajo de él (lineamientos, sección 4). */
 export type AccountField = 'email' | 'displayName' | 'password' | 'repeat' | 'code' | 'current';
@@ -40,6 +42,52 @@ export interface AccountState {
   /** `gold`: algo en curso (te mandamos un código); `snow`: algo terminado. */
   info: { text: string; tone: 'gold' | 'snow' } | null;
 }
+
+/** Una caja de la tienda: su elemento y cuántas cartas trae (R-28). */
+export interface Box {
+  element: ElementKind;
+  size: number;
+}
+
+/** Una caja recién abierta, para mostrar sus cartas. `fresh`: si cada carta era nueva en la colección. */
+export interface Reveal {
+  key: number;
+  element: ElementKind;
+  cards: string[];
+  fresh: boolean[];
+}
+
+/** El progreso de la cuenta (D-34), tal como lo dio el servidor. El cliente nunca lo calcula. */
+export interface ProgressState {
+  /** Estado de la última lectura. `idle`: todavía no se pidió; `error`: no se pudo leer. */
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  data: Progress | null;
+  /** Elemento que muestra la colección. */
+  tab: ElementKind;
+  /** Hay una petición en curso que cambia el progreso: elegir el camino o comprar una caja. */
+  busy: boolean;
+  /**
+   * La compra en curso o, sin petición en curso, la que quedó sin respuesta (D-66 y D-68). Guarda su
+   * identificador: si la respuesta se pierde, no se sabe si el servidor cobró, y el reintento de la
+   * misma caja lo reutiliza para que el servidor devuelva el resultado original sin cobrar de nuevo.
+   * Cualquier respuesta definitiva, sea la caja o un rechazo, la deja en `null`.
+   */
+  pending: (Box & { purchaseId: string }) | null;
+  /** El error de la última petición que cambia el progreso. */
+  error: string | null;
+  reveal: Reveal | null;
+}
+
+export const initialProgress = (): ProgressState => ({
+  status: 'idle',
+  data: null,
+  tab: 'fire',
+  busy: false,
+  pending: null,
+  error: null,
+  reveal: null,
+});
+
 /** intro: aparición de la ronda; planning: el jugador planifica; resolving: se anima el turno. */
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
 
@@ -109,6 +157,7 @@ export interface AppState {
   /** El navegador no tiene WebGL: el tablero no se puede dibujar. */
   webglMissing: boolean;
   account: AccountState;
+  progress: ProgressState;
 }
 
 export const initialState = (): AppState => ({
@@ -148,6 +197,7 @@ export const initialState = (): AppState => ({
     errorField: null,
     info: null,
   },
+  progress: initialProgress(),
 });
 
 export const store = createStore<AppState>()(() => initialState());

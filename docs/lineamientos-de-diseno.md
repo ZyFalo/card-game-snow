@@ -23,6 +23,7 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | `--paper`, `--paper-hi`, `--paper-lo` | Fondo de pantalla, superficie de paneles y campos, zonas hundidas |
 | `--ink`, `--ink-2`, `--ink-3` | Texto y bordes, texto secundario, texto de apoyo y placeholders |
 | `--fire`, `--water`, `--snow` (con `-lo` y `-soft`) | Identidad de cada ninja y elemento. `--water` también es el color del foco |
+| `--el`, `--el-lo`, `--el-soft`, `--el-ink` | Dentro de `.el-fire`, `.el-water` y `.el-snow`, los colores de ese elemento. `--el-ink` es el del texto que va sobre `--el`: papel sobre fuego y agua, y tinta sobre nieve |
 | `--ice` | Sombra del nombre del juego y detalles de hielo |
 | `--gold` | Monedas, progreso y recompensas |
 | `--danger` | Errores y acciones irreversibles |
@@ -33,7 +34,9 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | Uso | Tamaño |
 | --- | --- |
 | Nombre del juego, solo en la portada | 104 px, con `text-shadow: 5px 5px 0 var(--ice)` |
+| Número de una carta recién salida de una caja | 72 px, tipografía de títulos |
 | Título de pantalla (`.screen-head h1`) | 40 px / 1,1, tipografía de títulos |
+| Título de un panel, como el nombre de cada ninja en "Tu equipo" | 26 px, tipografía de títulos |
 | Subtítulo (`.screen-head p`) | 500 16 px / 1,45, `--ink-2`, máximo 760 px de ancho |
 | Botones | 700 15 px (18 px en `.btn-lg`) |
 | Cuerpo | 15 a 16 px |
@@ -49,8 +52,9 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | Márgenes de pantalla | 56 px a los lados y 34 px arriba (`.screen-head`) |
 | Separaciones | 8, 12, 16 o 24 px |
 | Foco | `outline: 3px solid var(--water); outline-offset: 3px` en todo lo interactivo, campos y enlaces incluidos |
+| Elegido | Un aro de 3 px de `--gold` alrededor, además de su sombra, como la carta elegida de la mano |
 
-La escala y la geometría también son variables de `:root`: `--text-title`, `--text-section`, `--text-lead`, `--text-body`, `--text-notice`, `--text-small`, `--text-btn` y `--text-btn-lg`; `--leading` y `--leading-read`; `--line`; `--radius-panel`, `--radius-control` y `--radius-check`; `--shadow-panel`, `--shadow-control`, `--shadow-primary`, `--shadow-danger` y `--shade` (la sombra de los ninjas en el suelo); `--control-h`; `--gap-1` a `--gap-4`; `--edge-x` y `--edge-top`; `--focus` y `--focus-offset`.
+La escala y la geometría también son variables de `:root`: `--text-hero`, `--text-title`, `--text-panel`, `--text-section`, `--text-lead`, `--text-body`, `--text-notice`, `--text-small`, `--text-btn` y `--text-btn-lg`; `--leading` y `--leading-read`; `--line`; `--radius-panel`, `--radius-control` y `--radius-check`; `--shadow-panel`, `--shadow-control`, `--shadow-primary`, `--shadow-danger`, `--ring` (el aro de lo elegido) y `--shade` (la sombra de los ninjas en el suelo); `--control-h`; `--gap-1` a `--gap-4`; `--edge-x` y `--edge-top`; `--focus` y `--focus-offset`.
 
 ## 3. Piezas existentes: reutilizar
 
@@ -131,6 +135,8 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
    - foco visible.
 3. **Prueba automática de desbordes:** en las e2e de cada pantalla nueva, recorre los elementos visibles y falla si alguno tiene `scrollWidth > clientWidth` sin permitir desplazamiento. Así se detecta el texto cortado.
 
+En el código, en `apps/web/e2e/helpers.ts`: `clippedElements` busca el texto cortado y `smallText`, el de menos de 13 px.
+
 ## 9. Correcciones pendientes en las pantallas de cuenta
 
 Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el antes y el después de cada pantalla, junto a "Tu equipo", están en la descripción del PR #13.
@@ -145,3 +151,23 @@ Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el
 - **Aviso de privacidad:** en la captura a 1280×720, el texto se corta por la derecha ("Su responsable es William Andres Pe…"). Convertirlo en pantalla completa de lectura (sección 5) y cubrirlo con la prueba de desbordes.
 - **Verificación, recuperación, perfil y deshacer cambio de correo:** mismas reglas.
 - **CSS de cuentas:** reemplazar los valores sueltos por tokens y las clases propias por las piezas de las secciones 3 y 4.
+
+## 10. Piezas del progreso
+
+Llegaron con las pantallas del progreso de la cuenta: elegir el camino, la colección con la tienda y el resumen del perfil. Se derivan de las piezas existentes y viven en `ui/CardFace.tsx`, `ui/Progress.tsx` y `styles.css`.
+
+- **Cara de carta (`.cface`, `CardFace`):** la misma construcción de las cartas de la mano.
+  - Franja de arriba en el color del elemento, con su nombre en `--el-ink`; el número en la tipografía de títulos, a 40 px, o a 72 px al abrir una caja; debajo, el nombre de la carta en 13 px `--ink-2`.
+  - Tres tamaños: `sm` en la colección, donde ocupa su casilla; `md` al elegir el camino; `lg` al abrir una caja.
+  - La que falta es una silueta: papel rayado, borde de trazos y sin color.
+  - Recién salida de una caja lleva una franja al pie: "Nueva" en `--gold` o "Repetida" en `--paper-lo`.
+- **Monedas (`.coins`, `Coins`):** el ícono de la moneda y la cantidad en 700 15 px. Como dato suelto va en su propio chip (`.coin-chip`). El oro va solo en el ícono.
+- **Pestañas (`.tabs` y `.tab`):** para cambiar entre los tres elementos. Se construyen como `.seg`; la elegida toma el color de su elemento, con el texto en `--el-ink` y la sombra de los botones.
+- **Opción grande (`.camino-option`):** un panel `.paper` que es un botón, para elegir entre pocas opciones con ilustración. La elegida se levanta y lleva el aro de `--gold`.
+- **Resumen (`.summary` y `.summary-stats`):** el encabezado de las tarjetas de "Tu equipo" (retrato, título y una línea en el color del elemento) y, debajo, una fila de datos, cada uno con su nombre en 13 px y su valor en la tipografía de títulos.
+- **Nota junto a las acciones (`.screen-actions p.foot`):** una frase a la izquierda de la fila de acciones, en 15 px `--ink-2`.
+- **Colección y tienda:** las cartas ocupan la columna izquierda hasta el borde inferior; a la derecha van el panel de la tienda y, debajo, las acciones. El saldo va arriba a la derecha, junto al título.
+- **Ocupado al comprar:** el botón de la caja que se compra dice "Comprando…" y todos los de compra quedan deshabilitados hasta que llega la respuesta.
+- **Si la respuesta de una compra se pierde:** un mensaje (`.notice`) lo dice bajo los botones, y esa caja sigue habilitada para comprarla de nuevo, aunque el saldo ya no alcance.
+- **Un aviso reemplaza la pista de las monedas:** el aviso y la pista no caben a la vez en el panel de la tienda, así que la pista vuelve cuando el aviso se va.
+- **Lo que todavía no existe:** las monedas se ganarán en las partidas en línea. Hasta entonces, la tienda lo dice en futuro y con la etiqueta "Próximamente".

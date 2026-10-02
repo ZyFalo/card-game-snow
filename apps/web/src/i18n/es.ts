@@ -343,7 +343,7 @@ export const ACCOUNT_TEXT = {
   passwordHint: 'De 8 a 128 caracteres, con una mayúscula, un número y un símbolo.',
   code: 'Código de 6 dígitos',
   loginTitle: 'Entrar',
-  loginIntro: 'Con tu cuenta podrás jugar en línea y guardar tu progreso.',
+  loginIntro: 'Con tu cuenta guardas tu progreso. Pronto podrás jugar en línea.',
   loginSubmit: 'Entrar',
   toRegister: 'Crear una cuenta',
   toRecover: '¿Olvidaste tu contraseña?',
@@ -387,7 +387,7 @@ export const ACCOUNT_TEXT = {
   revertSubmit: 'Deshacer el cambio',
   revertDone: 'Listo: tu cuenta volvió a su correo anterior. Entra con tu contraseña nueva.',
   profileTitle: (name: string) => `Hola, ${name}`,
-  profileIntro: 'El juego en línea llega en las próximas versiones. Por ahora, aquí administras tu cuenta.',
+  profileIntro: 'Aquí ves tu progreso y administras tu cuenta. El juego en línea llega en las próximas versiones.',
   changePassword: 'Cambiar la contraseña',
   savePassword: 'Guardar la contraseña',
   accountRow: 'Tu cuenta',
@@ -406,9 +406,79 @@ export const ACCOUNT_TEXT = {
   deleteDone: 'Tu cuenta se borró.',
   send: 'Enviar',
   cancel: 'Cancelar',
-  invite: '¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.',
+  invite: '¿Te gustó? Crea una cuenta: guarda tu progreso y pronto podrás jugar en línea.',
   inviteButton: 'Crear una cuenta',
   passwordsDiffer: 'Las dos contraseñas no coinciden.',
+} as const;
+
+/* ---------- Progreso en la cuenta (PRD §18; D-34) ---------- */
+
+export const CAMINO_TITLE: Record<ElementKind, string> = {
+  fire: 'Camino del Fuego',
+  water: 'Camino del Agua',
+  snow: 'Camino de la Nieve',
+};
+
+const cards = (n: number) => (n === 1 ? '1 carta' : `${n} cartas`);
+
+export const PROGRESS_TEXT = {
+  /* Elegir el camino (R-30) */
+  caminoTitle: 'Elige tu camino',
+  caminoIntro:
+    'Es tu primera carta de poder y define tu camino ninja: tu título, tu color y el ninja que llevarás en línea. La elección es permanente.',
+  caminoNote: 'Además recibes una carta de 9 de cada elemento para empezar.',
+  caminoPick: 'Elige una carta',
+  caminoChoose: (title: string) => `Elegir el ${title}`,
+  caminoDone: (title: string) => `Listo: elegiste el ${title} y recibiste tu mazo inicial.`,
+  /* El resumen del perfil */
+  summaryLabel: 'Tu progreso',
+  summaryLoading: 'Cargando tu progreso…',
+  summaryError: 'No se pudo cargar tu progreso. Revisa tu conexión e inténtalo de nuevo.',
+  retry: 'Reintentar',
+  noCaminoTitle: 'Todavía no eliges tu camino',
+  noCaminoBody: 'Tu primera carta de poder define tu camino ninja. Con ella recibes tu mazo inicial.',
+  toCamino: 'Elegir mi camino',
+  toCollection: 'Colección y tienda',
+  distinct: (n: number, of: number) => `${n} de ${of}`,
+  boxes: 'Cajas',
+  boxesOpened: (n: number) => (n === 1 ? 'abierta' : 'abiertas'),
+  /* Colección y tienda (R-25 a R-28) */
+  collection: 'Colección y tienda',
+  collectionIntro:
+    'Tus cartas serán tu reserva en las partidas en línea: todas, con repetidas, saldrán al azar al llenarse el medidor.',
+  tabs: 'Elemento',
+  cardOwned: (name: string, element: string, value: number, qty: number) =>
+    `${name}: carta de ${element} de ${value}${qty > 1 ? `, tienes ${qty}` : ''}`,
+  cardMissing: (element: string, value: number) => `Carta de ${element} de ${value} que aún no tienes`,
+  missingName: '? ? ?',
+  box: (element: string) => `Caja de ${element}`,
+  /** "Tienes" + la cantidad en negrita + "de Fuego". */
+  owned: 'Tienes',
+  ofElement: (element: string) => `de ${element}`,
+  average: 'promedio',
+  distinctLong: (n: number, of: number) => `${n} de ${of} distintas`,
+  boxSize: cards,
+  buy: (size: number, element: string, price: number) =>
+    `Comprar una caja de ${cards(size)} de ${element} por ${price} monedas`,
+  buying: 'Comprando…',
+  /** La respuesta de una compra se perdió: reintentar es seguro (D-66). */
+  purchaseUnknown: 'No llegó la respuesta. Compra de nuevo esa caja: no se cobra dos veces.',
+  odds: (list: string) => `Probabilidad por carta: ${list}.`,
+  repeatedNote: 'Puede salir repetida. Las repetidas también sirven: cada copia irá a tu reserva.',
+  earnHint: (rounds: string, bonus: number) =>
+    `Ganarás monedas en las partidas en línea, por cada ronda superada: ${rounds}, más ${bonus} si ganas el bonus.`,
+  coinsWord: (n: number) => (n === 1 ? 'moneda' : 'monedas'),
+  /* Una caja recién abierta */
+  revealTitle: (element: string) => `Tu caja de ${element}`,
+  fresh: 'Nueva',
+  repeated: 'Repetida',
+  keepGoing: 'Seguir',
+  revealNote: (fresh: number) =>
+    fresh === 0
+      ? 'Todas eran repetidas. Igual sirven: cada copia irá a tu reserva y será más probable robarla.'
+      : fresh === 1
+        ? 'Una carta nueva para tu colección.'
+        : `${fresh} cartas nuevas para tu colección.`,
 } as const;
 
 /** Mensajes para cada error de la API (el servidor solo manda códigos). */
@@ -447,6 +517,9 @@ export const ACCOUNT_ERRORS = {
   email_unavailable: 'No podemos enviar correos en este momento. Inténtalo más tarde.',
   email_taken: 'Ese correo ya tiene otra cuenta.',
   unauthorized: 'Tu sesión terminó. Vuelve a entrar.',
+  camino_required: 'Primero elige tu camino.',
+  camino_already_chosen: 'Ya habías elegido tu camino, y es permanente.',
+  not_enough_coins: 'No te alcanzan las monedas para esa caja.',
   generic: 'Algo falló en el servidor. Inténtalo de nuevo.',
 } as const;
 

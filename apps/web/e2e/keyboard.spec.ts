@@ -1,6 +1,14 @@
 import { expect, type Page, test } from '@playwright/test';
 import { phase, startMatch, type TestWindow } from './helpers';
 
+/*
+ * Estas pruebas mantienen una tecla pulsada, con unas 25 acciones por segundo, y miden lo que pasa
+ * mientras tanto. La traza anota cada acción y las frena (con la traza completa, el turno ya no termina
+ * de resolverse a tiempo), así que aquí va apagada. Si una falla, quedan igual su captura y el estado
+ * de la pantalla.
+ */
+test.use({ trace: 'off' });
+
 type LogWindow = TestWindow & { __confirms: number[] };
 
 const boosting = (page: Page) => page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().boosting);

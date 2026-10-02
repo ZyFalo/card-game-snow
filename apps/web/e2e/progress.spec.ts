@@ -1,12 +1,14 @@
 import { expect, type Page, test } from '@playwright/test';
 import { chooseCamino, giveCoins, logIn, person, signUp } from './account-helpers';
-import { clippedElements, smallText } from './helpers';
+import { clippedElements, FULL_TRACE, smallText } from './helpers';
 
 /*
  * El progreso de la cuenta en el cliente, contra el servidor de verdad (PRD §18 y PRD de v2, D-34): la
  * carta de camino, la colección y la tienda. Las monedas las da un apoyo de pruebas, porque hasta el M8
  * no hay partidas en línea donde ganarlas.
  */
+
+test.use(FULL_TRACE);
 
 const wallet = (page: Page) => page.locator('.wallet');
 const buy = (page: Page, size: 1 | 2 | 3) =>

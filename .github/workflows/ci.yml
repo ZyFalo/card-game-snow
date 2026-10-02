@@ -44,6 +44,15 @@ jobs:
         run: |
           pnpm --filter @ventisca/web exec playwright install --with-deps chromium
           PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --grep-invert @lento
+      # Si una e2e falla, Playwright deja su traza y una captura: se suben para verlas después.
+      - name: Evidencia de las e2e que fallaron
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidencia-e2e
+          path: apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   # La misma imagen que se despliega en Railway: se construye, arranca, migra y sirve el juego.
   docker:

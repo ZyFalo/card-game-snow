@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { codeOf, lastMail, logIn, person, signUp, stubTurnstile } from './account-helpers';
-import { clippedElements, startMatch, type TestWindow } from './helpers';
+import { clippedElements, FULL_TRACE, startMatch, type TestWindow } from './helpers';
 
 /* Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). */
+
+test.use(FULL_TRACE);
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
   const errors: string[] = [];

@@ -18,6 +18,12 @@ export type TestWindow = {
   };
 };
 
+/**
+ * La traza completa, con el registro de red y el DOM de cada paso: `test.use(FULL_TRACE)` en las
+ * pruebas que hablan con la API. Las del tablero se quedan con la traza ligera de playwright.config.ts.
+ */
+export const FULL_TRACE = { trace: 'retain-on-failure' } as const;
+
 export const phase = (page: Page) => page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().phase);
 
 /** Abre el juego, entra al sandbox y espera a que empiece la planificación. */

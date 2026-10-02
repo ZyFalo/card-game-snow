@@ -28,6 +28,15 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5174',
     viewport: { width: 1280, height: 720 },
+    // Cuando una prueba falla, quedan su traza y una captura en test-results/, para ver qué pasó aunque
+    // el fallo no se repita. La corrida siguiente vacía esa carpeta; la CI la sube como artefacto.
+    //
+    // Por defecto la traza va sin instantáneas del DOM: guarda los pasos, la consola y los fotogramas.
+    // Tomar una instantánea en cada acción frena mucho las pantallas del tablero (un turno pasa de 7 s a
+    // 20 s, y la prueba de mantener Espacio deja de pasar). Sin instantáneas, Playwright tampoco guarda
+    // el registro de red: las pruebas que hablan con la API piden la traza completa con FULL_TRACE.
+    trace: { mode: 'retain-on-failure', snapshots: false },
+    screenshot: 'only-on-failure',
     launchOptions: {
       executablePath: process.env.PW_CHROMIUM_PATH || undefined,
       args: swiftshader

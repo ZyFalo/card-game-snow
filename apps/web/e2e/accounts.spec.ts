@@ -151,9 +151,9 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
     };
     st.setState({ screen: 'results', phase: 'ended', results: { state: st.getState().match } });
   });
-  // La invitación habla en futuro: jugar en línea y guardar el progreso todavía no existen.
+  // Guardar el progreso ya existe y va en presente; jugar en línea todavía no, y va en futuro.
   await expect(
-    page.getByText('¿Te gustó? Crea una cuenta: pronto podrás jugar en línea y guardar tu progreso.'),
+    page.getByText('¿Te gustó? Crea una cuenta: guarda tu progreso y pronto podrás jugar en línea.'),
   ).toBeVisible();
   // Lineamientos: un solo primario por vista ("Jugar otra vez"), y el botón de la invitación en una línea.
   await expect(page.locator('.results-screen .btn-primary')).toHaveText(['Jugar otra vez']);
@@ -233,8 +233,8 @@ test('el beneficio que todavía no existe dice "Próximamente", y el perfil no l
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
-  // La introducción de "Entrar" también habla en futuro.
-  await expect(page.getByText('Con tu cuenta podrás jugar en línea y guardar tu progreso.')).toBeVisible();
+  // La introducción de "Entrar" dice lo mismo: el progreso en presente y el juego en línea en futuro.
+  await expect(page.getByText('Con tu cuenta guardas tu progreso. Pronto podrás jugar en línea.')).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
   // En el perfil no van: esa columna es el resumen del progreso.

@@ -20,7 +20,9 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
   - Al verificar la cuenta o al entrar, quien todavía no eligió su carta de camino llega a elegirla (R-30). Puede dejarlo para después, y el perfil se lo recuerda (D-67).
   - El perfil hace de inicio en línea durante el M7 (D-67): a la derecha muestra el camino, las monedas, las cartas por elemento y las cajas abiertas, y su botón primario lleva a la colección y la tienda.
   - La colección muestra las 20 cartas de cada elemento, con las que faltan como siluetas (R-25). La tienda vende cajas de 1, 2 o 3 cartas del elemento elegido y revela lo que salió (R-28).
-  - Cada compra lleva un identificador que genera el cliente y que conserva hasta que el servidor la confirma: si la respuesta se pierde, comprar de nuevo la misma caja no cobra dos veces (D-66 y D-68). Mientras espera, los botones de compra quedan deshabilitados.
+  - Cada compra lleva un identificador que genera el cliente (D-66). Mientras espera la respuesta, los botones de compra quedan deshabilitados.
+  - El cliente conserva ese identificador solo si la respuesta se pierde (D-68): comprar de nuevo la misma caja no cobra dos veces. Entonces vuelve a leer el progreso, para mostrar el saldo real, y esa caja se puede reintentar aunque el saldo ya no alcance. Cualquier respuesta definitiva, sea la caja o un rechazo, borra el identificador.
+  - En el código (`purchaseLost` en `state/progress.ts`), una respuesta perdida es que no llegó ninguna o que el servidor falló con un 500, porque un 500 tampoco dice si cobró.
   - **Hoy nadie puede ganar monedas:** se ganarán en las partidas en línea (M8). La tienda lo dice en futuro y con "Próximamente". Las e2e le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e; el servidor no tiene ninguna ruta que regale monedas.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
@@ -68,6 +70,9 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
 - **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
   - En pnpm 12, `pnpm ci` sin `run` es una instalación limpia que no verifica nada.
 - **Pruebas en el navegador:** instala el navegador una vez con `pnpm --filter @ventisca/web exec playwright install chromium`, y después corre `pnpm e2e`. En una máquina sin GPU, usa `PW_SWIFTSHADER=1 pnpm e2e`.
+  - **Cuando una prueba falla, queda su evidencia** en `apps/web/test-results/<prueba>/`: una captura (`test-failed-1.png`), el estado de la pantalla (`error-context.md`) y la traza (`trace.zip`), que se abre con `pnpm --filter @ventisca/web exec playwright show-trace <ruta>/trace.zip`.
+  - **La corrida siguiente vacía esa carpeta:** copia la evidencia antes de repetir las pruebas. En la CI se sube como el artefacto `evidencia-e2e` de la corrida que falló, y se conserva 14 días.
+  - **Qué guarda la traza:** en las pruebas de cuentas y de progreso va completa, con el registro de red y el DOM de cada paso. En las del tablero guarda los pasos, la consola y los fotogramas, porque las instantáneas del DOM las frenan mucho. En las de teclado va apagada, porque miden lo que pasa mientras se mantiene una tecla.
   - Necesitan Postgres (`docker compose up -d db`): levantan Vite en el puerto 5174 y el servidor de verdad en el 3100.
   - El servidor de las e2e usa su propia base, `ventisca_e2e`, que recrea en cada corrida en el Postgres de `DATABASE_URL_TEST`. La base de desarrollo no se toca.
   - Los correos no se envían: el servidor los guarda en `apps/web/.e2e-outbox/` (ignorada por git y vaciada en cada corrida), y de ahí las pruebas leen los códigos. El script de Turnstile se reemplaza por uno falso.
@@ -128,7 +133,7 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
   - **Monedas:** al existir las partidas, la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`).
   - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
   - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
-- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen "podrás jugar en línea y guardar tu progreso" (`loginIntro` e `invite` en `i18n/es.ts`). El progreso ya existe; vuelven al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
+- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen en presente que la cuenta guarda el progreso, y en futuro que "pronto podrás jugar en línea" (`loginIntro` e `invite` en `i18n/es.ts`). Esa mitad vuelve al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
 - **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

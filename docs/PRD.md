@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.12 |
+| Versión | 0.10.13 |
 | Última actualización | 1 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -900,7 +900,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | ID | Pregunta | Estado |
 |---|---|---|
 | P-19 | Edad mínima | ✅ Resuelta para v2: sin límite de edad ni autorización de adultos (D-38). El riesgo legal queda anotado en el PRD de v2 |
-| P-20 | Curva de dificultad en línea con equipos de colecciones mezcladas | ❓ Abierta: se mide en el simulador antes del M8 y la curva se decide con esos números |
+| P-20 | Curva de dificultad en línea con equipos de colecciones mezcladas | ❓ Abierta: ya se midió en el simulador (`docs/balance-report.md`) y falta decidir la curva con esos números, antes del M8 |
 | P-21 | Visibilidad de las estadísticas | ✅ Resuelta: privadas, solo las ve cada jugador (D-39) |
 | P-22 | Castigo por abandono | ❓ Abierta: sin castigo en v2 (R-39). Se decide con datos de uso una vez abierto el emparejamiento |
 | P-23 | Mazo del sandbox | ✅ Resuelta: el mazo de referencia, igual que el bot (D-47, D-50) |
@@ -1047,6 +1047,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.13 | 2026-10-01 | P-20, medida: el simulador arma la partida asiento por asiento (`pnpm sim -- --team` y `--mixed`), como en línea, donde cada persona juega con su colección y el bot con el mazo de referencia (R-34, D-47). El reporte de balance suma la sección de equipos de colecciones mezcladas y el límite de turnos del bonus con cada equipo. No cambia ningún valor; la curva de dificultad en línea queda por decidir |
 | 0.10.12 | 2026-10-01 | Progreso en el cliente (M7, paso 9): al verificar la cuenta se elige la carta de camino (R-30); el perfil muestra el resumen del progreso y lleva a la colección, con las 20 cartas de cada elemento y las que faltan como siluetas (R-25), y a la tienda de cajas (R-28), con el revelado de las cartas. El cliente muestra lo que responde el servidor y nunca calcula el progreso. D-67: durante el M7, el perfil hace de inicio en línea. D-68: el cliente conserva el identificador de una compra solo si su respuesta se pierde, vuelve a leer el progreso para mostrar el saldo real y deshabilita los botones mientras espera. Hasta el M8 nadie puede ganar monedas, y la tienda lo dice con "Próximamente". La introducción de "Entrar" y la invitación de los resultados ya dicen en presente que la cuenta guarda el progreso. Las piezas nuevas quedan en la sección 10 de `docs/lineamientos-de-diseno.md`. Las e2e guardan una captura y la traza de cada prueba que falla. Con esto se completa la lista del M7 |
 | 0.10.11 | 2026-10-01 | Progreso en el servidor (M7, paso 8): la carta de camino con su inventario inicial (R-30), el libro de monedas que no paga dos veces la misma ronda (R-29, D-31) y las cajas sorteadas en el servidor con el motor, sin poder gastar de más con compras simultáneas (R-27, R-28). El libro registra también las compras, y un reintento con el mismo identificador devuelve el resultado original sin cobrar de nuevo (D-66). Tablas `profiles`, `collection` y `coin_ledger`, que se borran con la cuenta (D-56). D-65: las peticiones que cambian estado solo se aceptan desde el origen del juego. `pnpm check:prod` reintenta la lectura del commit de `main` |
 | 0.10.10 | 2026-10-01 | D-64: cada push a `main` se despliega. Railway había saltado los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación, por unas rutas vigiladas propias del panel (`/apps/server/**`) que dejó la importación del monorepo. `railway.json` queda como fuente de verdad, sin `watchPatterns`; en el panel se vaciaron Watch Paths y Custom Build Command, y se activó "Wait for CI" |

@@ -122,7 +122,7 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
 
 - `?speed=0.2` en la URL acelera las animaciones (pruebas y demos).
 - En desarrollo están expuestos `window.__ventisca` (store), `window.__ventiscaScene` (escena de Phaser) y `window.__ventiscaGame`.
-- `pnpm sim -- --matches 2000 --skill 1 [--storm]` mide el balance con el bot, sin render.
+- `pnpm sim -- --matches 2000 --skill 1 [--storm]` mide el balance con el bot, sin render. Con `--team fire=new,water=full,snow=bot` arma un equipo en línea asiento por asiento, y con `--mixed` reproduce las tablas de equipos de colecciones mezcladas del reporte de balance (P-20).
 - `pnpm pacing` mide cuánto dura la animación de cada turno sobre partidas del bot.
 
 ## Pendiente, según los PRD
@@ -134,7 +134,9 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
   - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
   - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
 - **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen en presente que la cuenta guarda el progreso, y en futuro que "pronto podrás jugar en línea" (`loginIntro` e `invite` en `i18n/es.ts`). Esa mitad vuelve al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
-- **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento). Antes del M8 hay que medir P-20 (equipos de colecciones mezcladas).
+- **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento).
+  - **El M8 no empieza todavía.** Faltan dos decisiones del dueño de producto: la curva de dificultad en línea (P-20) y qué hacer con el móvil.
+  - **P-20 ya está medida:** `docs/balance-report.md`, sección "En línea: equipos de colecciones mezcladas". Ahí están también las preguntas por decidir: un mínimo de cartas para Tormenta, a quién junta el emparejamiento y el límite de turnos del bonus.
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.
 

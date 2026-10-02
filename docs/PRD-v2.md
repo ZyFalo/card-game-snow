@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.10: aprobada para implementar · 1 de octubre de 2026 · William Andres Peña Vargas
+Versión 1.11: aprobada para implementar · 1 de octubre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, y la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, y la 1.11 anota que P-20 ya está medida y que falta decidir la curva.
 
 ## Resumen y alcance
 
@@ -224,7 +224,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 **M8: Partida en línea**
 
-- [ ] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas
+- [ ] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas. Medido el 1 de octubre de 2026 (`docs/balance-report.md`); falta decidir la curva
 - [ ] Salas con código para 2 o 3 personas, con el bot en el ninja libre
 - [ ] La conexión WebSocket comprueba su propio `Origin`, con su prueba: la comprobación de D-65 no revisa las lecturas, y un WebSocket empieza con una (`GET`)
 - [ ] Reloj del servidor de 15 s (D-46) y planificación simultánea con fantasmas compartidos
@@ -242,12 +242,14 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 ## Preguntas abiertas y riesgos
 
-P-19, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso. Solo sigue abierta P-20, la curva de dificultad con equipos de colecciones mezcladas, que Claude Code mide antes del M8.
+P-19, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso. Solo sigue abierta P-20, la curva de dificultad con equipos de colecciones mezcladas: ya está medida y falta decidirla, antes del M8.
 
 **Preguntas abiertas**
 
 - [x] **P-19 Edad mínima.** Resuelta para v2: sin límite de edad y sin autorización de adultos (D-38). El riesgo legal queda anotado en la sección de cuentas.
 - [ ] **P-20 Curva de dificultad en línea.** Un mismo equipo puede juntar una colección nueva con una completa. Claude Code extiende el simulador con equipos mezclados y lo mide antes del M8; la curva se decide con esos números.
+  - **Medido el 1 de octubre de 2026** (`docs/balance-report.md`, "En línea: equipos de colecciones mezcladas"). En Clásica, cualquier mezcla gana el 96 % o más, y tres personas nuevas, el 83 %. En Tormenta, tres colecciones completas ganan el 93 %, y cada persona nueva en el equipo lo baja: al 73 % con una, al 32 % con dos y al 5 % con tres.
+  - **Falta decidir:** si Tormenta en línea pide un mínimo de cartas por persona, si el emparejamiento junta a cualquiera dentro de la dificultad elegida y si el límite de turnos del bonus se queda en 13 y 18.
 - [x] **P-21 Visibilidad de las estadísticas.** Resuelta: solo las ve cada jugador. En v2 no hay perfil público ni clasificación.
 - [ ] **P-22 Castigo por abandono.** En v2 no hay castigo. Se decide con datos de uso una vez abierto el emparejamiento.
 - [x] **P-23 Mazo del sandbox.** Resuelta: el bot y el sandbox usan el mismo mazo de referencia (D-47 y D-50).

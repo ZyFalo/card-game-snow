@@ -144,7 +144,7 @@ test('la planificación va en dos pasos, moverse y actuar, y luego pasa sola al 
 
   // Paso 1: el tablero solo acepta casillas. Un gólem todavía no es un objetivo.
   await click(page, 4, 2);
-  await expect(toast).toHaveText('Primero elige a dónde se mueve Brasa. Su propia casilla es quedarse.');
+  await expect(toast).toHaveText('Primero elige a dónde se mueve Brasa. Para quedarse, haz clic en su casilla.');
   expect((await planning(page)).plans).toEqual({});
 
   // Una casilla a su alcance: Brasa pasa al paso de actuar, porque desde ahí alcanza a dos gólems.
@@ -154,11 +154,11 @@ test('la planificación va en dos pasos, moverse y actuar, y luego pasa sola al 
     step: 'act',
     plans: { fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } },
   });
-  await expect(page.locator('.tip-text')).toHaveText('Brasa: elige un objetivo o juega una carta.');
+  await expect(page.locator('.tip-text')).toHaveText('Elige qué hace Brasa: un objetivo o una carta.');
 
   // Paso 2: el tablero solo acepta objetivos. Una casilla vacía ya no mueve.
   await click(page, 2, 1);
-  await expect(toast).toHaveText('Ahora elige un objetivo. Para cambiar de casilla, haz clic en Brasa.');
+  await expect(toast).toHaveText('Ahora elige un objetivo. Para cambiar a dónde se mueve, haz clic en Brasa.');
   expect((await planning(page)).plans).toEqual({ fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } });
 
   // Un gólem a su alcance: queda elegido y le toca al siguiente ninja, que empieza por moverse.
@@ -170,7 +170,9 @@ test('la planificación va en dos pasos, moverse y actuar, y luego pasa sola al 
   });
   // Con el ratón sobre un gólem, la franja de arriba habla de él: se aparta para leer el paso.
   await page.mouse.move(640, 60);
-  await expect(page.locator('.tip-text')).toHaveText('Marea: elige a dónde moverte. Su propia casilla es quedarse.');
+  await expect(page.locator('.tip-text')).toHaveText(
+    'Elige a dónde se mueve Marea. Para quedarse, haz clic en su casilla.',
+  );
 
   // Marea se queda: su propia casilla. Desde ahí no alcanza a nadie ni tiene cartas, así que pasa a Escarcha.
   await click(page, 1, 2);

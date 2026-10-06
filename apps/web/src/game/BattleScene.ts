@@ -12,7 +12,7 @@ import { golemRig, ninjaRig } from '../art/rigs';
 import { audio } from '../audio/audio';
 import { ES } from '../i18n/es';
 import { clickTile, setHover, undo } from '../state/actions';
-import { type AimLine, boardLayers } from '../state/board';
+import { type AimLine, boardLayers, type TargetOption } from '../state/board';
 import { bridge } from '../state/bridge';
 import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
 import { Fx } from './fx';
@@ -40,6 +40,8 @@ const INK = hex(PALETTE.ink);
 const RED = hex(PALETTE.danger);
 const MINT = hex(ELEMENT_COLORS.snow.base);
 const GOLD = hex(PALETTE.gold);
+const WHITE = hex(PALETTE.paperLight);
+const GREEN = hex(PALETTE.ok);
 
 type Pt = { x: number; y: number };
 type Apply = (e: GameEvent) => void;
@@ -50,8 +52,11 @@ const elementColors = (el: ElementKind): number[] => {
   return [hex(c.base), hex(c.light), hex(c.accent), hex(c.dark)];
 };
 const ICE_COLORS = [hex(ICE.white), hex(ICE.light), hex(ICE.base), hex(ICE.glow)];
-/** Marca sobre el objetivo de una acción planeada: radio y grosor del anillo, y radio de cada punto. */
-const MARK = { ring: 18, ringWidth: 4, dot: 5 } as const;
+/**
+ * Anillo sobre un objetivo (radio y grosor) y radio del punto de cada ninja que lo eligió. El anillo
+ * rodea a la figura sin taparla y cabe en su casilla.
+ */
+const MARK = { ring: 29, ringWidth: 4, dot: 5 } as const;
 
 export class BattleScene extends Phaser.Scene {
   private readonly images: Map<string, HTMLImageElement>;
@@ -114,6 +119,7 @@ export class BattleScene extends Phaser.Scene {
         s.phase !== prev.phase ||
         s.plans !== prev.plans ||
         s.active !== prev.active ||
+        s.step !== prev.step ||
         s.pendingCard !== prev.pendingCard ||
         s.hover !== prev.hover ||
         s.match !== prev.match ||
@@ -350,25 +356,33 @@ export class BattleScene extends Phaser.Scene {
     g.strokePoints(pts, true);
   }
 
-  /**
-   * Anillo de un ataque planeado sobre su objetivo: un arco del color de cada atacante. Los arcos
-   * empiezan abajo y giran como el reloj, así cada uno queda del lado de su punto.
-   */
-  private ring(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
-    g.lineStyle(MARK.ringWidth + 3, INK, 1);
+  /** Anillo sobre un objetivo, con borde de tinta para leerse sobre cualquier figura. */
+  private ring(g: Phaser.GameObjects.Graphics, c: Pt, color: number, width: number = MARK.ringWidth): void {
+    g.lineStyle(width + 3, INK, 1);
     g.strokeCircle(c.x, c.y, MARK.ring);
-    const step = (Math.PI * 2) / colors.length;
-    colors.forEach((color, i) => {
-      g.lineStyle(MARK.ringWidth, color, 1);
-      g.beginPath();
-      g.arc(c.x, c.y, MARK.ring, Math.PI / 2 + i * step, Math.PI / 2 + (i + 1) * step);
-      g.strokePath();
-    });
+    g.lineStyle(width, color, 1);
+    g.strokeCircle(c.x, c.y, MARK.ring);
   }
 
-  /** Un punto por cada ninja que eligió ese objetivo, encima de su marca. */
+  /**
+   * Un objetivo del paso de actuar: anillo rojo sobre un gólem y blanco sobre un aliado; verde, y más
+   * grueso, el que ya se eligió. Curar y revivir llevan además su cruz y su flecha: la forma dice qué
+   * acción es, no solo el color.
+   */
+  private target(g: Phaser.GameObjects.Graphics, option: TargetOption, chosen: boolean): void {
+    const at = aimPoint(option.at);
+    const color = chosen ? GREEN : option.kind === 'attack' ? RED : WHITE;
+    this.ring(g, at, color, chosen ? MARK.ringWidth + 2 : MARK.ringWidth);
+    // La cruz o la flecha van sobre el anillo, abajo a la derecha, para no tapar al aliado.
+    const d = MARK.ring * Math.SQRT1_2;
+    const mark = { x: at.x + d, y: at.y + d };
+    if (option.kind === 'heal') this.plus(g, mark, 1, 7);
+    if (option.kind === 'revive') this.arrowUp(g, mark, 1);
+  }
+
+  /** Un punto por cada ninja que eligió ese objetivo, en lo alto del anillo. */
   private dots(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
-    const y = c.y - MARK.ring - MARK.dot - 2;
+    const y = c.y - MARK.ring;
     colors.forEach((color, i) => {
       const x = c.x + (i - (colors.length - 1) / 2) * (MARK.dot * 2 + 3);
       g.fillStyle(color, 1);
@@ -383,7 +397,7 @@ export class BattleScene extends Phaser.Scene {
     const a = aimPoint(aim.from);
     const b = aimPoint(aim.to);
     const length = Math.hypot(b.x - a.x, b.y - a.y);
-    // Sale del borde del cuerpo de quien actúa y llega al borde de la marca del objetivo.
+    // Sale del borde del cuerpo de quien actúa y llega al borde del anillo del objetivo.
     const start = 12;
     const end = length - MARK.ring - MARK.ringWidth;
     if (end <= start) return;
@@ -397,7 +411,27 @@ export class BattleScene extends Phaser.Scene {
     g.lineBetween(from.x, from.y, to.x, to.y);
   }
 
-  /** Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. */
+  /** Una casilla resaltada: relleno y borde, dentro del papel de la casilla. */
+  private tile(
+    g: Phaser.GameObjects.Graphics,
+    t: Vec,
+    fill: number,
+    fillAlpha: number,
+    line: number,
+    lineAlpha: number,
+  ) {
+    const r = tileRect(t);
+    g.fillStyle(fill, fillAlpha);
+    g.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+    g.lineStyle(2, line, lineAlpha);
+    g.strokeRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+  }
+
+  /**
+   * Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. El
+   * tablero ofrece un solo modo a la vez: casillas para moverse, anillos para actuar o casillas rojas
+   * para colocar una carta.
+   */
   redrawPlanning(): void {
     const hl = this.hl;
     const ov = this.ov;
@@ -410,7 +444,7 @@ export class BattleScene extends Phaser.Scene {
     if (!layers) return;
     const colorOf = (el: ElementKind) => hex(ELEMENT_COLORS[el].base);
 
-    // Vista previa de amenaza al pasar sobre un gólem.
+    // Modo moverse: el alcance del gólem que está bajo el ratón.
     for (const t of layers.threat) {
       const r = tileRect(t);
       hl.fillStyle(RED, 0.1);
@@ -425,29 +459,22 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(4, hex(c.base), 1);
       hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
-      // Casillas de movimiento, en el color suave del ninja activo.
+      // Modo moverse: las casillas a las que puede ir, en el color suave del ninja activo. La suya es
+      // quedarse.
       for (const t of layers.moves) {
-        const r = tileRect(t);
-        hl.fillStyle(hex(c.soft), 1);
-        hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
-        hl.lineStyle(2, hex(c.base), 0.4);
-        hl.strokeRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+        this.tile(hl, t, hex(c.soft), 1, hex(c.base), 0.4);
         const tc = tileCenter(t);
         hl.fillStyle(hex(c.base), 0.6);
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
+      if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), 1, hex(c.base), 0.4);
 
+      // Modo carta: casillas rojas donde se puede colocar; bajo el ratón, el área y a quién alcanza.
       if (layers.card) {
-        for (const t of layers.card.tiles) {
-          const tc = tileCenter(t);
-          hl.fillStyle(hex(c.light), 0.28);
-          hl.fillCircle(tc.x, tc.y, 16);
-          hl.lineStyle(2, hex(c.dark), 0.6);
-          hl.strokeCircle(tc.x, tc.y, 16);
-        }
+        for (const t of layers.card.tiles) this.tile(hl, t, RED, 0.12, RED, 0.5);
         for (const t of layers.card.area) {
           const r = tileRect(t);
-          hl.fillStyle(hex(c.base), 0.3);
+          hl.fillStyle(RED, 0.3);
           hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
         }
         for (const t of layers.card.enemies) this.reticle(ov, aimPoint(t), 0.9, true);
@@ -474,37 +501,32 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(5, color, 0.75);
       hl.strokePoints(pts, false);
     }
+    // Las cartas ya colocadas: su valor en la casilla del centro y, si toca mostrarla, su área.
     for (const card of layers.cards) {
       const c = ELEMENT_COLORS[card.ninja];
-      for (const t of card.area) {
-        const r = tileRect(t);
-        hl.fillStyle(hex(c.base), 0.22);
-        hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
+      if (card.area.length > 0) {
+        for (const t of card.area) {
+          const r = tileRect(t);
+          hl.fillStyle(hex(c.base), 0.22);
+          hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
+        }
+        const tl = tileRect({ x: Math.max(0, card.at.x - 1), y: Math.max(0, card.at.y - 1) });
+        const br = tileRect({ x: Math.min(8, card.at.x + 1), y: Math.min(4, card.at.y + 1) });
+        ov.lineStyle(4, hex(c.dark), 0.95);
+        ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
       }
-      const tl = tileRect({ x: Math.max(0, card.at.x - 1), y: Math.max(0, card.at.y - 1) });
-      const br = tileRect({ x: Math.min(8, card.at.x + 1), y: Math.min(4, card.at.y + 1) });
-      ov.lineStyle(4, hex(c.dark), 0.95);
-      ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
       this.badge(tileCenter(card.at), `${card.value ?? ''}`, hex(c.dark));
     }
 
-    // Las líneas de mira van debajo de las marcas: solo las que pide el ratón.
+    // Las líneas de mira van debajo de los anillos: solo las que pide el ratón.
     for (const aim of layers.aims) this.aimLine(ov, aim);
 
-    // Objetivos que el ninja activo todavía puede elegir.
-    for (const t of layers.options.attack) this.reticle(ov, aimPoint(t), 0.5, false);
-    for (const t of layers.options.heal) this.plus(ov, aimPoint(t), 0.55);
-    for (const t of layers.options.revive) this.arrowUp(ov, aimPoint(t), 0.65);
+    // Modo actuar: un anillo sobre cada objetivo posible y, en verde, sobre el elegido.
+    for (const option of layers.options) this.target(ov, option, false);
+    if (layers.chosen) this.target(ov, layers.chosen, true);
 
-    // Objetivos ya elegidos: la marca de la acción y un punto por cada ninja que la planeó.
-    for (const mark of layers.marks) {
-      const at = aimPoint(mark.at);
-      const colors = mark.by.map(colorOf);
-      if (mark.kind === 'attack') this.ring(ov, at, colors);
-      else if (mark.kind === 'heal') this.plus(ov, at, 1, 9);
-      else this.arrowUp(ov, at, 1);
-      this.dots(ov, at, colors);
-    }
+    // Un punto por cada ninja sobre el objetivo de su acción: es lo que queda de los planes de los demás.
+    for (const d of layers.dots) this.dots(ov, aimPoint(d.at), d.by.map(colorOf));
 
     // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.
     for (const o of layers.order) this.badge(orderPoint(o.at), `${o.n}`, colorOf(o.ninja));

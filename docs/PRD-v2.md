@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.12: aprobada para implementar · 6 de octubre de 2026 · William Andres Peña Vargas
+Versión 1.13: aprobada para implementar · 6 de octubre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, y la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8, y la 1.13 (el mismo día) agrega D-75: Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal. El primer párrafo del aviso de privacidad cambia como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas.
 
 ## Resumen y alcance
 
@@ -18,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, D-67 y D-68, aprobadas con el progreso en el cliente, D-69 a D-72, que cierran P-20, y D-73, sobre los dispositivos. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, D-67 y D-68, aprobadas con el progreso en el cliente, D-69 a D-72, que cierran P-20, D-73, sobre los dispositivos, y D-75, que deja de llamar a Ventisca proyecto de clase (D-74, la claridad del tablero, está en `docs/PRD.md`). La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -61,6 +61,7 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-71 | El límite de turnos del bonus se queda en 13 en Clásica y 18 en Tormenta (D-12), también en línea. Medido en P-20: en los equipos donde cada persona tiene al menos una caja, del 65,5 al 68,2 % de las partidas de Clásica y del 43,9 al 45,9 % de las de Tormenta superan la ronda 3 dentro del límite, casi lo mismo que con el mazo de referencia (64,1 y 44,7 %). | Aprobada |
 | D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja (99,7 % de victorias en el simulador): es el modo para empezar, y el simulador es un techo para personas reales. | Tomada |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas. El combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720. El alcance del teléfono se decide con una investigación, que queda pendiente. | Tomada |
+| D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice en su primer párrafo y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo, y su "Vigente desde" pasa a la fecha de la fusión. Desde que haya cuentas de otras personas, cualquier cambio del aviso pasará por el mecanismo del M9. | Tomada |
 
 ## Experiencia del jugador
 
@@ -250,7 +251,7 @@ Antes del M8 va una ronda de ajustes de jugabilidad. Después, el M8 empieza por
 - [ ] A los 30 s sin tercer jugador, las dos personas pueden aceptar empezar con un bot (D-44)
 - [ ] Estadísticas privadas por persona, en su perfil (R-42)
 - [ ] Aviso de privacidad publicado y pruebas con personas
-- [ ] Un mecanismo para avisar los cambios del aviso de privacidad: un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes del próximo cambio del aviso, porque el aviso lo promete en "Cambios"
+- [ ] Un mecanismo para avisar los cambios del aviso de privacidad: un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes de que haya cuentas de otras personas: desde entonces, cualquier cambio del aviso pasa por él, porque el aviso lo promete en "Cambios" (D-75)
 
 ## Preguntas abiertas y riesgos
 
@@ -282,4 +283,4 @@ P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya da
 | Registros masivos y uso del registro para enviar correo basura | Límites por IP y por dirección, captcha y verificación obligatoria |
 | Colas vacías o desparejas: pocos jugadores, o casi todos con el mismo ninja | Salas con código desde el inicio, un contador de personas buscando partida, la lista de ninjas que faltan y el sandbox siempre disponible |
 | Reinicios del servidor durante partidas | Estado guardado por turno y reconstrucción de salas (D-49) |
-| Alcance grande para un proyecto de clase | Hitos publicables por separado: el M7 ya aporta valor solo |
+| Alcance grande para un proyecto personal que avanza en ratos libres | Hitos publicables por separado: el M7 ya aporta valor solo |

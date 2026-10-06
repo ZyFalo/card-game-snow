@@ -166,7 +166,7 @@ Para que no se pierdan. Los seis primeros están también en su hito del PRD de 
 - **Comprobación de `Origin` en la conexión WebSocket** (M8). `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno: necesita su propia comprobación, con su prueba (D-65).
 - **Logros calculados por el servidor** (M8). Hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 el servidor los calcula desde su propia tabla al resolver la partida, incluido el doble de monedas; nunca llegan del cliente.
 - **Mínimo para Tormenta** (R-51): en las salas con código (M8) y en la cola (M9).
-- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes del próximo cambio del aviso, porque el aviso lo promete en "Cambios".
+- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes de que haya cuentas de otras personas: desde entonces, cualquier cambio del aviso pasa por él, porque el aviso lo promete en "Cambios". El cambio del 6 de octubre de 2026 (D-75) fue una corrección previa a la apertura, sin aviso previo, porque todas las cuentas seguían siendo internas.
 - **Investigación del teléfono** (D-73), antes de programar el M8.
 - **Con el M8:**
   - "Juega en línea con amigos" deja de decir "Próximamente" en los beneficios de la cuenta (`BENEFITS` en `ui/Account.tsx`);

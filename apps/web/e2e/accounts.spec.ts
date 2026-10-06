@@ -123,6 +123,14 @@ test('el aviso de privacidad se lee desde la portada y desde el registro', async
   await page.goto('/');
   await page.getByRole('button', { name: 'Aviso de privacidad' }).click();
   await expect(page.getByRole('heading', { name: 'Aviso de privacidad de Ventisca' })).toBeVisible();
+  // D-75: Ventisca es el piloto de un proyecto personal, y el aviso dice que hoy el juego es gratuito.
+  await expect(page.getByText('Vigente desde el 6 de octubre de 2026')).toBeVisible();
+  await expect(
+    page.getByText(
+      'Ventisca es el piloto de un proyecto personal, que su responsable, William Andrés Peña Vargas, avanza en sus ratos libres. Hoy el juego es gratuito: no vende nada ni muestra publicidad. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/proyecto de clase|sin fines comerciales/)).toHaveCount(0);
   // El contacto es la dirección del proyecto, que Cloudflare reenvía al responsable.
   await expect(page.getByText(/ventisca@wpena\.dev/)).toHaveCount(3);
   await expect(page.getByText(/@gmail\.com/)).toHaveCount(0);

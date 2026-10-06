@@ -1,6 +1,6 @@
 # Bitácora de trabajo con IA
 
-Registro del proceso de recrear el juego con asistencia de IA (requisito de la clase). Asistente: Claude (Anthropic).
+Registro del proceso de recrear el juego con asistencia de IA. Empezó como requisito de una clase y sigue como bitácora del proyecto (D-75). Asistente: Claude (Anthropic).
 
 | # | Fecha | Pedido del dueño de producto | Qué hizo la IA | Qué decidió la persona | Cómo se verificó |
 |---|---|---|---|---|---|

@@ -102,7 +102,7 @@ Este reporte no cambia ningún valor; solo mide.
 
 - Tasa de victoria real de un jugador nuevo en ritmo Normal (30 s por turno), turnos que vencen por tiempo y abandonos por frustración.
 - Si la etapa "tras una caja" también resulta trivial para las personas, cómo sostener el reto (ver las preguntas anteriores).
-- Meta sugerida para el playtest de la clase: 5 personas, 2 partidas cada una, con victoria de 70 a 90 % en Clásica · Normal. Con la colección inicial, el bot ya queda en 62–71 %.
+- Meta sugerida para el playtest con personas: 5 personas, 2 partidas cada una, con victoria de 70 a 90 % en Clásica · Normal. Con la colección inicial, el bot ya queda en 62–71 %.
 
 ## En línea: equipos de colecciones mezcladas (P-20)
 

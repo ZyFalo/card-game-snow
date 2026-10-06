@@ -1,17 +1,9 @@
 import {
-  area3x3,
   difficultyConfig,
   ELEMENTS,
   type ElementKind,
-  enemyAt,
-  eq,
   type GameEvent,
-  getEnemy,
-  getNinja,
-  key,
   type MatchState,
-  moveOptions,
-  resolutionOrder,
   type Vec,
 } from '@ventisca/core';
 import * as Phaser from 'phaser';
@@ -20,11 +12,25 @@ import { golemRig, ninjaRig } from '../art/rigs';
 import { audio } from '../audio/audio';
 import { ES } from '../i18n/es';
 import { clickTile, setHover, undo } from '../state/actions';
+import { type AimLine, boardLayers } from '../state/board';
 import { bridge } from '../state/bridge';
-import { activeInfo, plansArray, threatTiles } from '../state/planning';
 import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
 import { Fx } from './fx';
-import { BOARD_X, BOARD_Y, footPoint, RES, TH, TW, tileAt, tileCenter, tileRect, UNIT_SIZE } from './layout';
+import {
+  aimPoint,
+  BOARD_X,
+  BOARD_Y,
+  FIGURE_SINK,
+  footPoint,
+  orderPoint,
+  RES,
+  TH,
+  TW,
+  tileAt,
+  tileCenter,
+  tileRect,
+  UNIT_SIZE,
+} from './layout';
 import { GOLEM_CLIPS, NINJA_CLIPS } from './rig/clips';
 import { URL_SPEED } from './speed';
 import { cardCinematicMs, FAST_FACTOR, markerMs, TIMING } from './timing';
@@ -44,6 +50,8 @@ const elementColors = (el: ElementKind): number[] => {
   return [hex(c.base), hex(c.light), hex(c.accent), hex(c.dark)];
 };
 const ICE_COLORS = [hex(ICE.white), hex(ICE.light), hex(ICE.base), hex(ICE.glow)];
+/** Marca sobre el objetivo de una acción planeada: radio y grosor del anillo, y radio de cada punto. */
+const MARK = { ring: 18, ringWidth: 4, dot: 5 } as const;
 
 export class BattleScene extends Phaser.Scene {
   private readonly images: Map<string, HTMLImageElement>;
@@ -79,7 +87,8 @@ export class BattleScene extends Phaser.Scene {
     this.hl = this.add.graphics().setDepth(-5);
     this.ov = this.add.graphics().setDepth(1500);
     for (const el of ELEMENTS) {
-      const g = this.add.image(0, 0, `ninja-${el}`).setOrigin(0.5, 1).setAlpha(0.42).setVisible(false);
+      // El fantasma de un destino planeado es una silueta sin relleno.
+      const g = this.add.image(0, 0, `ninja-${el}-outline`).setOrigin(0.5, 1).setVisible(false);
       g.setDisplaySize(UNIT_SIZE.ninja.w, UNIT_SIZE.ninja.h);
       this.ghosts.set(el, g);
     }
@@ -208,7 +217,7 @@ export class BattleScene extends Phaser.Scene {
     this.bg.setDisplaySize(1280, 720);
     for (const r of view.rocks) {
       const fp = footPoint(r);
-      const img = this.add.image(fp.x, fp.y + 6, 'rock').setOrigin(0.5, 1);
+      const img = this.add.image(fp.x, fp.y + 3, 'rock').setOrigin(0.5, 1);
       img.setDisplaySize(UNIT_SIZE.rock.w, UNIT_SIZE.rock.h);
       img.setDepth(fp.y);
       this.rocks.push(img);
@@ -293,17 +302,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private reticle(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, solid: boolean): void {
-    g.lineStyle(solid ? 4 : 3, RED, alpha);
-    g.strokeCircle(c.x, c.y, solid ? 20 : 17);
-    const r = solid ? 28 : 24;
-    const r2 = solid ? 13 : 11;
+    g.lineStyle(solid ? 3.5 : 2.5, RED, alpha);
+    g.strokeCircle(c.x, c.y, solid ? 16 : 13);
+    const r = solid ? 23 : 19;
+    const r2 = solid ? 10 : 8;
     g.lineBetween(c.x - r, c.y, c.x - r2, c.y);
     g.lineBetween(c.x + r2, c.y, c.x + r, c.y);
     g.lineBetween(c.x, c.y - r, c.x, c.y - r2);
     g.lineBetween(c.x, c.y + r2, c.x, c.y + r);
   }
 
-  private plus(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, size = 9): void {
+  private plus(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, size = 8): void {
     g.fillStyle(MINT, alpha);
     g.lineStyle(2.5, INK, alpha);
     const s = size;
@@ -327,13 +336,13 @@ export class BattleScene extends Phaser.Scene {
 
   private arrowUp(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number): void {
     const pts = [
-      [0, -14],
-      [12, 0],
-      [5, 0],
-      [5, 12],
-      [-5, 12],
-      [-5, 0],
-      [-12, 0],
+      [0, -12],
+      [10, 0],
+      [4, 0],
+      [4, 10],
+      [-4, 10],
+      [-4, 0],
+      [-10, 0],
     ].map(([x, y]) => new Phaser.Math.Vector2(c.x + (x as number), c.y + (y as number)));
     g.fillStyle(GOLD, alpha);
     g.lineStyle(2.5, INK, alpha);
@@ -341,13 +350,55 @@ export class BattleScene extends Phaser.Scene {
     g.strokePoints(pts, true);
   }
 
-  private unitAim(v: Vec): Pt {
-    const fp = footPoint(v);
-    return { x: fp.x, y: fp.y - 44 };
+  /**
+   * Anillo de un ataque planeado sobre su objetivo: un arco del color de cada atacante. Los arcos
+   * empiezan abajo y giran como el reloj, así cada uno queda del lado de su punto.
+   */
+  private ring(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
+    g.lineStyle(MARK.ringWidth + 3, INK, 1);
+    g.strokeCircle(c.x, c.y, MARK.ring);
+    const step = (Math.PI * 2) / colors.length;
+    colors.forEach((color, i) => {
+      g.lineStyle(MARK.ringWidth, color, 1);
+      g.beginPath();
+      g.arc(c.x, c.y, MARK.ring, Math.PI / 2 + i * step, Math.PI / 2 + (i + 1) * step);
+      g.strokePath();
+    });
   }
 
+  /** Un punto por cada ninja que eligió ese objetivo, encima de su marca. */
+  private dots(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
+    const y = c.y - MARK.ring - MARK.dot - 2;
+    colors.forEach((color, i) => {
+      const x = c.x + (i - (colors.length - 1) / 2) * (MARK.dot * 2 + 3);
+      g.fillStyle(color, 1);
+      g.fillCircle(x, y, MARK.dot);
+      g.lineStyle(2, INK, 1);
+      g.strokeCircle(x, y, MARK.dot);
+    });
+  }
+
+  /** Línea de mira de una acción planeada, en el color de quien actúa. */
+  private aimLine(g: Phaser.GameObjects.Graphics, aim: AimLine): void {
+    const a = aimPoint(aim.from);
+    const b = aimPoint(aim.to);
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    // Sale del borde del cuerpo de quien actúa y llega al borde de la marca del objetivo.
+    const start = 12;
+    const end = length - MARK.ring - MARK.ringWidth;
+    if (end <= start) return;
+    const ux = (b.x - a.x) / length;
+    const uy = (b.y - a.y) / length;
+    const from = { x: a.x + ux * start, y: a.y + uy * start };
+    const to = { x: a.x + ux * end, y: a.y + uy * end };
+    g.lineStyle(6, INK, 0.35);
+    g.lineBetween(from.x, from.y, to.x, to.y);
+    g.lineStyle(3, hex(ELEMENT_COLORS[aim.by].base), 1);
+    g.lineBetween(from.x, from.y, to.x, to.y);
+  }
+
+  /** Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. */
   redrawPlanning(): void {
-    const s = store.getState();
     const hl = this.hl;
     const ov = this.ov;
     if (!hl || !ov) return;
@@ -355,139 +406,111 @@ export class BattleScene extends Phaser.Scene {
     ov.clear();
     this.clearLabels();
     for (const g of this.ghosts.values()) g.setVisible(false);
-    if (s.phase !== 'planning' || !s.match || s.screen !== 'battle') return;
-    const m = s.match;
-    const info = activeInfo(s);
+    const layers = boardLayers(store.getState());
+    if (!layers) return;
+    const colorOf = (el: ElementKind) => hex(ELEMENT_COLORS[el].base);
 
     // Vista previa de amenaza al pasar sobre un gólem.
-    if (s.hover && !s.pendingCard) {
-      const e = enemyAt(m, s.hover);
-      if (e) {
-        for (const t of threatTiles(m, e)) {
-          const r = tileRect(t);
-          hl.fillStyle(RED, 0.1);
-          hl.fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
-          hl.lineStyle(2, RED, 0.45);
-          hl.strokeRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
-        }
-      }
+    for (const t of layers.threat) {
+      const r = tileRect(t);
+      hl.fillStyle(RED, 0.1);
+      hl.fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
+      hl.lineStyle(2, RED, 0.45);
+      hl.strokeRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
     }
 
-    if (info) {
-      const el = info.ninja.id;
-      const col = hex(ELEMENT_COLORS[el].base);
-      const fp = footPoint(info.ninja.pos);
-      hl.lineStyle(4, col, 1);
-      hl.strokeEllipse(fp.x, fp.y + 2, 76, 22);
+    if (layers.active) {
+      const c = ELEMENT_COLORS[layers.active.ninja];
+      const fp = footPoint(layers.active.at);
+      hl.lineStyle(4, hex(c.base), 1);
+      hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
-      if (!s.pendingCard) {
-        for (const path of info.moves.values()) {
-          const t = path[path.length - 1] as Vec;
-          const r = tileRect(t);
-          hl.fillStyle(0x9cc0f5, 0.42);
-          hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
-          const c = tileCenter(t);
-          hl.fillStyle(0x2f6fdb, 0.6);
-          hl.fillCircle(c.x, c.y + 8, 4.5);
-        }
-        for (const e of info.attack) this.reticle(ov, this.unitAim(e.pos), 0.5, false);
-        for (const a of info.heal) this.plus(ov, this.unitAim(a.pos), 0.55);
-        for (const a of info.revive) this.arrowUp(ov, this.unitAim(a.pos), 0.65);
-      } else {
-        const c = ELEMENT_COLORS[el];
-        for (const t of info.cardTiles) {
+      // Casillas de movimiento, en el color suave del ninja activo.
+      for (const t of layers.moves) {
+        const r = tileRect(t);
+        hl.fillStyle(hex(c.soft), 1);
+        hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+        hl.lineStyle(2, hex(c.base), 0.4);
+        hl.strokeRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+        const tc = tileCenter(t);
+        hl.fillStyle(hex(c.base), 0.6);
+        hl.fillCircle(tc.x, tc.y + 8, 4.5);
+      }
+
+      if (layers.card) {
+        for (const t of layers.card.tiles) {
           const tc = tileCenter(t);
           hl.fillStyle(hex(c.light), 0.28);
           hl.fillCircle(tc.x, tc.y, 16);
           hl.lineStyle(2, hex(c.dark), 0.6);
           hl.strokeCircle(tc.x, tc.y, 16);
         }
-        const hover = s.hover;
-        if (hover && info.cardTiles.some((t) => eq(t, hover))) {
-          for (const a of area3x3(hover)) {
-            const r = tileRect(a);
-            hl.fillStyle(hex(c.base), 0.3);
-            hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
-            const e = enemyAt(m, a);
-            if (e) this.reticle(ov, this.unitAim(e.pos), 0.9, true);
-            const n = m.ninjas.find((x) => eq(x.pos, a));
-            if (n && el === 'snow') this.plus(ov, this.unitAim(n.pos), 0.9, 10);
-          }
-        }
-      }
-    }
-
-    // Planes de todos los ninjas: fantasmas, caminos, objetivos y orden de resolución.
-    const plans = plansArray(s.plans);
-    // D-32: cada fantasma muestra el orden real de R-11; sin acción no hay número.
-    const order = resolutionOrder(m, plans);
-    for (const plan of plans) {
-      const n = getNinja(m, plan.ninjaId);
-      if (!n || n.hp <= 0) continue;
-      const col = hex(ELEMENT_COLORS[n.id].base);
-      const origin = plan.moveTo ?? n.pos;
-      if (plan.moveTo) {
-        const ghost = this.ghosts.get(n.id);
-        const fp = footPoint(plan.moveTo);
-        ghost
-          ?.setPosition(fp.x, fp.y)
-          .setVisible(true)
-          .setDepth(fp.y - 0.5);
-        const others = plans.filter((p) => p.ninjaId !== n.id);
-        const path = moveOptions(m, n.id, others).get(key(plan.moveTo)) ?? [n.pos, plan.moveTo];
-        const pts = path.map((v) => {
-          const c = tileCenter(v);
-          return new Phaser.Math.Vector2(c.x, c.y + 14);
-        });
-        hl.lineStyle(5, col, 0.75);
-        hl.strokePoints(pts, false);
-        const last = pts[pts.length - 1];
-        if (last) {
-          hl.fillStyle(col, 0.9);
-          hl.fillCircle(last.x, last.y, 6);
-        }
-      }
-      const from = this.unitAim(origin);
-      const a = plan.action;
-      if (a?.type === 'attack') {
-        const e = getEnemy(m, a.targetId);
-        if (e) {
-          const to = this.unitAim(e.pos);
-          ov.lineStyle(3, RED, 0.75);
-          ov.lineBetween(from.x, from.y, to.x, to.y);
-          this.reticle(ov, to, 1, true);
-        }
-      } else if (a?.type === 'heal' || a?.type === 'revive') {
-        const t = getNinja(m, a.targetId);
-        if (t) {
-          const to = this.unitAim(t.pos);
-          ov.lineStyle(3, a.type === 'heal' ? MINT : GOLD, 0.85);
-          ov.lineBetween(from.x, from.y, to.x, to.y);
-          if (a.type === 'heal') this.plus(ov, to, 1, 11);
-          else this.arrowUp(ov, to, 1);
-        }
-      } else if (a?.type === 'card') {
-        const c = ELEMENT_COLORS[n.id];
-        for (const t of area3x3(a.at)) {
+        for (const t of layers.card.area) {
           const r = tileRect(t);
-          hl.fillStyle(hex(c.base), 0.22);
+          hl.fillStyle(hex(c.base), 0.3);
           hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
         }
-        const tl = tileRect({ x: Math.max(0, a.at.x - 1), y: Math.max(0, a.at.y - 1) });
-        const br = tileRect({ x: Math.min(8, a.at.x + 1), y: Math.min(4, a.at.y + 1) });
-        ov.lineStyle(4, hex(c.dark), 0.95);
-        ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
-        const card = n.hand.find((x) => x.id === a.cardId);
-        const cc = tileCenter(a.at);
-        this.badge({ x: cc.x, y: cc.y }, `${card?.value ?? ''}`, hex(c.dark));
+        for (const t of layers.card.enemies) this.reticle(ov, aimPoint(t), 0.9, true);
+        for (const t of layers.card.allies) this.plus(ov, aimPoint(t), 0.9);
       }
-      const head = footPoint(origin);
-      const num = order[n.id];
-      if (num) this.badge({ x: head.x - 30, y: head.y - UNIT_SIZE.ninja.h + 6 }, `${num}`, col);
     }
 
-    if (s.hover) {
-      const r = tileRect(s.hover);
+    // Planes: el fantasma de cada ninja y, solo para el activo, el camino hasta él.
+    for (const ghost of layers.ghosts) {
+      const fp = footPoint(ghost.at);
+      this.ghosts
+        .get(ghost.ninja)
+        ?.setPosition(fp.x, fp.y + FIGURE_SINK)
+        .setVisible(true)
+        .setDepth(fp.y - 0.5);
+    }
+    if (layers.path) {
+      const color = colorOf(layers.path.ninja);
+      // Va por la línea de los pies: pasa bajo el ninja y bajo su fantasma, sin taparlos.
+      const pts = layers.path.tiles.map((v) => {
+        const fp = footPoint(v);
+        return new Phaser.Math.Vector2(fp.x, fp.y - 1);
+      });
+      hl.lineStyle(5, color, 0.75);
+      hl.strokePoints(pts, false);
+    }
+    for (const card of layers.cards) {
+      const c = ELEMENT_COLORS[card.ninja];
+      for (const t of card.area) {
+        const r = tileRect(t);
+        hl.fillStyle(hex(c.base), 0.22);
+        hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
+      }
+      const tl = tileRect({ x: Math.max(0, card.at.x - 1), y: Math.max(0, card.at.y - 1) });
+      const br = tileRect({ x: Math.min(8, card.at.x + 1), y: Math.min(4, card.at.y + 1) });
+      ov.lineStyle(4, hex(c.dark), 0.95);
+      ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
+      this.badge(tileCenter(card.at), `${card.value ?? ''}`, hex(c.dark));
+    }
+
+    // Las líneas de mira van debajo de las marcas: solo las que pide el ratón.
+    for (const aim of layers.aims) this.aimLine(ov, aim);
+
+    // Objetivos que el ninja activo todavía puede elegir.
+    for (const t of layers.options.attack) this.reticle(ov, aimPoint(t), 0.5, false);
+    for (const t of layers.options.heal) this.plus(ov, aimPoint(t), 0.55);
+    for (const t of layers.options.revive) this.arrowUp(ov, aimPoint(t), 0.65);
+
+    // Objetivos ya elegidos: la marca de la acción y un punto por cada ninja que la planeó.
+    for (const mark of layers.marks) {
+      const at = aimPoint(mark.at);
+      const colors = mark.by.map(colorOf);
+      if (mark.kind === 'attack') this.ring(ov, at, colors);
+      else if (mark.kind === 'heal') this.plus(ov, at, 1, 9);
+      else this.arrowUp(ov, at, 1);
+      this.dots(ov, at, colors);
+    }
+
+    // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.
+    for (const o of layers.order) this.badge(orderPoint(o.at), `${o.n}`, colorOf(o.ninja));
+
+    if (layers.hover) {
+      const r = tileRect(layers.hover);
       ov.lineStyle(2.5, INK, 0.55);
       ov.strokeRoundedRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6, 7);
     }
@@ -795,7 +818,7 @@ export class BattleScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onUpdate: () => u.container.setDepth(u.container.y),
       });
-      this.fx.dust(fp, u.kind === 'enemy' && u.size.w > 100 ? 4 : 2);
+      this.fx.dust(fp, u.size.w >= UNIT_SIZE.colossus.w ? 4 : 2);
     }
     u.startIdle();
   }
@@ -869,7 +892,7 @@ export class BattleScene extends Phaser.Scene {
       .track(this.add.image(u.container.x, u.centerY, 'fx-ring'))
       .setTint(color)
       .setDepth(1990);
-    ring.setDisplaySize(40, 40);
+    ring.setDisplaySize(30, 30);
     this.tweens.add({
       targets: ring,
       scale: ring.scale * 3,
@@ -886,7 +909,7 @@ export class BattleScene extends Phaser.Scene {
     if (e.boosted) this.pulse(src, hex(ELEMENT_COLORS.water.light));
     const colors = elementColors(e.sourceId);
     const base = hex(ELEMENT_COLORS[e.sourceId].base);
-    const size = e.boosted ? 92 : 68;
+    const size = e.boosted ? 70 : 52;
     this.actorRing(src);
     const pb = src.act('attack');
     if (e.sourceId === 'fire') {
@@ -896,7 +919,7 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile('fx-dart', src.handPoint(), dst.center(), TIMING.projectile.fire, {
         arc: -40,
         rotate: true,
-        size: [40, 14],
+        size: [30, 10.5],
         trail: { texture: 'fx-bit', colors },
       });
       this.fx.impact(dst.center(), base, size);
@@ -907,7 +930,7 @@ export class BattleScene extends Phaser.Scene {
       const lunge = this.lunge(src, dst, 0.45, TIMING.waterLunge);
       await pb.marker('release');
       audio.play('attack-water');
-      this.fx.impact(dst.center(), base, size + 10);
+      this.fx.impact(dst.center(), base, size + 8);
       this.fx.burst(dst.center(), 'fx-drop', colors, 10, { up: true, gravity: 520, scale: 0.55 });
       this.fx.hitStop(75);
       this.fx.punch(0.012);
@@ -917,14 +940,14 @@ export class BattleScene extends Phaser.Scene {
       audio.play('attack-snow');
       await this.projectile('fx-star', src.handPoint(), dst.center(), TIMING.projectile.snow, {
         spin: 900,
-        size: [26, 26],
+        size: [20, 20],
         trail: { texture: 'fx-flake-small', colors },
       });
       this.fx.impact(dst.center(), base, size);
       this.burst(dst.center(), colors, 7, 0.6);
       this.fx.hitStop(45);
     }
-    if (e.boosted) this.fx.impact(dst.center(), GOLD, 110);
+    if (e.boosted) this.fx.impact(dst.center(), GOLD, 84);
   }
 
   private async animHeal(e: Extract<GameEvent, { t: 'heal' }>): Promise<void> {
@@ -939,16 +962,16 @@ export class BattleScene extends Phaser.Scene {
       const flights = [0, 1, 2].map((i) =>
         this.projectile(
           'fx-crane',
-          { x: from.x + (i - 1) * 10, y: from.y - i * 6 },
-          { x: dst.container.x + (i - 1) * 12, y: dst.centerY },
+          { x: from.x + (i - 1) * 8, y: from.y - i * 5 },
+          { x: dst.container.x + (i - 1) * 9, y: dst.centerY },
           TIMING.heal.cranes,
-          { arc: -60 - i * 10, size: [34, 26], delay: i * TIMING.heal.stagger },
+          { arc: -60 - i * 10, size: [26, 20], delay: i * TIMING.heal.stagger },
         ),
       );
       await Promise.all(flights);
     }
     audio.play('heal');
-    this.fx.groundRing({ x: dst.container.x, y: dst.container.y }, MINT);
+    this.fx.groundRing({ x: dst.container.x, y: dst.container.y }, MINT, 76);
     this.fx.burst(dst.center(), 'fx-spark', [MINT, 0xffffff, hex(ELEMENT_COLORS.snow.accent)], 10, {
       up: true,
       gravity: -40,
@@ -964,11 +987,11 @@ export class BattleScene extends Phaser.Scene {
     const u = this.units.get(targetId);
     if (!u || this.channels.has(targetId)) return;
     const ring = this.add
-      .image(u.container.x, u.container.y - 30, 'fx-ring')
+      .image(u.container.x, u.container.y - 16, 'fx-ring')
       .setTint(GOLD)
       .setAlpha(0.85)
       .setDepth(1990);
-    ring.setDisplaySize(70, 70);
+    ring.setDisplaySize(54, 54);
     this.tweens.add({ targets: ring, angle: 360, scale: ring.scale * 1.12, duration: 900, yoyo: true, repeat: -1 });
     this.channels.set(targetId, ring);
   }
@@ -986,7 +1009,7 @@ export class BattleScene extends Phaser.Scene {
     audio.play('revive');
     const foot = { x: u.container.x, y: u.container.y };
     this.fx.beam(foot, GOLD);
-    this.fx.groundRing(foot, GOLD);
+    this.fx.groundRing(foot, GOLD, 76);
     this.burst(u.center(), [GOLD, MINT, 0xffffff], 16, 0.8);
     const pb = u.getUp();
     this.floatText(u, `+${e.hp}`, PALETTE.gold);
@@ -1000,7 +1023,7 @@ export class BattleScene extends Phaser.Scene {
     if (e.blocked) {
       audio.play('block');
       u.crackShield();
-      this.fx.impact(u.center(), MINT, 70);
+      this.fx.impact(u.center(), MINT, 54);
       this.floatText(u, ES.blocked, ELEMENT_COLORS.snow.accent);
       await this.wait(TIMING.blockedHold);
       return;
@@ -1028,7 +1051,7 @@ export class BattleScene extends Phaser.Scene {
     if (u.kind === 'enemy') {
       // El gólem se hace pedazos: cada pieza sale despedida.
       audio.play('shatter');
-      this.fx.impact(u.center(), hex(ICE.glow), 100);
+      this.fx.impact(u.center(), hex(ICE.glow), 78);
       this.fx.hitStop(70);
       this.fx.shake(120, 0.003);
       this.burst(u.center(), ICE_COLORS, 22, 1.2);
@@ -1064,7 +1087,7 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile(`card-${el}`, { x: src.container.x, y: src.headY - 6 }, center, TIMING.projectile.card, {
         arc: -70,
         spin: 360,
-        size: [30, 40],
+        size: [24, 32],
         trail: { texture: 'fx-spark', colors },
       });
     }
@@ -1185,10 +1208,10 @@ export class BattleScene extends Phaser.Scene {
       audio.play('enemy-sniper');
       await this.projectile('fx-icicle', src.handPoint(), dst.center(), TIMING.projectile.sniper, {
         rotate: true,
-        size: [42, 12],
+        size: [32, 9],
         trail: { texture: 'fx-flake-small', colors: ICE_COLORS },
       });
-      this.fx.impact(dst.center(), hex(ICE.base), 64);
+      this.fx.impact(dst.center(), hex(ICE.base), 50);
       this.burst(dst.center(), ICE_COLORS, 6, 0.6);
       this.fx.hitStop(45);
     } else if (e.kind === 'artillery') {
@@ -1196,11 +1219,11 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile('fx-hail', src.handPoint(), dst.center(), TIMING.projectile.artillery, {
         arc: -110,
         spin: 540,
-        size: [22, 22],
+        size: [17, 17],
         trail: { texture: 'fx-bit', colors: ICE_COLORS },
       });
       this.fx.cascade(e.area, origin, RED, { step: 70, hold: 180, alpha: 0.32 });
-      this.fx.impact(dst.center(), hex(ICE.base), 84);
+      this.fx.impact(dst.center(), hex(ICE.base), 66);
       for (const t of e.area) this.fx.dust(footPoint(t), 2);
       this.burst(dst.center(), ICE_COLORS, 14, 1);
       this.fx.shake(110, 0.003);
@@ -1265,7 +1288,7 @@ export class BattleScene extends Phaser.Scene {
         u.container.setAlpha(1);
         u.act('spawn');
         const foot = { x: u.container.x, y: u.container.y };
-        this.fx.groundRing(foot, hex(ICE.base), 110);
+        this.fx.groundRing(foot, hex(ICE.base), 84);
         this.fx.dust(foot, 4);
         this.burst(foot, ICE_COLORS, 8, 0.6);
       });

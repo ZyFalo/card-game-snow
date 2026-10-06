@@ -28,6 +28,8 @@ Antes de tocar la escena, consulta las guías oficiales para agentes que vienen 
 - La cámara tiene zoom 1,5: la escena trabaja en coordenadas lógicas de 1280×720.
 - Las texturas se generan desde SVG en `src/art` y se agregan con `textures.addImage`, sin cargador XHR.
 - `fps.smoothStep` está desactivado a propósito (ADR 0004).
+- Lo que el tablero muestra al planificar (casillas, fantasmas, marcas de objetivo, líneas de mira) se decide en `src/state/board.ts`, que es puro y tiene pruebas; `BattleScene.redrawPlanning` solo lo dibuja. Las capas están en la sección 11 de `docs/lineamientos-de-diseno.md`.
+- Cada unidad cabe en su casilla: los tamaños y las piezas de una unidad viven en `src/game/layout.ts`, y `layout.test.ts` mide que quepan.
 
 ## Antes de terminar una tarea
 `pnpm run ci` en verde, capturas si cambió algo visible y una línea en `docs/ai-log.md` si fue una decisión relevante.

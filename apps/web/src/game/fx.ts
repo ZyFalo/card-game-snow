@@ -119,7 +119,7 @@ export class Fx {
   /** Anillo breve bajo quien actúa, para leer de un vistazo quién hace qué. */
   actor(foot: Pt, color: number): void {
     if (this.calm) return;
-    this.groundRing(foot, color, 72);
+    this.groundRing(foot, color, 58);
   }
 
   /** Golpe de cámara: un acercamiento breve y la vuelta. */

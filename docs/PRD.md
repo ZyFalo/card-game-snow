@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.14 |
+| Versión | 0.10.15 |
 | Última actualización | 6 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -286,7 +286,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 | Término | Significado |
 |---|---|
 | Casilla | Celda del tablero de 9×5 |
-| Fantasma | Previsualización semitransparente del destino planificado |
+| Fantasma | Silueta sin relleno del ninja en la casilla a la que planea moverse |
 | Acción | Lo único que el ninja hace además de moverse: atacar, curar, revivir o jugar carta |
 | Medidor | Barra que se llena al actuar y recibir golpes; al llenarse da una carta |
 | Mano | Cartas disponibles (máximo 4) |
@@ -308,7 +308,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 |---|---|---|
 | **v1 — Single player** (entrega de clase) | Reglas completas de §7, control de los 3 ninjas con ritmos de reloj, IA enemiga, 3 rondas + bonus, pantallas de §9, arte y audio originales | M0 a M6 |
 | **v2 — En línea** | Cuentas, salas con código y emparejamiento para 2 o 3 personas, un ninja cada una y el bot en el ninja libre, con el progreso en la cuenta (`docs/PRD-v2.md`) | M7 a M9 |
-| **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes | M10+ |
+| **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes. Ideas para después, todavía sin decidir: [`docs/ideas/eventos-de-jefe.md`](ideas/eventos-de-jefe.md) y [`docs/ideas/progresion-y-mentora.md`](ideas/progresion-y-mentora.md) | M10+ |
 
 ### 6.1 Alcance de v1 — ✅ D-08
 
@@ -468,16 +468,16 @@ flowchart LR
 └──────────────────────────────────────────────────────────────┘
 ```
 
-El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los paneles de los ninjas (vida, medidor y estado del plan), la mano, el reloj y los menús son HTML encima del canvas (React). Cada unidad lleva su barra de vida debajo y sus íconos de estado encima. Resolución base 1280×720, escalado proporcional.
+El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los paneles de los ninjas (vida, medidor y estado del plan), la mano, el reloj y los menús son HTML encima del canvas (React). Cada unidad cabe en su casilla, con su barra de vida al pie y sus íconos de estado en una esquina (D-74). Resolución base 1280×720, escalado proporcional.
 
 ### 9.3 Planificar a los tres ninjas
 
 1. Al empezar el turno queda activo el primer ninja en pie sin plan (orden Fuego, Agua, Nieve) y se resaltan sus casillas alcanzables.
 2. Cambias de ninja con clic sobre él o sobre su panel, o con Tab y Shift+Tab.
-3. Clic en una casilla: aparece el fantasma de ese ninja y se recalculan sus objetivos desde ahí. Los objetivos se marcan con íconos distintos para atacar, curar y revivir (forma y color, no solo color).
+3. Clic en una casilla: aparece el fantasma de ese ninja, una silueta sin relleno, y se recalculan sus objetivos desde ahí. Los objetivos se marcan con formas distintas para atacar, curar y revivir (forma y color, no solo color).
 4. Clic en un objetivo, o elegir una carta (1 a 4 o clic en la mano) y luego la casilla, con previsualización del patrón 3×3 y de los enemigos que alcanzaría.
 5. Al completar movimiento y acción se activa el siguiente ninja sin plan (se puede desactivar).
-6. Los tres fantasmas se ven a la vez. Cada ninja con una acción planificada muestra, en su panel y sobre su fantasma, el orden real en que actuará (R-11, D-32): primero las acciones básicas (atacar, curar, revivir) en orden Fuego, Agua, Nieve, y después las cartas en el mismo orden. Los movimientos son simultáneos y no se numeran; un ninja sin acción no muestra número. El orden se recalcula con cada cambio de plan.
+6. Los tres fantasmas se ven a la vez, pero solo el ninja activo muestra el camino hasta el suyo. Un ataque planeado se marca con un anillo sobre el objetivo, en el color del atacante, con un punto por atacante; la línea de mira aparece al pasar el ratón (D-74; el detalle de cada capa está en la sección 11 de `docs/lineamientos-de-diseno.md`). Cada ninja con una acción planificada muestra, en su panel y en la casilla desde la que actúa, el orden real en que actuará (R-11, D-32): primero las acciones básicas (atacar, curar, revivir) en orden Fuego, Agua, Nieve, y después las cartas en el mismo orden. Los movimientos son simultáneos y no se numeran; un ninja sin acción no muestra número. El orden se recalcula con cada cambio de plan.
 7. "Confirmar turno" (botón o Espacio) cierra la planificación de los tres. Se puede confirmar con planes incompletos: ese ninja no hace nada. Esc deshace el último paso del ninja activo.
 
 **Atajos:** Tab y Shift+Tab cambian de ninja, 1 a 4 eligen carta del ninja activo, Espacio confirma el turno, Esc deshace.
@@ -914,7 +914,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | P-15 | Precios de las cajas (R-28) | 100, 180 y 250 monedas por cajas de 1, 2 y 3 |
 | P-16 | Detalle de la carta de camino (R-30) | Elegir entre tres 12 del banco, una por elemento; elección permanente |
 | P-17 | ¿Tormenta paga más que Clásica? | No: misma paga, como el original (que no tenía dificultades) |
-| P-18 | ¿Rangos y experiencia como el original (hasta 24)? | Más adelante; primero monedas y colección |
+| P-18 | ¿Rangos y experiencia como el original (hasta 24)? | Más adelante; primero monedas y colección. Hay una propuesta en [`docs/ideas/progresion-y-mentora.md`](ideas/progresion-y-mentora.md), aprobada en su dirección: rangos de origami y una mentora propia, una garza de papel, en lugar del Sensei. Sigue abierta hasta la v3 |
 
 **Resueltas en v0.3**
 
@@ -997,6 +997,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-74 | Ronda de claridad del tablero: quienes probaron el juego dicen que es confuso, porque los planes de los tres ninjas se superponen. La inspiración es el original, donde cada persona controlaba un ninja y el tablero mostraba un solo modo a la vez. La claridad del tablero no cambia ninguna regla. Primer paso, el orden visual: los personajes caben en su casilla y la barra de vida va dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su línea de camino; el ataque se marca con un anillo en el color del atacante sobre el objetivo, con un punto por atacante; la línea de mira aparece solo al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano no muestra las casillas de cartas vacías (sección 11 de `docs/lineamientos-de-diseno.md`) | ✅ | 2026-10-06 |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas: el combate en línea del M8 se diseña para computador, y sus pantallas nuevas se construyen adaptables, con diseño fluido (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja: es el modo para empezar, y el simulador es un techo para personas reales (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-71 | El límite de turnos del bonus se queda en 13 y 18, también en línea (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
@@ -1052,6 +1053,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.15 | 2026-10-06 | Ronda de claridad del tablero, primer paso (D-74): el orden visual. Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su camino; un ataque planeado se marca con un anillo en el color del atacante y un punto por atacante; la línea de mira aparece al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano muestra solo las cartas que hay y, vacía, dice cómo se ganan. El fondo deja lisa la franja del HUD, para que ninguna línea cruce la pista de las teclas. No cambia ninguna regla. Lo que muestra el tablero al planificar se decide en un módulo con pruebas (`apps/web/src/state/board.ts`) y la escena solo lo dibuja. Las capas quedan en la sección 11 de `docs/lineamientos-de-diseno.md`. Aparte, `docs/ideas/` guarda ideas del dueño de producto para después, que no son decisiones ni tareas, y P-18 anota la propuesta de rangos de origami y de una mentora propia |
 | 0.10.14 | 2026-10-06 | P-20, resuelta con la medición del simulador: Tormenta en línea pide 5 cartas del elemento del ninja (D-69 y R-51 del PRD de v2), el emparejamiento junta a cualquiera dentro de la dificultad elegida (D-70), el límite del bonus se queda en 13 y 18 (D-71) y se acepta que Clásica sea fácil desde la primera caja (D-72). D-68 precisa que un error 500 cuenta como respuesta perdida y que el cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes. D-73: el juego debe funcionar en computador y en teléfono, por etapas. Con el M7 y P-20 se cierra esta fase: sigue una ronda de ajustes de jugabilidad y, después, el M8, que empieza por su especificación técnica y la investigación del teléfono |
 | 0.10.13 | 2026-10-01 | P-20, medida: el simulador arma la partida asiento por asiento (`pnpm sim -- --team` y `--mixed`), como en línea, donde cada persona juega con su colección y el bot con el mazo de referencia (R-34, D-47). El reporte de balance suma la sección de equipos de colecciones mezcladas y el límite de turnos del bonus con cada equipo. No cambia ningún valor; la curva de dificultad en línea queda por decidir |
 | 0.10.12 | 2026-10-01 | Progreso en el cliente (M7, paso 9): al verificar la cuenta se elige la carta de camino (R-30); el perfil muestra el resumen del progreso y lleva a la colección, con las 20 cartas de cada elemento y las que faltan como siluetas (R-25), y a la tienda de cajas (R-28), con el revelado de las cartas. El cliente muestra lo que responde el servidor y nunca calcula el progreso. D-67: durante el M7, el perfil hace de inicio en línea. D-68: el cliente conserva el identificador de una compra solo si su respuesta se pierde, vuelve a leer el progreso para mostrar el saldo real y deshabilita los botones mientras espera. Hasta el M8 nadie puede ganar monedas, y la tienda lo dice con "Próximamente". La introducción de "Entrar" y la invitación de los resultados ya dicen en presente que la cuenta guarda el progreso. Las piezas nuevas quedan en la sección 10 de `docs/lineamientos-de-diseno.md`. Las e2e guardan una captura y la traza de cada prueba que falla. Con esto se completa la lista del M7 |

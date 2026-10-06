@@ -23,7 +23,7 @@ import {
   waveSvg,
 } from './effects';
 import { golemBustSvg, golemPartSvg, golemSvg } from './golems';
-import { ninjaBustSvg, ninjaKoSvg, ninjaPartSvg, ninjaStandSvg } from './ninjas';
+import { ninjaBustSvg, ninjaKoSvg, ninjaOutlineSvg, ninjaPartSvg, ninjaStandSvg } from './ninjas';
 import { golemRig, ninjaRig, partKey, rigParts } from './rigs';
 import { backgroundSvg, rockSvg } from './scenery';
 import { toDataUri } from './svg';
@@ -35,7 +35,7 @@ export type IconName = (typeof ICON_NAMES)[number];
 export function artEntries(): { key: string; svg: string }[] {
   return [
     ...ELEMENTS.flatMap((el) => [
-      { key: `ninja-${el}`, svg: ninjaStandSvg(el) },
+      { key: `ninja-${el}-outline`, svg: ninjaOutlineSvg(el) },
       { key: `ninja-${el}-ko`, svg: ninjaKoSvg(el) },
       { key: `card-${el}`, svg: miniCardSvg(el) },
     ]),

@@ -45,7 +45,6 @@ export const ES = {
   seconds: 's',
   hand: (name: string) => `Cartas de ${name}`,
   deck: (n: number) => `Mazo ${n}`,
-  emptySlot: 'Vacío',
   round: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r} de 3`),
   roundBanner: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r}`),
   bonusLocked: 'Bonus',
@@ -248,6 +247,8 @@ export const HUD = {
   boost: 'Potencia',
   boostTitle: 'Potencia: +50 % en el siguiente golpe o cura',
   handHint: 'Teclas 1 a 4 · clic derecho o Esc deshace',
+  /** La mano de un ninja que todavía no tiene cartas. */
+  handEmpty: 'Llena el medidor para ganar cartas',
   card: (element: string, value: number) => `Carta de ${element} de valor ${value}`,
 } as const;
 
@@ -289,7 +290,7 @@ export const HELP = {
     'Tres aprendices de papel contra gólems de escarcha en un tablero de 9×5. Supera tres rondas y, si cumples la condición de bonus, una cuarta. Pierdes si caen los tres a la vez.',
   turnTitle: 'Cada turno',
   turn: [
-    'Planea a cada ninja: primero a dónde se mueve (casillas azules) y luego qué hace.',
+    'Planea a cada ninja: primero a dónde se mueve (las casillas de su color) y luego qué hace.',
     'Haz clic en un gólem para atacarlo, en un aliado para curarlo (Escarcha) o revivirlo, o elige una carta y su casilla central.',
     `Confirma el turno. Se resuelve en orden: ${ORDER_NAMES}; después actúan los gólems, que siempre atacan si pueden.`,
     'El reloj da 10 s por cada ninja en pie en ritmo Normal (5 s en Experto; sin reloj en Relajado). Si se acaba, se juega lo que hayas planeado.',

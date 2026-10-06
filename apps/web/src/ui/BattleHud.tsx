@@ -37,7 +37,6 @@ function TipBar() {
 
 const RING = 2 * Math.PI * 22;
 const METER_SEGMENTS = ['m1', 'm2', 'm3', 'm4', 'm5'] as const;
-const HAND_SLOTS = ['h1', 'h2', 'h3', 'h4'] as const;
 
 function Timer() {
   const timer = useApp((s) => s.timer);
@@ -371,16 +370,10 @@ function Hand() {
         {ES.hand(NINJA_TEXT[shown].name)}
         <span>{HUD.handHint}</span>
       </div>
+      {/* Solo las cartas que hay: un lugar sin carta no se dibuja. Sin ninguna, dice cómo se ganan. */}
       <div className="cards">
-        {HAND_SLOTS.map((slot, i) => {
-          const card = ninja.hand[i];
-          if (!card) {
-            return (
-              <div key={slot} className="card empty">
-                {ES.emptySlot}
-              </div>
-            );
-          }
+        {ninja.hand.length === 0 ? <p className="hand-empty">{HUD.handEmpty}</p> : null}
+        {ninja.hand.map((card, i) => {
           const t = NINJA_TEXT[card.element];
           return (
             <button

@@ -1,6 +1,6 @@
-import { createMatch, type Difficulty, difficultyConfig } from '@ventisca/core';
+import { createMatch, type Difficulty, difficultyConfig, type ElementKind, type MatchState } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
-import { bonusProgress, turnClockMs } from './planning';
+import { bonusProgress, contextualTip, firstFallTip, reviverOf, turnClockMs } from './planning';
 
 /* R-21: la ficha del bonus contra el reloj cuenta el turno que se planifica y los que quedan. */
 describe('Bonus contra el reloj en la planificación (R-21)', () => {
@@ -39,5 +39,56 @@ describe('Reloj del turno (R-04)', () => {
 
   it('R-04: con un ninja caído el turno dura 20 s, porque el reloj cuenta solo los ninjas en pie', () => {
     expect(turnClockMs('normal', 2)).toBe(20_000);
+  });
+});
+
+/* R-09: revivir se explica la primera vez que cae un ninja, y un caído solo puede tener un reanimador. */
+describe('Revivir en la planificación (R-09)', () => {
+  const match = (down: ElementKind[] = []): MatchState => {
+    const s = createMatch({ seed: 1 }).state;
+    for (const n of s.ninjas) if (down.includes(n.id)) n.hp = 0;
+    return s;
+  };
+  type Tip = Parameters<typeof contextualTip>[0];
+  const planning = (patch: Partial<Tip>): Tip => ({
+    phase: 'planning',
+    resolveStep: null,
+    boosting: false,
+    match: match(['water']),
+    plans: {},
+    active: 'fire',
+    step: 'move',
+    pendingCard: null,
+    hover: null,
+    reviveTip: null,
+    ...patch,
+  });
+  const HOW = 'Muévete junto a Marea para revivirlo. Se levanta al final del turno: protege a quien lo revive.';
+  const MOVE = 'Elige a dónde se mueve Brasa. Para quedarse, haz clic en su casilla.';
+
+  it('R-09: el consejo nombra al primer caído, y sale una sola vez por partida', () => {
+    expect(firstFallTip(match(), false)).toBeNull();
+    expect(firstFallTip(match(['water']), false)).toBe('water');
+    expect(firstFallTip(match(['snow', 'water']), false)).toBe('water');
+    expect(firstFallTip(match(['water']), true)).toBeNull();
+  });
+
+  it('R-09: la primera vez que cae un ninja, el paso de moverse dice cómo revivirlo', () => {
+    expect(contextualTip(planning({ reviveTip: 'water' }))).toBe(HOW);
+    // Sin ese consejo pendiente, el paso de moverse dice lo de siempre.
+    expect(contextualTip(planning({}))).toBe(MOVE);
+    // En el paso de actuar y con una carta en la mano, cada modo dice lo suyo.
+    expect(contextualTip(planning({ reviveTip: 'water', step: 'act' }))).not.toBe(HOW);
+    expect(contextualTip(planning({ reviveTip: 'water', pendingCard: 'fire-1' }))).not.toBe(HOW);
+    // Si ese ninja ya está en pie, el consejo no tiene a quién nombrar.
+    expect(contextualTip(planning({ reviveTip: 'water', match: match() }))).toBe(MOVE);
+  });
+
+  it('R-09: quién revive a un caído sale de los planes', () => {
+    const revive = { type: 'revive', targetId: 'water' } as const;
+    expect(reviverOf({}, 'water')).toBeNull();
+    expect(reviverOf({ snow: { ninjaId: 'snow', action: revive } }, 'water')).toBe('snow');
+    expect(reviverOf({ snow: { ninjaId: 'snow', action: revive } }, 'fire')).toBeNull();
+    expect(reviverOf({ fire: { ninjaId: 'fire', action: { type: 'attack', targetId: 'e1' } } }, 'water')).toBeNull();
   });
 });

@@ -229,6 +229,9 @@ export const TIP_TEXT = {
     `${name}, ${role.toLowerCase()} (${hp}/${maxHp}). ${tip}`,
   confirm: 'Confirma el turno.',
   placeCard: (name: string) => `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`,
+  /** La primera vez que cae un ninja en la partida: cómo se revive (R-09). */
+  reviveHow: (name: string) =>
+    `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   move: (name: string) => `Elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
   act: (name: string) => `Elige qué hace ${name}: un objetivo o una carta.`,
   pending: (names: readonly string[]) => `Tab pasa al siguiente ninja. Falta planear a ${names.join(' y ')}.`,

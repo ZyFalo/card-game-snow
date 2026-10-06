@@ -173,8 +173,22 @@ export const threatTiles = (m: MatchState, e: Enemy): Vec[] => enemyThreatTiles(
 
 export const tileKey = key;
 
+/**
+ * R-09: la primera vez que cae un ninja en la partida, el consejo de cómo revivir lo nombra. `seen` dice
+ * si ese consejo ya salió.
+ */
+export function firstFallTip(m: MatchState, seen: boolean): ElementKind | null {
+  if (seen) return null;
+  return m.ninjas.find((n) => n.hp <= 0)?.id ?? null;
+}
+
+type TipState = Pick<
+  AppState,
+  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'step' | 'pendingCard' | 'hover' | 'reviveTip'
+>;
+
 /** Consejo contextual para la barra superior (§9.5). */
-export function contextualTip(s: AppState): string | null {
+export function contextualTip(s: TipState): string | null {
   const m = s.match;
   if (s.phase === 'intro') return TIP_TEXT.intro;
   if (s.phase === 'resolving') {
@@ -196,7 +210,12 @@ export function contextualTip(s: AppState): string | null {
   const name = NINJA_TEXT[info.ninja.id].name;
   if (s.pendingCard) return TIP_TEXT.placeCard(name);
   // Cada paso dice lo suyo: primero moverse, después actuar.
-  if (s.step === 'move') return TIP_TEXT.move(name);
+  if (s.step === 'move') {
+    // La primera vez que cae un ninja, el paso de moverse explica cómo se le revive (R-09).
+    const fallen = s.reviveTip ? getNinja(m, s.reviveTip) : undefined;
+    if (fallen && fallen.hp <= 0) return TIP_TEXT.reviveHow(NINJA_TEXT[fallen.id].name);
+    return TIP_TEXT.move(name);
+  }
   if (!info.plan.action && canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
   // Este ninja ya no tiene nada por decidir: quiénes faltan, o todo listo.
   const pending = ELEMENTS.filter((id) => hasPending(m, s.plans, id));

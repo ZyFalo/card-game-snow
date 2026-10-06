@@ -181,3 +181,4 @@ Para que no se pierdan. Los seis primeros están también en su hito del PRD de 
 - Toda interfaz sigue `docs/lineamientos-de-diseno.md` (D-63) y se compara con una captura a 1280×720 junto a "Tu equipo".
 - Cada paso es un PR pequeño, con sus pruebas y la CI en verde. El dueño de producto lo revisa antes de fusionarlo, con merge commit y sin squash.
 - Nunca se suben secretos al repositorio: cada variable se documenta en `.env.example`.
+- `docs/ideas/` guarda ideas del dueño de producto para después (su `README.md` es el índice). No son decisiones ni tareas: nada de esa carpeta se implementa sin pasar antes por el PRD.

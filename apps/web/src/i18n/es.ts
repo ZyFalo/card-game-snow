@@ -544,7 +544,8 @@ export const ACCOUNT_ERRORS = {
  * Aviso de privacidad, aprobado por el dueño de producto el 2026-09-30, con la frase de Resend (envío desde
  * São Paulo) y la del plazo de los códigos (R-50) aprobadas en la revisión del PR #11. El contacto pasa a
  * ventisca@wpena.dev (D-62). Su primer párrafo cambió con D-75: Ventisca dejó de ser un proyecto de clase y
- * es el piloto de un proyecto personal. La fecha de vigencia es la de la fusión de ese cambio.
+ * es el piloto de un proyecto personal. Ese párrafo nombra de forma explícita al responsable del tratamiento
+ * de los datos. La fecha de vigencia es la de la fusión de ese cambio.
  */
 export const PRIVACY_NOTICE = {
   title: 'Aviso de privacidad de Ventisca',
@@ -553,7 +554,7 @@ export const PRIVACY_NOTICE = {
     {
       title: '',
       body: [
-        'Ventisca es el piloto de un proyecto personal, que su responsable, William Andrés Peña Vargas, avanza en sus ratos libres. Hoy el juego es gratuito: no vende nada ni muestra publicidad. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
+        'Ventisca es el piloto de un proyecto personal que William Andrés Peña Vargas avanza en sus ratos libres. Él es el responsable del tratamiento de tus datos personales. Hoy el juego es gratuito: no vende nada ni muestra publicidad. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
       ],
     },
     {

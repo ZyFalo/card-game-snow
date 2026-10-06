@@ -149,7 +149,7 @@ Es el primer uso de estos lineamientos. Ver `diseno/comparacion-cuentas.png`; el
   - "Crear una cuenta" como botón secundario junto a "Entrar".
   - "Deshacer un cambio de correo" como enlace discreto al pie.
   - "Volver" en la barra de acciones, abajo.
-- **Aviso de privacidad:** en la captura a 1280×720, el texto se corta por la derecha ("Su responsable es William Andres Pe…"). Convertirlo en pantalla completa de lectura (sección 5) y cubrirlo con la prueba de desbordes.
+- **Aviso de privacidad:** en la captura a 1280×720, el texto se corta por la derecha ("Su responsable es William Andrés Pe…"). Convertirlo en pantalla completa de lectura (sección 5) y cubrirlo con la prueba de desbordes.
 - **Verificación, recuperación, perfil y deshacer cambio de correo:** mismas reglas.
 - **CSS de cuentas:** reemplazar los valores sueltos por tokens y las clases propias por las piezas de las secciones 3 y 4.
 

@@ -1,6 +1,6 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.13: aprobada para implementar · 6 de octubre de 2026 · William Andres Peña Vargas
+Versión 1.13: aprobada para implementar · 6 de octubre de 2026 · William Andrés Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
@@ -61,7 +61,7 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-71 | El límite de turnos del bonus se queda en 13 en Clásica y 18 en Tormenta (D-12), también en línea. Medido en P-20: en los equipos donde cada persona tiene al menos una caja, del 65,5 al 68,2 % de las partidas de Clásica y del 43,9 al 45,9 % de las de Tormenta superan la ronda 3 dentro del límite, casi lo mismo que con el mazo de referencia (64,1 y 44,7 %). | Aprobada |
 | D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja (99,7 % de victorias en el simulador): es el modo para empezar, y el simulador es un techo para personas reales. | Tomada |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas. El combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720. El alcance del teléfono se decide con una investigación, que queda pendiente. | Tomada |
-| D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice en su primer párrafo y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo, y su "Vigente desde" pasa a la fecha de la fusión. Desde que haya cuentas de otras personas, cualquier cambio del aviso pasará por el mecanismo del M9. | Tomada |
+| D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice en su primer párrafo, que nombra de forma explícita al responsable del tratamiento de los datos, y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo, y su "Vigente desde" pasa a la fecha de la fusión. Desde que haya cuentas de otras personas, cualquier cambio del aviso pasará por el mecanismo del M9. | Tomada |
 
 ## Experiencia del jugador
 

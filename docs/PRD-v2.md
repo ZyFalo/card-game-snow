@@ -287,7 +287,7 @@ P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya da
 
 **Ideas para después**
 
-Son ideas del dueño de producto, no decisiones ni tareas: nada de esto se implementa sin pasar antes por el PRD. El índice está en [`docs/ideas/README.md`](ideas/README.md).
+Son ideas del dueño de producto, no decisiones ni tareas: nada de esto se implementa mientras no pase a ser una decisión de este documento. El índice está en [`docs/ideas/README.md`](ideas/README.md).
 
 - **Las ayudas, también en línea.** "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos" serán ayudas opcionales de las partidas locales, apagadas por defecto. En línea no estarán disponibles: todos juegan con la misma información, como en el original. Llegan con la ronda de claridad del tablero, que registra su decisión (`docs/traspaso.md`). Sin compromiso, podrían ofrecerse en línea en el futuro, por ejemplo como un pase, con tres advertencias:
   - cobrar exigiría cambiar el aviso de privacidad, que hoy dice que el juego es gratuito, sin compras ni publicidad;

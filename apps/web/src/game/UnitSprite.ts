@@ -58,6 +58,8 @@ export class UnitSprite {
   private shownHp: number;
   ko = false;
   stunned = false;
+  /** Está reviviendo a un aliado: su reposo es la pose de reanimar (R-09). */
+  private reviving = false;
   speed: number;
   calm: boolean;
 
@@ -155,17 +157,32 @@ export class UnitSprite {
   startIdle(): void {
     this.actSeq += 1;
     this.busy = false;
-    if (this.ko || this.calm) {
+    if (this.ko) {
       this.rig.stop();
       return;
     }
-    const clip = (this.stunned ? this.clips.dazed : undefined) ?? this.clips.idle;
+    const reviving = this.reviving ? this.clips.reviving : undefined;
+    if (this.calm) {
+      // Con el movimiento reducido no hay bucle: quien revive se queda quieto en su pose.
+      this.rig.stop();
+      const pose = reviving?.frames[0]?.pose;
+      if (pose) this.rig.setPose(pose);
+      return;
+    }
+    const clip = reviving ?? (this.stunned ? this.clips.dazed : undefined) ?? this.clips.idle;
     if (!clip) {
       this.rig.stop();
       return;
     }
     // Cada unidad respira a su ritmo: así no se mueven todas al unísono.
     this.rig.play(clip, this.speed * (0.88 + Math.random() * 0.24));
+  }
+
+  /** Sostiene (o suelta) la pose de reanimar a un aliado: reemplaza al reposo mientras dura. */
+  setReviving(on: boolean): void {
+    if (this.reviving === on) return;
+    this.reviving = on;
+    if (!this.busy) this.startIdle();
   }
 
   private setStunned(on: boolean): void {
@@ -369,6 +386,7 @@ export class UnitSprite {
     if (ko) {
       this.actSeq += 1;
       this.busy = false;
+      this.reviving = false;
       this.rig.stop();
       this.rig.root.setVisible(false);
       const k = this.koImage;

@@ -201,6 +201,12 @@ export const NOTICE = {
   outOfReach: (name: string) => `${name} no llega hasta ahí este turno.`,
 } as const;
 
+/** Avisos de una reanimación al resolverse el turno (R-09). */
+export const REVIVE_TEXT = {
+  interrupted: 'Reanimación interrumpida',
+  back: (name: string, hp: number) => `${name} vuelve con ${hp} de vida`,
+} as const;
+
 /** Estado del plan de cada ninja, en su panel. */
 export const PLAN_TEXT = {
   ko: 'Caído',
@@ -218,7 +224,7 @@ export const TIP_TEXT = {
   holdToBoost: 'Mantén Espacio para acelerar.',
   ninjas: (hint: string) => `Actúan tus ninjas: ${ORDER_NAMES}, en ese orden. ${hint}`,
   enemies: (hint: string) => `Responden los gólems, uno por uno. ${hint}`,
-  end: (hint: string) => `Final del turno: quemaduras y cierre de ronda. ${hint}`,
+  end: (hint: string) => `Final del turno: reanimaciones, quemaduras y cierre de ronda. ${hint}`,
   enemy: (name: string, role: string, hp: number, maxHp: number, tip: string) =>
     `${name}, ${role.toLowerCase()} (${hp}/${maxHp}). ${tip}`,
   confirm: 'Confirma el turno.',

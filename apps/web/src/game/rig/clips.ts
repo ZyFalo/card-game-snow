@@ -3,7 +3,7 @@ import type { Clip } from './Rig';
 
 /*
  * Estados de animación inspirados en la coreografía del original (reposo,
- * moverse, atacar, recibir golpe, caer, revivido, revivir a otro, invocar
+ * moverse, atacar, recibir golpe, caer, revivido, reanimando a otro, invocar
  * carta, curar, celebrar; y en los gólems: aturdido y aparecer). Todo el
  * movimiento es propio: poses de papel plegado sobre esqueletos de recorte.
  *
@@ -19,7 +19,7 @@ export type NinjaClip =
   | 'hit'
   | 'koStart'
   | 'revived'
-  | 'reviveOther'
+  | 'reviving'
   | 'power'
   | 'heal'
   | 'celebrate';
@@ -147,18 +147,20 @@ const ninjaBase: Record<Exclude<NinjaClip, 'attack'>, Clip> = {
       { ms: 170, pose: {} },
     ],
   },
-  reviveOther: {
+  // Quien revive se queda inclinado sobre su aliado, con los brazos tendidos, hasta que la reanimación
+  // se completa o se interrumpe (R-09). Es un bucle: la pose se sostiene durante la fase de los gólems.
+  reviving: {
+    loop: true,
     frames: [
       {
-        ms: 170,
+        ms: 380,
         ease: OUT,
         pose: { root: { sy: 0.9, r: 7 }, torso: { r: 14 }, head: { r: 14 }, armFront: { r: 30 }, armBack: { r: -25 } },
       },
       {
-        ms: 230,
+        ms: 380,
         pose: { root: { sy: 0.92, r: 7 }, torso: { r: 14 }, head: { r: 10 }, armFront: { r: 42 }, armBack: { r: -32 } },
       },
-      { ms: 210, pose: {} },
     ],
   },
   power: {

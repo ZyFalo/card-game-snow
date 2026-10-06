@@ -23,6 +23,8 @@ export interface Timing {
   heal: { cranes: number; stagger: number; hold: number };
   reviveStart: number;
   reviveMax: number;
+  /** Pausa tras el aviso de una reanimación interrumpida. */
+  reviveInterrupted: number;
   card: {
     fire: { start: number; stagger: number; fall: number };
     water: { wave: number; stagger: number };
@@ -54,6 +56,7 @@ export const TIMING_V07: Timing = {
   heal: { cranes: 420, stagger: 70, hold: 200 },
   reviveStart: 320,
   reviveMax: 760,
+  reviveInterrupted: 420,
   card: {
     fire: { start: 120, stagger: 45, fall: 230 },
     water: { wave: 620, stagger: 35 },
@@ -92,6 +95,7 @@ export const TIMING: Timing = {
   heal: { cranes: 360, stagger: 50, hold: 150 },
   reviveStart: 260,
   reviveMax: 650,
+  reviveInterrupted: 360,
   card: {
     fire: { start: 80, stagger: 30, fall: 200 },
     water: { wave: 480, stagger: 22 },
@@ -197,6 +201,9 @@ export function estimateEventsMs(events: readonly GameEvent[], t: Timing = TIMIN
         break;
       case 'revive':
         total += Math.min(t.reviveMax, clipMs(NINJA_CLIPS.fire.revived));
+        break;
+      case 'reviveInterrupted':
+        total += t.reviveInterrupted;
         break;
       case 'combo':
         total += t.comboOverlay;

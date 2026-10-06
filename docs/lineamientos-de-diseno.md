@@ -106,10 +106,11 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
   - pantalla completa de lectura, en una columna de 680 a 720 px;
   - cuerpo de 15 a 16 px con interlineado 1,6, y títulos de sección en la tipografía de títulos a 20 px;
   - el texto se desplaza dentro de su panel y nunca se corta.
+- **Texto corto** (créditos): la misma pantalla de lectura, con su panel ajustado al texto (`.reading-short`) en vez de llenar la columna.
 - **Portada:** se mantiene la jerarquía original:
   - el nombre del juego, la línea superior y el lema;
   - una fila de botones (primario "Jugar sin cuenta" y secundarios);
-  - los ninjas a la derecha y un pie discreto.
+  - los ninjas a la derecha y un pie discreto: una frase que dice qué es el proyecto y, separados por puntos medios, los enlaces a los créditos y al aviso de privacidad (`.title-foot`).
 
 ## 6. Textos
 

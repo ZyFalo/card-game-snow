@@ -95,7 +95,7 @@ Tres ninjas elementales (Fuego, Agua y Nieve) defienden una cima nevada en un ta
 
 1. Ningún asset se extrae, calca, convierte o "limpia" del juego original ni de servidores o repositorios de fans (varios redistribuyen los archivos originales).
 2. Los prompts para generar arte o audio nunca mencionan el juego original, sus personajes ni "su estilo".
-3. Los nombres del original solo aparecen en este documento como referencia de investigación (encabezado, §4 y apéndices); nunca dentro del juego.
+3. Los nombres del original solo aparecen como referencia de investigación (en este documento y en `docs/`) y como reconocimiento de la inspiración (D-76): en `CREDITOS.md`, en el README y en la pantalla de créditos del juego. En ningún otro lugar del juego.
 
 **Por qué:** el proyecto se puede mostrar sin depender de material de terceros (repositorio público, portafolio), y la identidad propia se puede diseñar y generar con IA sin restricciones.
 
@@ -431,6 +431,7 @@ Nivel de habilidad configurable (qué tan a menudo elige la mejor opción) 🧪,
 ```mermaid
 flowchart LR
   T[Título] --> S[Tu equipo y ritmo]
+  T <--> C[Créditos]
   S --> L[Carga con consejo]
   L --> B1[Ronda 1] --> B2[Ronda 2] --> B3[Ronda 3]
   B3 -->|condición cumplida| BB[Ronda bonus]
@@ -441,6 +442,8 @@ flowchart LR
   R -->|Menú| T
 ```
 
+- **Título:** su pie dice qué es el proyecto ("Piloto de un proyecto personal", D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
+- **Créditos:** una pantalla de lectura con el texto corto de `CREDITOS.md`, donde Ventisca reconoce su inspiración (D-76).
 - **Tu equipo:** resumen de las tres clases (barras de movimiento, alcance y daño; qué hacen su carta y su combo; cartas en el mazo), elección de ritmo y casilla de modo consejos. En v2 vuelve la elección de elemento por jugador.
 - **Carga:** un consejo propio al azar (§9.5).
 - **Resultados:** victoria o derrota, rondas, bonus, combos, caídas, curaciones, turnos y tiempo, logros obtenidos y botones de reintentar o volver al menú.
@@ -997,6 +1000,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-76 | Ventisca reconoce su inspiración en Club Penguin, Card-Jitsu y Card-Jitsu Nieve: `CREDITOS.md` en el repositorio, enlazado desde el README, y una pantalla de créditos en el juego, que se abre desde el pie de la portada y muestra el texto corto de `CREDITOS.md`. Es la única mención del original dentro del juego; en lo demás vale D-01: ningún nombre, arte, audio ni texto del original | ✅ | 2026-10-06 |
 | D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo; desde que haya cuentas de otras personas, cualquier cambio pasará por el mecanismo del M9 (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-74 | Ronda de claridad del tablero: quienes probaron el juego dicen que es confuso, porque los planes de los tres ninjas se superponen. La inspiración es el original, donde cada persona controlaba un ninja y el tablero mostraba un solo modo a la vez. La claridad del tablero no cambia ninguna regla. Primer paso, el orden visual: los personajes caben en su casilla y la barra de vida va dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su línea de camino; el ataque se marca con un anillo en el color del atacante sobre el objetivo, con un punto por atacante; la línea de mira aparece solo al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano no muestra las casillas de cartas vacías (sección 11 de `docs/lineamientos-de-diseno.md`) | ✅ | 2026-10-06 |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas: el combate en línea del M8 se diseña para computador, y sus pantallas nuevas se construyen adaptables, con diseño fluido (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |

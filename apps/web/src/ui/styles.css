@@ -655,7 +655,10 @@ button {
   position: absolute;
   left: 80px;
   bottom: 28px;
-  font: 500 13px / 1.4 var(--font-ui);
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-1);
+  font: 500 var(--text-small) / 1.4 var(--font-ui);
   color: var(--ink-3);
 }
 
@@ -2159,6 +2162,11 @@ button {
   outline-offset: var(--focus-offset);
 }
 
+/* Un texto corto, como los créditos: el panel se ajusta al texto en vez de llenar la columna. */
+.reading-short {
+  align-self: start;
+}
+
 .reading h2 {
   margin: var(--gap-4) 0 var(--gap-1);
   font: var(--text-section) / 1.2 var(--font-display);
@@ -2208,7 +2216,6 @@ button {
 }
 
 .title-foot .link {
-  margin-left: var(--gap-3);
   font-weight: 500;
   color: inherit;
 }

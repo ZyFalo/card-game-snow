@@ -269,7 +269,8 @@ export const OVERLAY_TEXT = {
 
 export const SCREEN_TEXT = {
   kicker: 'Tácticas por turnos · 1 jugador',
-  credits: 'Piloto de un proyecto personal. Arte, sonido y música generados en código.',
+  /** Pie de la portada (D-75). */
+  pilot: 'Piloto de un proyecto personal',
   cardLabel: 'Carta:',
   comboLabel: 'Combo:',
   stats: { hp: 'Vida', attack: 'Daño', range: 'Alcance', move: 'Paso' },
@@ -279,6 +280,21 @@ export const SCREEN_TEXT = {
   defeat: 'La escarcha cubrió a los tres. Revisa el orden de acciones y vuelve a intentarlo.',
   matchMeta: (difficulty: string, map: string) => `Dificultad ${difficulty}, mapa ${map}.`,
   clearedIn: (turns: number) => `Rondas 1 a 3 en ${turns} turnos.`,
+} as const;
+
+/*
+ * Créditos (D-76): Ventisca reconoce su inspiración. Los tres primeros párrafos son el "Texto corto para
+ * el juego" de CREDITOS.md, tal como lo escribió el dueño de producto (una prueba los compara); el último
+ * es la frase que estaba en el pie de la portada. Es el único lugar del juego que nombra al original (D-01).
+ */
+export const CREDITS_TEXT = {
+  title: 'Créditos',
+  body: [
+    'Ventisca es un homenaje a Card-Jitsu Nieve, de la saga Card-Jitsu de Club Penguin. De ahí viene la idea; los personajes, el arte, la música, los sonidos y el código son propios.',
+    'Club Penguin y Card-Jitsu son marcas de Disney, y Ventisca no está afiliado ni respaldado por Disney.',
+    'Gracias al equipo de Club Penguin y a su comunidad.',
+    'Arte, sonido y música generados en código.',
+  ],
 } as const;
 
 /* ---------- Ayuda ---------- */

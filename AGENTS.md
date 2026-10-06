@@ -19,7 +19,7 @@ Lee también `docs/PRD.md` (el mapa del proyecto) y `docs/adr/`.
 3. Todo lo que se anima debe existir como `GameEvent`. Si falta información para animar, se agrega al evento en el core, con prueba.
 4. Cambiar números de balance = editar `packages/core/src/balance.json`, volver a simular y actualizar `docs/balance-report.md`.
 5. Las pruebas del core se nombran por regla: `it('R-17: …')`.
-6. Identidad original (D-01): prohibido usar nombres, arte, audio o textos del juego original en el producto. Las referencias solo pueden aparecer en `docs/`.
+6. Identidad original (D-01): prohibido usar nombres, arte, audio o textos del juego original en el producto. Las referencias solo pueden aparecer en `docs/` y, como reconocimiento de la inspiración (D-76), en `CREDITOS.md`, en el README y en la pantalla de créditos del juego, con el texto de `CREDITOS.md`.
 7. Los textos de la UI van en `apps/web/src/i18n/es.ts`, con verbos claros y frases cortas en español neutro.
 8. La progresión (PRD §18) es pura y vive en `packages/core/src/cards.ts` y `economy.ts`. Precios, monedas y banco se cambian en `balance.json`. En v2 el progreso vive en la cuenta, en el servidor (D-34): `apps/server/src/progress/` guarda el resultado y deja las reglas a esas mismas funciones. El cliente (`apps/web/src/state/progress.ts`) solo pide y muestra lo que respondió el servidor: nunca calcula monedas ni cartas. El sandbox no guarda progreso en el navegador (D-55).
 

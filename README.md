@@ -43,8 +43,12 @@ En Railway, con Postgres, en https://ventisca.wpena.dev: cada push a `main` se d
 
 El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e de humo en cada push.
 
-## Aviso
+## Créditos e inspiración
 
-Piloto de un proyecto personal: hoy el juego es gratuito, no vende nada ni muestra publicidad. *Card-Jitsu Snow* y *Club Penguin* son marcas de sus dueños; este repositorio no contiene ninguno de sus assets. Los valores de reglas se estudiaron a partir de documentación pública y de un servidor fan con licencia MIT (fuentes en el Apéndice B del PRD).
+Ventisca es un homenaje a *Card-Jitsu Nieve* (*Card-Jitsu Snow*), de la saga *Card-Jitsu* de *Club Penguin*. De ahí viene la idea; los personajes, el arte, la música, los sonidos y el código son propios, y este repositorio no contiene ningún recurso del juego original. Club Penguin y Card-Jitsu son marcas de Disney, y Ventisca no está afiliado ni respaldado por Disney. El detalle, con las fuentes de investigación, está en [`CREDITOS.md`](CREDITOS.md); el juego lo resume en su pantalla de créditos.
+
+Los valores de reglas se estudiaron a partir de documentación pública y de un servidor fan con licencia MIT (fuentes en el Apéndice B del PRD).
+
+Ventisca es el piloto de un proyecto personal: hoy el juego es gratuito, no vende nada ni muestra publicidad.
 
 Las fuentes Dela Gothic One y Zen Kaku Gothic New se distribuyen con el juego (paquetes `@fontsource`) bajo la licencia SIL Open Font License 1.1.

@@ -20,7 +20,7 @@ import { BattleHud } from './ui/BattleHud';
 import { CardFlights } from './ui/CardFlights';
 import { HelpModal, PauseMenu } from './ui/Menus';
 import { Overlays } from './ui/Overlays';
-import { LoadingScreen, NoWebGLScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
+import { CreditsScreen, LoadingScreen, NoWebGLScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
 import { ScreenWipe } from './ui/Transitions';
 
 interface Frame {
@@ -221,6 +221,7 @@ export function App() {
           {screen === 'loading' ? <LoadingScreen /> : null}
           {screen === 'results' ? <ResultsScreen /> : null}
           {screen === 'account' ? <AccountScreen /> : null}
+          {screen === 'credits' ? <CreditsScreen /> : null}
           <ScreenWipe />
           {webglMissing ? <NoWebGLScreen /> : null}
           {paused && screen === 'battle' ? <PauseMenu /> : null}

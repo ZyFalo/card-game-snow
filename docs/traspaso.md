@@ -30,7 +30,7 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
   - El aviso de privacidad dice que hoy el juego es gratuito: no vende nada ni muestra publicidad. Si eso cambia algún día, el aviso cambia antes.
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
-  - El tablero ofrece un solo modo a la vez: moverse (solo casillas), actuar (solo anillos) o colocar una carta (casillas rojas). Los ninjas que no están activos quedan en silueta y punto.
+  - Cada ninja se planifica en dos pasos: moverse (solo casillas) y actuar (sus objetivos, con las casillas a la vista para cambiar de destino con otro clic). Solo colocar una carta es un modo exclusivo (casillas rojas). Los planes del equipo quedan en silueta y marca: un ataque elegido lleva un anillo con un arco del color de cada ninja que lo eligió.
   - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic en cada paso. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
@@ -141,7 +141,7 @@ El M7 y P-20 están cerrados. Va en este orden:
 
 1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en cinco PRs pequeños, cada uno con capturas de antes y después a 1280×720 junto a "Tu equipo":
    1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
-   2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, la planificación va en dos pasos (moverse y actuar) y elegir una carta cambia el tablero a modo carta.
+   2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, la planificación va en dos pasos (moverse y actuar) y elegir una carta cambia el tablero a modo carta. Ajustado después, como en el original: tras moverse, las casillas siguen a la vista y otro clic cambia el destino; el foco no salta tras moverse; y los objetivos elegidos llevan la marca del equipo, con un arco por atacante.
    3. **La reanimación vuelve a la regla del original.** Hecho (D-77, que reemplaza a D-18): quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. La medición del balance de antes y después está en `docs/balance-report.md`.
    4. **Información a pedido.** En el modo normal trae solo dos cosas: el resumen del plan de cada ninja en los paneles, sin números ("Moverse → atacar a Témpano"), y, al pasar sobre un enemigo, su nombre y un consejo corto sobre cómo ataca, sin pintar casillas. La vida que perderá el objetivo y el alcance de los enemigos pasan a ser ayudas apagadas por defecto, en el grupo "Ayudas" de la pantalla de equipo: "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos". Existen solo en las partidas locales; en línea no están disponibles, y con el M8 las partidas en línea las ignoran y no las muestran. Lleva su decisión. Además, las cartas colocadas dejan de superponerse: la de un ninja que no está activo se reduce a una carta pequeña, como las de la mano, con el color de su elemento y su valor, sobre la casilla central, más un contorno fino y tenue de su área, sin relleno ni borde grueso; si hay varias cartas en la misma casilla, sus íconos van juntos. El área completa se ve solo cuando el ninja dueño de la carta está activo, o al pasar el ratón sobre su ícono. Las casillas y los anillos del ninja activo quedan siempre por encima de las marcas de los demás, y ningún tinte se mezcla con otro: si una casilla es opción del ninja activo, se ve solo su color. La regla va a la sección "Tablero" de los lineamientos, con capturas de antes y después.
    5. **Consejos en el momento.** Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno.
@@ -149,7 +149,7 @@ El M7 y P-20 están cerrados. Va en este orden:
    Para toda la ronda:
    - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;
    - si afecta el balance, va con una simulación antes y otra después;
-   - la sección "Tablero" de los lineamientos crece con cada paso: qué capas existen, sus colores, cuándo se ve cada una y la regla de un solo modo a la vez;
+   - la sección "Tablero" de los lineamientos crece con cada paso: qué capas existen, sus colores, cuándo se ve cada una y qué modo es exclusivo;
    - al terminar, se vuelven a correr las tablas de P-20 (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y se actualiza `docs/balance-report.md`, porque los ajustes pueden mover sus números;
    - al terminar, se propone una prueba corta con personas: tres tareas como "haz que Marea ataque a Témpano", "cura a Brasa" y "usa una carta", midiendo errores y dudas.
 2. **M8: partida en línea.** No se programa hasta que el dueño de producto revise su especificación técnica.

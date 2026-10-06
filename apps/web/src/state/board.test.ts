@@ -87,7 +87,7 @@ describe('Capas del tablero al planificar', () => {
       expect(l.card).toBeNull();
     });
 
-    it('actuar: solo anillos, sobre lo que el ninja activo alcanza desde su casilla planeada', () => {
+    it('actuar: los objetivos que alcanza desde su casilla planeada, y sus casillas siguen ahí', () => {
       // Escarcha, desde (4,3), alcanza a los tres gólems; nadie está herido.
       const l = layers({ plans: { snow: { ninjaId: 'snow', moveTo: { x: 4, y: 3 } } }, active: 'snow', step: 'act' });
       expect(l.mode).toBe('act');
@@ -97,9 +97,12 @@ describe('Capas del tablero al planificar', () => {
         { kind: 'attack', at: { x: 5, y: 3 } },
       ]);
       expect(l.chosen).toBeNull();
-      // Ninguna casilla de movimiento.
-      expect(l.moves).toEqual([]);
-      expect(l.stay).toBeNull();
+      // Las casillas de movimiento no se apagan: son las mismas del paso de moverse, con la del fantasma
+      // entre ellas, y su propia casilla.
+      const moving = layers({ active: 'snow', step: 'move' });
+      expect(l.moves).toEqual(moving.moves);
+      expect(l.moves).toContainEqual({ x: 4, y: 3 });
+      expect(l.stay).toEqual({ x: 1, y: 3 });
     });
 
     it('actuar: el objetivo elegido se aparta de los posibles', () => {
@@ -183,7 +186,9 @@ describe('Capas del tablero al planificar', () => {
         hover: { x: 4, y: 2 },
       });
       expect(l.mode).toBe('card');
+      // Las cartas son un modo exclusivo: ni casillas de movimiento ni objetivos.
       expect(l.moves).toEqual([]);
+      expect(l.stay).toBeNull();
       expect(l.options).toEqual([]);
       expect(l.chosen).toBeNull();
       expect(l.aims).toEqual([]);

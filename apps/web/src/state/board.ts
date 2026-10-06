@@ -21,8 +21,9 @@ import type { AppState } from './store';
  * Capas del tablero durante la planificación (lineamientos de diseño, sección "Tablero"). Este módulo
  * decide qué se muestra y cuándo; la escena solo lo dibuja.
  *
- * El tablero muestra un solo modo a la vez, el del ninja activo: moverse (solo casillas), actuar (solo
- * anillos) o colocar una carta (solo las casillas donde cabe). Los demás ninjas quedan en silueta y punto.
+ * El ninja activo tiene tres modos: moverse (solo casillas), actuar (anillos sobre sus objetivos, con las
+ * casillas a la vista para cambiar de destino) o colocar una carta, que es exclusivo (solo las casillas
+ * donde cabe). Los demás ninjas quedan en silueta y punto.
  */
 
 /** Las acciones que apuntan a una unidad. Una carta apunta a una casilla y se dibuja como un área. */
@@ -65,9 +66,9 @@ export interface BoardLayers {
   /** El ninja que se está planificando, en la casilla donde está. */
   active: { ninja: ElementKind; at: Vec } | null;
 
-  /** Modo moverse: las casillas a las que puede ir el ninja activo. */
+  /** Las casillas a las que puede ir el ninja activo. En el modo actuar siguen a la vista, más tenues. */
   moves: Vec[];
-  /** Modo moverse: su propia casilla, que es quedarse. */
+  /** Su propia casilla: quedarse, o volver a su lugar si ya eligió otra. */
   stay: Vec | null;
   /** Modo moverse: las casillas que puede golpear el gólem que está bajo el ratón. */
   threat: Vec[];
@@ -136,9 +137,12 @@ export function boardLayers(s: BoardState): BoardLayers | null {
         // Solo la carta de Nieve hace algo por los ninjas del área: los cura o los revive.
         allies: info.ninja.id === 'snow' ? area.filter((t) => ninjaAt(m, t)) : [],
       };
-    } else if (mode === 'move') {
+    } else {
+      // Las casillas valen en los dos pasos: en el de actuar, otro clic cambia de destino.
       layers.moves = [...info.moves.values()].map((path) => path[path.length - 1] as Vec);
       layers.stay = info.ninja.pos;
+    }
+    if (mode === 'move') {
       const enemy = hover ? enemyAt(m, hover) : undefined;
       if (enemy) layers.threat = threatTiles(m, enemy);
       // Un caído se revive desde cualquiera de sus 8 casillas vecinas: al pasar el ratón por él, se ven.
@@ -150,7 +154,7 @@ export function boardLayers(s: BoardState): BoardLayers | null {
           layers.reviveSpots = neighbors8(fallen.pos).filter((t) => !isRock(m, t) && !enemyAt(m, t));
         }
       }
-    } else {
+    } else if (mode === 'act') {
       const picked = info.plan.action;
       const all: (TargetOption & { id: string })[] = [
         ...info.attack.map((e) => ({ kind: 'attack' as const, at: e.pos, id: e.id })),

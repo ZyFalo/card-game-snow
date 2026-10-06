@@ -471,15 +471,16 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(4, hex(c.base), 1);
       hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
-      // Modo moverse: las casillas a las que puede ir, en el color suave del ninja activo. La suya es
-      // quedarse.
+      // Las casillas a las que puede ir, en el color suave del ninja activo. La suya es quedarse. En el
+      // paso de actuar siguen a la vista, más tenues: otro clic cambia de destino.
+      const dim = layers.mode === 'act' ? 0.5 : 1;
       for (const t of layers.moves) {
-        this.tile(hl, t, hex(c.soft), 1, hex(c.base), 0.4);
+        this.tile(hl, t, hex(c.soft), dim, hex(c.base), 0.4 * dim);
         const tc = tileCenter(t);
-        hl.fillStyle(hex(c.base), 0.6);
+        hl.fillStyle(hex(c.base), 0.6 * dim);
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
-      if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), 1, hex(c.base), 0.4);
+      if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), dim, hex(c.base), 0.4 * dim);
       // Modo moverse, con el ratón sobre un caído: las casillas desde las que se le revive (R-09). Solo un
       // borde blanco, el color de lo que se hace por un aliado: así no se mezcla con el de las casillas.
       for (const t of layers.reviveSpots) this.outline(hl, t, WHITE);

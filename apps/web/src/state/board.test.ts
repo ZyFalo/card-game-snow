@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { boardLayers } from './board';
 import type { AppState } from './store';
 
-/* Lineamientos de diseño, sección "Tablero": qué muestra el tablero mientras se planifica, y cuándo. */
+/*
+ * Lineamientos de diseño, sección "Tablero": qué muestra el tablero mientras se planifica, y cuándo. Un
+ * solo modo a la vez para el ninja activo, y los demás en silueta y punto.
+ */
 
 const HP: Record<EnemyKind, number> = { sniper: 30, artillery: 45, colossus: 60 };
 
@@ -26,6 +29,12 @@ function match(): MatchState {
   return state;
 }
 
+const ninja = (m: MatchState, id: ElementKind) => {
+  const n = m.ninjas.find((x) => x.id === id);
+  if (!n) throw new Error(id);
+  return n;
+};
+
 /** Brasa y Marea van contra Témpano, y Escarcha contra Carámbano: los tres se mueven antes. */
 const PLANS: Record<ElementKind, Plan> = {
   fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'attack', targetId: 'e2' } },
@@ -41,6 +50,7 @@ const planning = (patch: Partial<Board> = {}): Board => ({
   match: match(),
   plans: {},
   active: 'fire',
+  step: 'move',
   pendingCard: null,
   hover: null,
   ...patch,
@@ -62,138 +72,205 @@ describe('Capas del tablero al planificar', () => {
     expect(boardLayers(planning({ match: null }))).toBeNull();
   });
 
-  it('cada ninja que planea moverse deja su fantasma en el destino', () => {
-    expect(layers({ plans: PLANS, active: 'snow' }).ghosts).toEqual([
-      { ninja: 'fire', at: { x: 3, y: 1 } },
-      { ninja: 'water', at: { x: 3, y: 2 } },
-      { ninja: 'snow', at: { x: 4, y: 3 } },
-    ]);
-    // Quien ataca sin moverse no tiene fantasma.
-    const still: Plan = { ninjaId: 'water', action: { type: 'attack', targetId: 'e2' } };
-    expect(layers({ plans: { water: still }, match: nextTo() }).ghosts).toEqual([]);
-  });
-
-  it('el camino hasta el fantasma se muestra solo para el ninja activo', () => {
-    expect(layers({ plans: PLANS, active: 'snow' }).path).toEqual({
-      ninja: 'snow',
-      tiles: [
-        { x: 1, y: 3 },
-        { x: 2, y: 3 },
-        { x: 3, y: 3 },
-        { x: 4, y: 3 },
-      ],
+  describe('Un solo modo a la vez', () => {
+    it('moverse: solo casillas, las del ninja activo y la suya, que es quedarse', () => {
+      const l = layers({ active: 'water', step: 'move' });
+      expect(l.mode).toBe('move');
+      expect(l.active).toEqual({ ninja: 'water', at: { x: 1, y: 2 } });
+      // Marea da dos pasos y no puede terminar sobre un compañero.
+      const keys = l.moves.map((t) => `${t.x},${t.y}`).sort();
+      expect(keys).toEqual(['0,1', '0,2', '0,3', '1,0', '1,4', '2,1', '2,2', '2,3', '3,2'].sort());
+      expect(l.stay).toEqual({ x: 1, y: 2 });
+      // Ningún anillo: los objetivos son del paso de actuar.
+      expect(l.options).toEqual([]);
+      expect(l.chosen).toBeNull();
+      expect(l.card).toBeNull();
     });
-    expect(layers({ plans: PLANS, active: 'fire' }).path?.ninja).toBe('fire');
-    // Si el ninja activo no planea moverse, no hay ningún camino en el tablero.
-    const { snow: _snow, ...others } = PLANS;
-    expect(layers({ plans: others, active: 'snow' }).path).toBeNull();
+
+    it('actuar: solo anillos, sobre lo que el ninja activo alcanza desde su casilla planeada', () => {
+      // Escarcha, desde (4,3), alcanza a los tres gólems; nadie está herido.
+      const l = layers({ plans: { snow: { ninjaId: 'snow', moveTo: { x: 4, y: 3 } } }, active: 'snow', step: 'act' });
+      expect(l.mode).toBe('act');
+      expect(l.options).toEqual([
+        { kind: 'attack', at: { x: 5, y: 1 } },
+        { kind: 'attack', at: { x: 4, y: 2 } },
+        { kind: 'attack', at: { x: 5, y: 3 } },
+      ]);
+      expect(l.chosen).toBeNull();
+      // Ninguna casilla de movimiento.
+      expect(l.moves).toEqual([]);
+      expect(l.stay).toBeNull();
+    });
+
+    it('actuar: el objetivo elegido se aparta de los posibles', () => {
+      const l = layers({ plans: PLANS, active: 'snow', step: 'act' });
+      expect(l.chosen).toEqual({ kind: 'attack', at: { x: 5, y: 1 } });
+      expect(l.options).toEqual([
+        { kind: 'attack', at: { x: 4, y: 2 } },
+        { kind: 'attack', at: { x: 5, y: 3 } },
+      ]);
+    });
+
+    it('actuar: curar y revivir son objetivos sobre aliados, cada uno con su tipo', () => {
+      const m = match();
+      Object.assign(ninja(m, 'fire'), { hp: 0, pos: { x: 3, y: 2 } });
+      Object.assign(ninja(m, 'water'), { hp: 22, pos: { x: 2, y: 1 } });
+      // Escarcha cura a Marea, que está herida y en pie. A Brasa, caída y lejos, ni la cura ni la revive.
+      const heal = layers({
+        match: m,
+        plans: { snow: { ninjaId: 'snow', moveTo: { x: 1, y: 2 } } },
+        active: 'snow',
+        step: 'act',
+      });
+      expect(heal.options.filter((o) => o.kind !== 'attack')).toEqual([{ kind: 'heal', at: { x: 2, y: 1 } }]);
+      // Marea, junto a Brasa, puede revivirla.
+      const revive = layers({
+        match: m,
+        plans: { water: { ninjaId: 'water', moveTo: { x: 3, y: 1 } } },
+        active: 'water',
+        step: 'act',
+      });
+      expect(revive.options.filter((o) => o.kind !== 'attack')).toEqual([{ kind: 'revive', at: { x: 3, y: 2 } }]);
+    });
+
+    it('carta: solo las casillas donde cabe la carta y, bajo el ratón, su área', () => {
+      const m = match();
+      ninja(m, 'snow').hand = [{ id: 'snow-1', element: 'snow', value: 10 }];
+      const l = layers({
+        match: m,
+        plans: PLANS,
+        active: 'snow',
+        step: 'act',
+        pendingCard: 'snow-1',
+        hover: { x: 4, y: 2 },
+      });
+      expect(l.mode).toBe('card');
+      expect(l.moves).toEqual([]);
+      expect(l.options).toEqual([]);
+      expect(l.chosen).toBeNull();
+      expect(l.aims).toEqual([]);
+      expect(l.card?.tiles.length).toBeGreaterThan(0);
+      // Bajo el ratón, el área de 3×3 con los gólems que alcanzaría: los tres.
+      expect(l.card?.area).toHaveLength(9);
+      expect(l.card?.enemies).toEqual([
+        { x: 5, y: 1 },
+        { x: 4, y: 2 },
+        { x: 5, y: 3 },
+      ]);
+    });
+
+    it('el alcance de un gólem se ve con el ratón encima, y solo en el paso de moverse', () => {
+      const over = { x: 4, y: 2 };
+      expect(layers({ active: 'fire', step: 'move', hover: over }).threat.length).toBeGreaterThan(0);
+      expect(layers({ active: 'fire', step: 'move' }).threat).toEqual([]);
+      expect(layers({ active: 'fire', step: 'act', hover: over }).threat).toEqual([]);
+    });
   });
 
-  it('un ataque planeado se marca sobre su objetivo, con un punto por atacante', () => {
-    expect(layers({ plans: PLANS, active: 'snow' }).marks).toEqual([
-      { kind: 'attack', at: { x: 4, y: 2 }, by: ['fire', 'water'] },
-      { kind: 'attack', at: { x: 5, y: 1 }, by: ['snow'] },
-    ]);
+  describe('Los demás ninjas quedan en silueta y punto', () => {
+    it('cada ninja que planea moverse deja su fantasma en el destino', () => {
+      expect(layers({ plans: PLANS, active: 'snow' }).ghosts).toEqual([
+        { ninja: 'fire', at: { x: 3, y: 1 } },
+        { ninja: 'water', at: { x: 3, y: 2 } },
+        { ninja: 'snow', at: { x: 4, y: 3 } },
+      ]);
+      // Quien ataca sin moverse no tiene fantasma.
+      const m = match();
+      ninja(m, 'water').pos = { x: 3, y: 2 };
+      const still: Plan = { ninjaId: 'water', action: { type: 'attack', targetId: 'e2' } };
+      expect(layers({ match: m, plans: { water: still } }).ghosts).toEqual([]);
+    });
+
+    it('el camino hasta el fantasma se muestra solo para el ninja activo', () => {
+      expect(layers({ plans: PLANS, active: 'snow' }).path).toEqual({
+        ninja: 'snow',
+        tiles: [
+          { x: 1, y: 3 },
+          { x: 2, y: 3 },
+          { x: 3, y: 3 },
+          { x: 4, y: 3 },
+        ],
+      });
+      expect(layers({ plans: PLANS, active: 'fire' }).path?.ninja).toBe('fire');
+      // Si el ninja activo no planea moverse, no hay ningún camino en el tablero.
+      const { snow: _snow, ...others } = PLANS;
+      expect(layers({ plans: others, active: 'snow' }).path).toBeNull();
+    });
+
+    it('cada acción planeada deja un punto por ninja sobre su objetivo, en cualquier modo', () => {
+      const dots = [
+        { at: { x: 4, y: 2 }, by: ['fire', 'water'] },
+        { at: { x: 5, y: 1 }, by: ['snow'] },
+      ];
+      expect(layers({ plans: PLANS, active: 'snow', step: 'move' }).dots).toEqual(dots);
+      expect(layers({ plans: PLANS, active: 'snow', step: 'act' }).dots).toEqual(dots);
+    });
+
+    it('los objetivos de los demás no llevan anillo: los anillos son del ninja activo', () => {
+      // Brasa está en el paso de actuar; Témpano es objetivo de Marea, pero el anillo es por Brasa.
+      const { fire: _fire, ...others } = PLANS;
+      const l = layers({
+        plans: { ...others, fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } },
+        active: 'fire',
+        step: 'act',
+      });
+      expect(l.chosen).toBeNull();
+      expect(l.options).toEqual([
+        { kind: 'attack', at: { x: 5, y: 1 } },
+        { kind: 'attack', at: { x: 4, y: 2 } },
+      ]);
+      // En el paso de moverse no hay ningún anillo, aunque los tres tengan objetivo.
+      expect(layers({ plans: PLANS, active: 'fire', step: 'move' }).options).toEqual([]);
+      expect(layers({ plans: PLANS, active: 'fire', step: 'move' }).chosen).toBeNull();
+    });
+
+    it('la carta de otro ninja queda en su casilla; su área se ve solo con el ratón encima', () => {
+      const m = match();
+      ninja(m, 'fire').hand = [{ id: 'fire-1', element: 'fire', value: 12 }];
+      const plans: AppState['plans'] = {
+        fire: { ninjaId: 'fire', action: { type: 'card', cardId: 'fire-1', at: { x: 3, y: 1 } } },
+      };
+      const other = layers({ match: m, plans, active: 'water' }).cards;
+      expect(other).toEqual([{ ninja: 'fire', at: { x: 3, y: 1 }, value: 12, area: [] }]);
+      expect(layers({ match: m, plans, active: 'water', hover: { x: 3, y: 1 } }).cards[0]?.area).toHaveLength(9);
+      // La del ninja activo sí muestra su área.
+      expect(layers({ match: m, plans, active: 'fire', step: 'act' }).cards[0]?.area).toHaveLength(9);
+    });
+
+    it('D-32: el número de orden va en la casilla desde la que actúa cada ninja', () => {
+      expect(layers({ plans: PLANS, active: 'snow' }).order).toEqual([
+        { ninja: 'fire', at: { x: 3, y: 1 }, n: 1 },
+        { ninja: 'water', at: { x: 3, y: 2 }, n: 2 },
+        { ninja: 'snow', at: { x: 4, y: 3 }, n: 3 },
+      ]);
+    });
   });
 
-  it('curar y revivir se marcan sobre el aliado, con el punto de quien actúa', () => {
-    const m = match();
-    const [fire, water, snow] = m.ninjas as [MatchState['ninjas'][0], MatchState['ninjas'][0], MatchState['ninjas'][0]];
-    fire.hp = 0;
-    fire.pos = { x: 3, y: 2 };
-    water.hp = 22;
-    water.pos = { x: 2, y: 1 };
-    snow.pos = { x: 1, y: 3 };
-    const plans: AppState['plans'] = {
-      water: { ninjaId: 'water', moveTo: { x: 3, y: 1 }, action: { type: 'revive', targetId: 'fire' } },
-      snow: { ninjaId: 'snow', moveTo: { x: 2, y: 2 }, action: { type: 'heal', targetId: 'water' } },
-    };
-    expect(layers({ match: m, plans, active: 'snow' }).marks).toEqual([
-      { kind: 'revive', at: { x: 3, y: 2 }, by: ['water'] },
-      { kind: 'heal', at: { x: 2, y: 1 }, by: ['snow'] },
-    ]);
-  });
+  describe('La línea de mira aparece solo con el ratón', () => {
+    it('sin el ratón sobre un plan no hay ninguna línea de mira', () => {
+      expect(layers({ plans: PLANS, active: 'snow' }).aims).toEqual([]);
+      // Una casilla vacía tampoco pide ninguna.
+      expect(layers({ plans: PLANS, active: 'snow', hover: { x: 7, y: 4 } }).aims).toEqual([]);
+    });
 
-  it('sin el ratón sobre un plan no hay ninguna línea de mira', () => {
-    expect(layers({ plans: PLANS, active: 'snow' }).aims).toEqual([]);
-    // Una casilla vacía tampoco pide ninguna.
-    expect(layers({ plans: PLANS, active: 'snow', hover: { x: 7, y: 4 } }).aims).toEqual([]);
-  });
+    it('sobre un objetivo: una por atacante, desde su casilla planeada', () => {
+      expect(layers({ plans: PLANS, active: 'fire', hover: { x: 4, y: 2 } }).aims).toEqual([
+        { kind: 'attack', by: 'fire', from: { x: 3, y: 1 }, to: { x: 4, y: 2 } },
+        { kind: 'attack', by: 'water', from: { x: 3, y: 2 }, to: { x: 4, y: 2 } },
+      ]);
+    });
 
-  it('la mira de un plan aparece al pasar el ratón por su objetivo: una por atacante, desde su casilla planeada', () => {
-    // Granizo no es objetivo de nadie y Brasa no lo alcanza: sobre Témpano solo se ven las dos miras.
-    expect(layers({ plans: PLANS, active: 'fire', hover: { x: 4, y: 2 } }).aims).toEqual([
-      { kind: 'attack', by: 'fire', from: { x: 3, y: 1 }, to: { x: 4, y: 2 } },
-      { kind: 'attack', by: 'water', from: { x: 3, y: 2 }, to: { x: 4, y: 2 } },
-    ]);
-  });
+    it('también sobre quien actúa o sobre su fantasma', () => {
+      const aim = { kind: 'attack', by: 'snow', from: { x: 4, y: 3 }, to: { x: 5, y: 1 } };
+      expect(layers({ plans: PLANS, active: 'fire', hover: { x: 1, y: 3 } }).aims).toEqual([aim]);
+      expect(layers({ plans: PLANS, active: 'fire', hover: { x: 4, y: 3 } }).aims).toEqual([aim]);
+    });
 
-  it('la mira de un plan aparece también al pasar el ratón por quien actúa o por su fantasma', () => {
-    const aim = { kind: 'attack', by: 'snow', from: { x: 4, y: 3 }, to: { x: 5, y: 1 } };
-    expect(layers({ plans: PLANS, active: 'fire', hover: { x: 1, y: 3 } }).aims).toEqual([aim]);
-    expect(layers({ plans: PLANS, active: 'fire', hover: { x: 4, y: 3 } }).aims).toEqual([aim]);
-  });
-
-  it('apuntar a un objetivo que nadie ha elegido no dibuja ninguna mira: solo los planes la tienen', () => {
-    // Escarcha, desde su casilla planeada, alcanza a Granizo, y se lo ofrece el tablero; pero no es un plan.
-    const l = layers({ plans: PLANS, active: 'snow', hover: { x: 5, y: 3 } });
-    expect(l.options.attack).toContainEqual({ x: 5, y: 3 });
-    expect(l.aims).toEqual([]);
-  });
-
-  it('el objetivo que el ninja activo ya eligió no se le ofrece otra vez', () => {
-    // Escarcha ya va contra Carámbano: le quedan Témpano y Granizo.
-    expect(layers({ plans: PLANS, active: 'snow' }).options.attack).toEqual([
-      { x: 4, y: 2 },
-      { x: 5, y: 3 },
-    ]);
-    // Sobre Carámbano se ve la mira de ese plan.
-    expect(layers({ plans: PLANS, active: 'snow', hover: { x: 5, y: 1 } }).aims).toEqual([
-      { kind: 'attack', by: 'snow', from: { x: 4, y: 3 }, to: { x: 5, y: 1 } },
-    ]);
-  });
-
-  it('las casillas de movimiento y el marcador son los del ninja activo', () => {
-    const l = layers({ active: 'water' });
-    expect(l.active).toEqual({ ninja: 'water', at: { x: 1, y: 2 } });
-    // Marea da dos pasos y no puede terminar sobre un compañero.
-    const keys = l.moves.map((t) => `${t.x},${t.y}`).sort();
-    expect(keys).toEqual(['0,1', '0,2', '0,3', '1,0', '1,4', '2,1', '2,2', '2,3', '3,2'].sort());
-  });
-
-  it('con una carta en la mano el tablero solo ofrece dónde colocarla', () => {
-    const m = match();
-    const snow = m.ninjas.find((n) => n.id === 'snow');
-    if (!snow) throw new Error('sin Escarcha');
-    snow.hand = [{ id: 'snow-1', element: 'snow', value: 10 }];
-    const l = layers({ match: m, plans: PLANS, active: 'snow', pendingCard: 'snow-1', hover: { x: 4, y: 2 } });
-    expect(l.moves).toEqual([]);
-    expect(l.options).toEqual({ attack: [], heal: [], revive: [] });
-    expect(l.aims).toEqual([]);
-    expect(l.threat).toEqual([]);
-    // Bajo el ratón, el área de 3×3 con los gólems que alcanzaría: los tres.
-    expect(l.card?.area).toHaveLength(9);
-    expect(l.card?.enemies).toEqual([
-      { x: 5, y: 1 },
-      { x: 4, y: 2 },
-      { x: 5, y: 3 },
-    ]);
-  });
-
-  it('D-32: el número de orden va en la casilla desde la que actúa cada ninja', () => {
-    expect(layers({ plans: PLANS, active: 'snow' }).order).toEqual([
-      { ninja: 'fire', at: { x: 3, y: 1 }, n: 1 },
-      { ninja: 'water', at: { x: 3, y: 2 }, n: 2 },
-      { ninja: 'snow', at: { x: 4, y: 3 }, n: 3 },
-    ]);
+    it('apuntar a un objetivo que nadie ha elegido no dibuja ninguna mira: solo los planes la tienen', () => {
+      // Escarcha, desde su casilla planeada, alcanza a Granizo, y el tablero se lo ofrece; pero no es un plan.
+      const l = layers({ plans: PLANS, active: 'snow', step: 'act', hover: { x: 5, y: 3 } });
+      expect(l.options).toContainEqual({ kind: 'attack', at: { x: 5, y: 3 } });
+      expect(l.aims).toEqual([]);
+    });
   });
 });
-
-/** Marea junto a Témpano: puede atacarlo sin moverse. */
-function nextTo(): MatchState {
-  const m = match();
-  const water = m.ninjas.find((n) => n.id === 'water');
-  if (!water) throw new Error('sin Marea');
-  water.pos = { x: 3, y: 2 };
-  return m;
-}

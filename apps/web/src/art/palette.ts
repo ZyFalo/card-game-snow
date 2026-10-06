@@ -9,6 +9,8 @@ export const PALETTE = {
   grieta: '#8FB8D8',
   gold: '#F2B84B',
   danger: '#D14545',
+  /** Lo ya elegido en el tablero: el objetivo que tiene el ninja activo (`--ok` en la interfaz). */
+  ok: '#4FB05A',
 } as const;
 
 export interface ElementColors {

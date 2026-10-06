@@ -20,7 +20,7 @@ import {
   type Vec,
 } from '@ventisca/core';
 import { BONUS_PROGRESS, ENEMY_TEXT, ES, NINJA_TEXT, type Pace, PLAN_TEXT, TIP_TEXT } from '../i18n/es';
-import type { AppState } from './store';
+import type { AppState, PlanStep } from './store';
 
 /** R-04: el reloj da 10 s por ninja en pie que controla el jugador, según el ritmo; Relajado no tiene reloj. */
 export function turnClockMs(pace: Pace, living: number): number | null {
@@ -87,6 +87,46 @@ export function nextPlannable(
   return null;
 }
 
+/** El plan de un ninja sin su acción. */
+export const withoutAction = (plan: Plan): Plan =>
+  plan.moveTo ? { ninjaId: plan.ninjaId, moveTo: plan.moveTo } : { ninjaId: plan.ninjaId };
+
+/** El paso en que queda un ninja al activarlo: si ya eligió casilla o acción, actuar; si no, moverse. */
+export const stepFor = (plan: Plan | undefined): PlanStep => (plan?.moveTo || plan?.action ? 'act' : 'move');
+
+/** ¿Tiene ese ninja algo que hacer en el paso de actuar: un objetivo a su alcance o una carta en la mano? */
+export function canAct(m: MatchState, plans: AppState['plans'], id: ElementKind): boolean {
+  const n = getNinja(m, id);
+  if (!n || n.hp <= 0) return false;
+  const from = plans[id]?.moveTo ?? n.pos;
+  return (
+    n.hand.length > 0 ||
+    attackTargets(m, id, from).length > 0 ||
+    healTargets(m, id, from).length > 0 ||
+    reviveTargets(m, id, from).length > 0
+  );
+}
+
+/** ¿Le queda a ese ninja algo por decidir? Con acción, no; si ya se movió y no tiene con qué actuar, tampoco. */
+export function hasPending(m: MatchState, plans: AppState['plans'], id: ElementKind): boolean {
+  const n = getNinja(m, id);
+  if (!n || n.hp <= 0) return false;
+  const plan = plans[id];
+  if (plan?.action) return false;
+  return !plan?.moveTo || canAct(m, plans, id);
+}
+
+/** El siguiente ninja con algo por decidir, en orden Fuego, Agua, Nieve, sin contar al de partida. */
+export function nextPending(m: MatchState, plans: AppState['plans'], from: ElementKind | null): ElementKind | null {
+  const start = from ? ELEMENTS.indexOf(from) : -1;
+  const others = from ? ELEMENTS.length - 1 : ELEMENTS.length;
+  for (let i = 1; i <= others; i++) {
+    const id = ELEMENTS[(start + i) % ELEMENTS.length] as ElementKind;
+    if (hasPending(m, plans, id)) return id;
+  }
+  return null;
+}
+
 export type PlanStatus = 'ko' | 'none' | 'move' | 'attack' | 'heal' | 'revive' | 'card';
 
 export function planStatus(plan: Plan | undefined, ninja: Ninja): PlanStatus {
@@ -148,12 +188,11 @@ export function contextualTip(s: AppState): string | null {
   if (!info) return TIP_TEXT.confirm;
   const name = NINJA_TEXT[info.ninja.id].name;
   if (s.pendingCard) return TIP_TEXT.placeCard(name);
-  if (!info.plan.moveTo && !info.plan.action) return TIP_TEXT.start(name);
-  if (!info.plan.action) return TIP_TEXT.action(name);
-  const pending = ELEMENTS.filter((id) => {
-    const n = getNinja(m, id);
-    return n && n.hp > 0 && !s.plans[id]?.action;
-  });
+  // Cada paso dice lo suyo: primero moverse, después actuar.
+  if (s.step === 'move') return TIP_TEXT.move(name);
+  if (!info.plan.action && canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
+  // Este ninja ya no tiene nada por decidir: quiénes faltan, o todo listo.
+  const pending = ELEMENTS.filter((id) => hasPending(m, s.plans, id));
   if (pending.length > 0) {
     return TIP_TEXT.pending(pending.map((id) => NINJA_TEXT[id].name));
   }

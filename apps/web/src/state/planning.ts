@@ -62,7 +62,7 @@ export function activeInfo(s: Pick<AppState, 'match' | 'plans' | 'active' | 'pen
     moves: moveOptions(m, ninja.id, others),
     attack: attackTargets(m, ninja.id, from),
     heal: healTargets(m, ninja.id, from),
-    revive: reviveTargets(m, ninja.id, from),
+    revive: reviveTargets(m, ninja.id, from, others),
     cardTiles: s.pendingCard ? cardTiles(m, ninja.id, from) : [],
   };
 }
@@ -99,12 +99,19 @@ export function canAct(m: MatchState, plans: AppState['plans'], id: ElementKind)
   const n = getNinja(m, id);
   if (!n || n.hp <= 0) return false;
   const from = plans[id]?.moveTo ?? n.pos;
+  const others = plansArray(plans).filter((p) => p.ninjaId !== id);
   return (
     n.hand.length > 0 ||
     attackTargets(m, id, from).length > 0 ||
     healTargets(m, id, from).length > 0 ||
-    reviveTargets(m, id, from).length > 0
+    reviveTargets(m, id, from, others).length > 0
   );
+}
+
+/** R-09: el ninja que ya planeó revivir a ese caído, si lo hay. Un caído solo puede tener un reanimador. */
+export function reviverOf(plans: AppState['plans'], fallen: ElementKind): ElementKind | null {
+  const plan = plansArray(plans).find((p) => p.action?.type === 'revive' && p.action.targetId === fallen);
+  return plan ? plan.ninjaId : null;
 }
 
 /** ¿Le queda a ese ninja algo por decidir? Con acción, no; si ya se movió y no tiene con qué actuar, tampoco. */

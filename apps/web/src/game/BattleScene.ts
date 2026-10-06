@@ -411,6 +411,15 @@ export class BattleScene extends Phaser.Scene {
     g.lineBetween(from.x, from.y, to.x, to.y);
   }
 
+  /** El borde de una casilla, sin relleno y con tinta alrededor: no tiñe lo que tenga debajo. */
+  private outline(g: Phaser.GameObjects.Graphics, t: Vec, color: number): void {
+    const r = tileRect(t);
+    g.lineStyle(6, INK, 0.5);
+    g.strokeRoundedRect(r.x + 8, r.y + 8, r.w - 16, r.h - 16, 7);
+    g.lineStyle(3, color, 1);
+    g.strokeRoundedRect(r.x + 8, r.y + 8, r.w - 16, r.h - 16, 7);
+  }
+
   /** Una casilla resaltada: relleno y borde, dentro del papel de la casilla. */
   private tile(
     g: Phaser.GameObjects.Graphics,
@@ -468,6 +477,9 @@ export class BattleScene extends Phaser.Scene {
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
       if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), 1, hex(c.base), 0.4);
+      // Modo moverse, con el ratón sobre un caído: las casillas desde las que se le revive (R-09). Solo un
+      // borde blanco, el color de lo que se hace por un aliado: así no se mezcla con el de las casillas.
+      for (const t of layers.reviveSpots) this.outline(hl, t, WHITE);
 
       // Modo carta: casillas rojas donde se puede colocar; bajo el ratón, el área y a quién alcanza.
       if (layers.card) {

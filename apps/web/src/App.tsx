@@ -14,6 +14,7 @@ import {
   undo,
 } from './state/actions';
 import { sceneReady } from './state/bridge';
+import { canUndo } from './state/steps';
 import { type Screen, store, useApp } from './state/store';
 import { AccountScreen } from './ui/Account';
 import { BattleHud } from './ui/BattleHud';
@@ -141,8 +142,8 @@ function useKeyboard(): void {
         void confirmTurn();
       } else if (k === 'escape' || k === 'backspace') {
         ev.preventDefault();
-        const plan = st.active ? st.plans[st.active] : undefined;
-        if (st.pendingCard || plan) undo();
+        // Sin un paso que deshacer, Esc abre la pausa.
+        if (canUndo(st)) undo();
         else togglePause(true);
       } else if (k === 's') {
         suggest();

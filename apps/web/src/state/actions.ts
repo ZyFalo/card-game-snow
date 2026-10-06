@@ -1,16 +1,10 @@
 import {
   type ElementKind,
-  enemyAt,
   eq,
   type GameEvent,
   getNinja,
-  isActionValid,
-  isRock,
-  isThreatened,
-  key,
   livingNinjas,
   type MatchState,
-  ninjaAt,
   type Plan,
   suggestPlan,
   type Vec,
@@ -19,11 +13,12 @@ import { audio } from '../audio/audio';
 import { URL_SPEED } from '../game/speed';
 import type { GameHost, HostMessage } from '../host/GameHost';
 import { LocalHost } from '../host/LocalHost';
-import { NINJA_TEXT, NOTICE, TIPS } from '../i18n/es';
+import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import { activeInfo, nextPlannable, plansArray, turnClockMs } from './planning';
+import { canAct, nextPending, nextPlannable, plansArray, stepFor, turnClockMs, withoutAction } from './planning';
 import { applyEvent, beforeIntro } from './present';
+import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
 
 /* Flujo de la partida y acciones del jugador. La UI (React y Phaser) solo llama a estas funciones. */
@@ -98,6 +93,7 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
     view: beforeIntro(state),
     plans: {},
     active: null,
+    step: 'move',
     pendingCard: null,
     hover: null,
     overlay: null,
@@ -136,6 +132,7 @@ export function beginPlanning(): void {
     resolveStep: null,
     plans: {},
     active: nextPlannable(match, {}, null, 1),
+    step: 'move',
     pendingCard: null,
     timer: { ...host.timer(), total: ms },
   });
@@ -150,6 +147,7 @@ function closePlanning(): void {
     plans: {},
     pendingCard: null,
     active: null,
+    step: 'move',
     hover: null,
     timer: { deadline: null, remaining: null, total: null },
   });
@@ -202,7 +200,15 @@ export function quitToMenu(): void {
   setBoost(false);
   host.stopTimer();
   bridge.scene?.abort();
-  store.setState({ screen: 'title', phase: 'idle', paused: false, overlay: null, plans: {}, active: null });
+  store.setState({
+    screen: 'title',
+    phase: 'idle',
+    paused: false,
+    overlay: null,
+    plans: {},
+    active: null,
+    step: 'move',
+  });
 }
 
 export function togglePause(force?: boolean): void {
@@ -225,6 +231,11 @@ export function replayJson(): string {
 
 /* ---------- Planificación (§9.3) ---------- */
 
+/*
+ * Cada ninja se planifica en dos pasos: moverse y actuar (state/steps.ts decide qué hace cada clic). Aquí
+ * solo se aplica el resultado al estado, con su sonido y su aviso.
+ */
+
 /** Sin movimiento ni acción no hay plan: se quita, para que Esc vuelva a abrir la pausa. */
 function setPlan(id: ElementKind, plan: Plan): void {
   store.setState((s) => {
@@ -234,9 +245,6 @@ function setPlan(id: ElementKind, plan: Plan): void {
     return { plans };
   });
 }
-
-const withoutAction = (plan: Plan): Plan =>
-  plan.moveTo ? { ninjaId: plan.ninjaId, moveTo: plan.moveTo } : { ninjaId: plan.ninjaId };
 
 function canPlan(): boolean {
   const st = store.getState();
@@ -248,7 +256,8 @@ export function selectNinja(id: ElementKind): void {
   if (!canPlan() || !st.match) return;
   const n = getNinja(st.match, id);
   if (!n || n.hp <= 0 || st.active === id) return;
-  store.setState({ active: id, pendingCard: null });
+  // Si ya eligió casilla o acción, se retoma en el paso de actuar; si no, empieza por moverse.
+  store.setState({ active: id, pendingCard: null, step: stepFor(st.plans[id]) });
   audio.play('select');
 }
 
@@ -259,124 +268,40 @@ export function cycleNinja(dir: 1 | -1): void {
   if (next) selectNinja(next);
 }
 
-function afterAction(): void {
+/**
+ * El ninja activo terminó un paso. Con "Pasar al siguiente ninja", tras actuar le toca al siguiente que
+ * tenga algo por decidir; tras moverse, solo si desde esa casilla no tiene con qué actuar.
+ */
+function afterStep(finished: 'move' | 'act'): void {
   const st = store.getState();
-  if (!st.settings.autoAdvance || !st.match) return;
-  const next = nextPlannable(st.match, st.plans, st.active, 1, true);
-  if (next && next !== st.active) store.setState({ active: next, pendingCard: null });
+  if (!st.settings.autoAdvance || !st.match || !st.active) return;
+  if (finished === 'move' && canAct(st.match, st.plans, st.active)) return;
+  const next = nextPending(st.match, st.plans, st.active);
+  if (next) store.setState({ active: next, pendingCard: null, step: stepFor(st.plans[next]) });
 }
 
-function setAction(ninjaId: ElementKind, plan: Plan, action: NonNullable<Plan['action']>): void {
-  setPlan(ninjaId, { ...plan, action });
-  store.setState({ pendingCard: null });
-  audio.play('place');
-  afterAction();
-}
-
-function reject(text: string): void {
-  notify(text);
-  audio.play('error');
+function apply(o: StepOutcome): void {
+  const { active } = store.getState();
+  if (o.select) {
+    selectNinja(o.select);
+    return;
+  }
+  if (o.plan && active) setPlan(active, o.plan);
+  if (o.cardDone) store.setState({ pendingCard: null });
+  if (o.step) store.setState({ step: o.step });
+  if (o.notice) notify(o.notice);
+  if (o.sound) audio.play(o.sound);
+  if (o.finished) afterStep(o.finished);
 }
 
 export function clickTile(v: Vec): void {
   if (!canPlan()) return;
-  const st = store.getState();
-  const m = st.match;
-  if (!m) return;
-  const occupant = ninjaAt(m, v);
-  const info = activeInfo(st);
-  if (!info) {
-    if (occupant && occupant.hp > 0) selectNinja(occupant.id);
-    return;
-  }
-  const { ninja, plan } = info;
-
-  if (st.pendingCard) {
-    if (info.cardTiles.some((t) => eq(t, v))) {
-      setAction(ninja.id, withoutAction(plan), { type: 'card', cardId: st.pendingCard, at: v });
-      return;
-    }
-    if (occupant && occupant.id !== ninja.id && occupant.hp > 0) {
-      selectNinja(occupant.id);
-      return;
-    }
-    reject(NOTICE.cardOutOfRange);
-    return;
-  }
-
-  if (occupant && occupant.id !== ninja.id) {
-    if (info.heal.some((a) => a.id === occupant.id)) {
-      setAction(ninja.id, plan, { type: 'heal', targetId: occupant.id });
-      return;
-    }
-    if (info.revive.some((a) => a.id === occupant.id)) {
-      setAction(ninja.id, plan, { type: 'revive', targetId: occupant.id });
-      // R-09 (D-18): se levanta con 1 de vida antes del turno de los gólems.
-      if (isThreatened(m, occupant.pos)) {
-        notify(NOTICE.exposedRevive(NINJA_TEXT[occupant.id].name));
-      }
-      return;
-    }
-    if (occupant.hp > 0) {
-      selectNinja(occupant.id);
-      return;
-    }
-    reject(NOTICE.reviveFromNeighbor(NINJA_TEXT[occupant.id].name));
-    return;
-  }
-
-  if (occupant && occupant.id === ninja.id) {
-    if (plan.moveTo) {
-      const next: Plan = { ninjaId: ninja.id };
-      if (plan.action && isActionValid(m, ninja.id, ninja.pos, plan.action)) next.action = plan.action;
-      setPlan(ninja.id, next);
-      audio.play('select');
-    }
-    return;
-  }
-
-  const enemy = enemyAt(m, v);
-  if (enemy) {
-    if (info.attack.some((e) => e.id === enemy.id)) {
-      setAction(ninja.id, plan, { type: 'attack', targetId: enemy.id });
-      return;
-    }
-    reject(NOTICE.enemyOutOfRange);
-    return;
-  }
-
-  if (plan.moveTo && eq(plan.moveTo, v)) return;
-  if (info.moves.has(key(v))) {
-    const next: Plan = { ninjaId: ninja.id, moveTo: v };
-    if (plan.action && isActionValid(m, ninja.id, v, plan.action)) next.action = plan.action;
-    else if (plan.action) notify(NOTICE.actionLost);
-    setPlan(ninja.id, next);
-    audio.play('select');
-    return;
-  }
-  const reservedBy = plansArray(st.plans).find((p) => p.ninjaId !== ninja.id && p.moveTo && eq(p.moveTo, v));
-  if (reservedBy) reject(NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name));
-  else if (isRock(m, v)) reject(NOTICE.rock);
-  else reject(NOTICE.outOfReach(NINJA_TEXT[ninja.id].name));
+  apply(clickOutcome(store.getState(), v));
 }
 
 export function undo(): void {
-  const st = store.getState();
-  if (!canPlan() || !st.active) return;
-  if (st.pendingCard) {
-    store.setState({ pendingCard: null });
-    return;
-  }
-  const plan = st.plans[st.active];
-  if (!plan) return;
-  if (plan.action) {
-    setPlan(st.active, withoutAction(plan));
-  } else if (plan.moveTo) {
-    const plans = { ...st.plans };
-    delete plans[st.active];
-    store.setState({ plans });
-  }
-  audio.play('select');
+  if (!canPlan()) return;
+  apply(undoOutcome(store.getState()));
 }
 
 export function selectCard(cardId: string): void {
@@ -385,6 +310,7 @@ export function selectCard(cardId: string): void {
   const n = getNinja(st.match, st.active);
   if (!n || n.hp <= 0 || !n.hand.some((c) => c.id === cardId)) return;
   const plan = st.plans[st.active];
+  // Clic en la carta ya colocada: se retira.
   if (plan?.action?.type === 'card' && plan.action.cardId === cardId) {
     setPlan(st.active, withoutAction(plan));
     store.setState({ pendingCard: null });
@@ -408,9 +334,9 @@ export function suggest(): void {
   const plan = suggestPlan(st.match, st.active, plansArray(st.plans));
   if (!plan) return;
   setPlan(st.active, plan);
-  store.setState({ pendingCard: null });
+  store.setState({ pendingCard: null, step: 'act' });
   audio.play('place');
-  afterAction();
+  afterStep('act');
 }
 
 export function setHover(v: Vec | null): void {

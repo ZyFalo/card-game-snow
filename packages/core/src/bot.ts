@@ -83,9 +83,10 @@ function bestPlanFor(s: MatchState, n: Ninja, others: readonly Plan[], comboJoin
     };
 
     for (const t of reviveTargets(s, n.id, pos, others)) {
-      // R-09 (D-18): vuelve con 1 HP antes de la fase enemiga. Si un gólem lo alcanza, casi seguro
-      // vuelve a caer: solo vale la pena si no hay nada mejor que hacer (evita bucles de revivir y caer).
-      consider({ type: 'revive', targetId: t.id }, isThreatened(s, t.pos) ? 4 : 45);
+      // R-09 (D-77): el aliado se levanta al final del turno, si quien lo revive sigue en pie. Lo que
+      // importa es si a quien revive lo alcanzan en la casilla desde donde revive: ahí solo vale la
+      // pena si no hay nada mejor que hacer.
+      consider({ type: 'revive', targetId: t.id }, isThreatened(s, pos) ? 4 : 45);
     }
 
     for (const ally of healTargets(s, n.id, pos)) {

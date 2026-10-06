@@ -247,6 +247,8 @@ export const HUD = {
   boost: 'Potencia',
   boostTitle: 'Potencia: +50 % en el siguiente golpe o cura',
   handHint: 'Teclas 1 a 4 · clic derecho o Esc deshace',
+  /** La mano de un ninja que todavía no tiene cartas. */
+  handEmpty: 'Llena el medidor para ganar cartas',
   card: (element: string, value: number) => `Carta de ${element} de valor ${value}`,
 } as const;
 

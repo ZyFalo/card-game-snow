@@ -1309,6 +1309,13 @@ button {
   min-height: 128px;
 }
 
+/* La mano vacía dice cómo se ganan las cartas, bajo su título. */
+.hand-empty {
+  margin: 0 2px;
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
 .card {
   position: relative;
   width: 110px;

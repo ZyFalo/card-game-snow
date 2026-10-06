@@ -6,6 +6,13 @@ import { face, INK, line, outline, type Pt, poly, star, svgDoc } from './svg';
  * los fondos cuidan sobre todo la franja superior y los costados.
  */
 
+/**
+ * Desde esta altura hacia abajo va el HUD del combate (los paneles de los ninjas y la mano). El fondo deja
+ * esa franja lisa, solo con el campo nevado: una línea ahí cruzaba el título de la mano y la pista de las
+ * teclas. Las montañas, los acantilados y los pinos se apoyan en esta línea o más arriba.
+ */
+export const HUD_BAND_Y = 544;
+
 function peak(cx: number, top: number, hw: number, base: number, light: string, dark: string, alpha = 1): string {
   const h = base - top;
   const full: Pt[] = [
@@ -109,8 +116,8 @@ function cliffs(side: 'left' | 'right'): string {
     [176, 120],
     [150, 250],
     [182, 400],
-    [158, 720],
-    [0, 720],
+    [171, HUD_BAND_Y],
+    [0, HUD_BAND_Y],
   ]);
   let o = face(wall, '#8C9AB0');
   o += face(
@@ -127,7 +134,8 @@ function cliffs(side: 'left' | 'right'): string {
     m([
       [150, 250],
       [182, 400],
-      [158, 720],
+      [171, HUD_BAND_Y],
+      [116, HUD_BAND_Y],
       [110, 520],
     ]),
     '#6A7991',
@@ -196,23 +204,23 @@ export function backgroundSvg(map: MapId, scale = 1.5): string {
       [1040, 140],
     ],
     [
-      [0, 610],
-      [200, 520],
+      [0, 540],
+      [160, 468],
     ],
     [
-      [1280, 600],
-      [1090, 530],
+      [1280, 540],
+      [1110, 477],
     ],
   ] as [Pt, Pt][]) {
     o += line(a, b, 2, '#D6E1EA');
   }
 
   if (map === 'cumbre') {
-    o += peak(40, 150, 190, 560, '#C9D7E3', '#AFC2D3');
-    o += peak(1250, 170, 200, 560, '#C9D7E3', '#AFC2D3');
+    o += peak(40, 150, 190, HUD_BAND_Y, '#C9D7E3', '#AFC2D3');
+    o += peak(1250, 170, 200, HUD_BAND_Y, '#C9D7E3', '#AFC2D3');
     o += flakes(7, 26, [0, 0, 1280, 120]);
-    o += flakes(19, 10, [0, 150, 180, 540]);
-    o += flakes(23, 10, [1100, 150, 1280, 540]);
+    o += flakes(19, 10, [0, 150, 180, 520]);
+    o += flakes(23, 10, [1100, 150, 1280, 520]);
   } else if (map === 'desfiladero') {
     o += cliffs('left');
     o += cliffs('right');
@@ -222,11 +230,11 @@ export function backgroundSvg(map: MapId, scale = 1.5): string {
       [40, 300, 1.1],
       [128, 250, 0.8],
       [70, 470, 1.25],
-      [150, 560, 0.95],
+      [134, 538, 0.95],
       [1238, 290, 1.1],
       [1150, 240, 0.8],
       [1210, 470, 1.25],
-      [1128, 570, 0.95],
+      [1150, 540, 0.95],
     ] as const) {
       o += pine(x, base, s);
     }

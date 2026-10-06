@@ -216,4 +216,10 @@ De abajo hacia arriba:
 ### La mano
 
 - Muestra solo las cartas que hay: un lugar sin carta no se dibuja.
+- Vacía, dice bajo su título cómo se ganan: "Llena el medidor para ganar cartas".
 - Guarda su alto aunque esté vacía, para que su título no salte al cambiar de ninja.
+
+### El fondo
+
+- Deja lisa la franja de abajo, donde van los paneles de los ninjas y la mano: de 544 px hacia abajo solo hay campo nevado (`HUD_BAND_Y` en `art/scenery.ts`). Las montañas, los acantilados y los pinos se apoyan en esa línea o más arriba.
+- Así ninguna línea del fondo cruza el título de la mano ni la pista de las teclas, que van sobre el fondo sin panel propio. `art/scenery.test.ts` lo mide en los tres mapas.

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { HUD_BAND_Y } from '../src/art/scenery';
 import { startMatch, type TestWindow } from './helpers';
 
 /* El tablero durante la planificación (lineamientos de diseño, sección "Tablero"). */
@@ -25,9 +26,12 @@ test('la mano muestra solo las cartas que hay, sin casillas vacías', async ({ p
   await startMatch(page);
   const hand = page.locator('.hand');
   await expect(hand).toBeVisible();
-  // Al empezar nadie tiene cartas: la mano queda con su título y nada más.
+  // Al empezar nadie tiene cartas: la mano queda con su título y la frase que dice cómo se ganan.
   await expect(hand.locator('.card')).toHaveCount(0);
+  await expect(hand.getByText('Llena el medidor para ganar cartas')).toBeVisible();
   const title = await hand.locator('.hand-head').boundingBox();
+  // El título va dentro de la franja que el fondo deja lisa: ninguna línea del fondo lo cruza.
+  expect(title?.y ?? 0).toBeGreaterThan(HUD_BAND_Y + 2);
 
   // Con dos cartas en la mano del ninja activo se ven esas dos.
   await page.evaluate(() => {
@@ -44,6 +48,7 @@ test('la mano muestra solo las cartas que hay, sin casillas vacías', async ({ p
   });
   await expect(hand.locator('.card')).toHaveCount(2);
   await expect(hand.getByRole('button', { name: /^Carta de/ })).toHaveCount(2);
+  await expect(hand.getByText('Llena el medidor para ganar cartas')).toHaveCount(0);
   // El título no se mueve al llegar las cartas: la mano guarda su alto.
   expect(await hand.locator('.hand-head').boundingBox()).toEqual(title);
 });

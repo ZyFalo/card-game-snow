@@ -7,12 +7,16 @@
  *   pnpm sim -- --collection starter          → reserva de un jugador nuevo (R-30, camino de Fuego)
  *   pnpm sim -- --collection box --path snow  → tras una caja de 3 por elemento, camino de Nieve
  *   pnpm sim -- --table                       → tabla del §18.3: todas las colecciones, habilidad 0,6
+ *   pnpm sim -- --team fire=new,water=full,snow=bot → un equipo en línea: quién lleva cada ninja (R-34)
+ *   pnpm sim -- --mixed                       → tablas de equipos de colecciones mezcladas (P-20), habilidad 0,6
  *
  * Colecciones: fixed (por omisión), empty, starter-no-path, starter, box, random8, full y top7.
+ * Asientos de un equipo: bot, new-off, new, box, box3 y full.
  */
 import {
   coinsForMatch,
   createMatch,
+  type DeckCard,
   type Difficulty,
   difficultyConfig,
   ELEMENTS,
@@ -23,11 +27,18 @@ import {
   rngFrom,
 } from '../src';
 import {
+  arrangements,
   COLLECTION_PRESETS,
   type CollectionPreset,
   isCollectionPreset,
   PRESET_LABELS,
+  parseTeam,
   presetDecks,
+  SEAT_LABELS,
+  SEAT_SHORT,
+  type SeatPreset,
+  type Team,
+  teamDecks,
 } from './collections';
 
 interface Sample {
@@ -59,9 +70,10 @@ function textArg(name: string, fallback: string): string {
 }
 
 const table = process.argv.includes('--table');
+const mixed = process.argv.includes('--mixed');
 const matches = arg('matches', 2000);
-// La tabla del §18.3 se midió con juego flojo (0,6); el resto, con el bot al máximo.
-const skill = arg('skill', table ? 0.6 : 1);
+// Las tablas se miden con juego flojo (0,6); el resto, con el bot al máximo.
+const skill = arg('skill', table || mixed ? 0.6 : 1);
 const seedBase = arg('seed', 20260929);
 const difficulty: Difficulty = process.argv.includes('--storm') ? 'storm' : 'classic';
 const collection = textArg('collection', 'fixed');
@@ -77,8 +89,31 @@ if (!(ELEMENTS as readonly string[]).includes(path)) {
 }
 const camino = path as ElementKind;
 
-function play(seed: number, diff: Difficulty, preset: CollectionPreset): Sample {
-  const decks = presetDecks(preset, seed, camino);
+let team: Team | null = null;
+const teamText = textArg('team', '');
+if (teamText) {
+  try {
+    team = parseTeam(teamText);
+  } catch (e) {
+    console.error(`${(e as Error).message} Ejemplo: --team fire=new,water=full,snow=bot`);
+    process.exit(1);
+  }
+}
+
+/** Las reservas de una partida según su semilla, o `undefined` para el mazo fijo en los tres ninjas. */
+type DeckSource = (seed: number) => Partial<Record<ElementKind, readonly DeckCard[]>> | undefined;
+
+const fromPreset =
+  (preset: CollectionPreset): DeckSource =>
+  (seed) =>
+    presetDecks(preset, seed, camino);
+const fromTeam =
+  (t: Team): DeckSource =>
+  (seed) =>
+    teamDecks(t, seed);
+
+function play(seed: number, diff: Difficulty, decksFor: DeckSource): Sample {
+  const decks = decksFor(seed);
   let state = createMatch({ seed, difficulty: diff, ...(decks ? { decks } : {}) }).state;
   const rng = rngFrom(seed ^ 0x9e3779b9);
   let noKoAtRound3 = false;
@@ -111,10 +146,10 @@ function play(seed: number, diff: Difficulty, preset: CollectionPreset): Sample 
   };
 }
 
-function run(diff: Difficulty, preset: CollectionPreset): { samples: Sample[]; secs: string } {
+function run(diff: Difficulty, decksFor: DeckSource): { samples: Sample[]; secs: string } {
   const t0 = Date.now();
   const samples: Sample[] = [];
-  for (let i = 0; i < matches; i++) samples.push(play((seedBase + i * 2654435761) >>> 0, diff, preset));
+  for (let i = 0; i < matches; i++) samples.push(play((seedBase + i * 2654435761) >>> 0, diff, decksFor));
   return { samples, secs: ((Date.now() - t0) / 1000).toFixed(1) };
 }
 
@@ -130,8 +165,7 @@ const es = (n: number, digits: number): string => n.toFixed(digits).replace('.',
 const pathName: Record<ElementKind, string> = { fire: 'Fuego', water: 'Agua', snow: 'Nieve' };
 const usesPath = (preset: CollectionPreset) => preset === 'starter' || preset === 'box';
 
-function report(samples: Sample[], secs: string): void {
-  const reserve = `${PRESET_LABELS[collection as CollectionPreset]}${usesPath(collection as CollectionPreset) ? ` · camino de ${pathName[camino]}` : ''}`;
+function report(samples: Sample[], secs: string, reserve: string): void {
   const wins = samples.filter((s) => s.status === 'victory');
   const cleared = samples.map((s) => s.turnsToClearMain).filter((t): t is number => t !== null);
   const defeatsByRound = [1, 2, 3].map((r) => samples.filter((s) => s.status === 'defeat' && s.round === r).length);
@@ -139,7 +173,7 @@ function report(samples: Sample[], secs: string): void {
     samples.filter((s) => s.condition === c && s.turnsToClearMain !== null);
 
   console.log(`\nSimulación: ${matches} partidas · dificultad ${difficulty} · bot con habilidad ${skill} · ${secs} s`);
-  console.log(`Reserva: ${reserve}\n`);
+  console.log(`${reserve}\n`);
   console.log(`Victoria                     ${pct(wins.length, matches)}`);
   console.log(`Derrotas en ronda 1/2/3      ${defeatsByRound.join(' / ')}`);
   console.log(`Turnos por partida (media)   ${avg(samples.map((s) => s.turns))}`);
@@ -175,9 +209,8 @@ function tableReport(): void {
   const rows: string[] = [];
   for (const preset of COLLECTION_PRESETS) {
     if (preset === 'fixed') continue;
-    const classic = run('classic', preset).samples;
-    const storm = run('storm', preset).samples;
-    const winRate = (xs: Sample[]) => (100 * xs.filter((s) => s.status === 'victory').length) / xs.length;
+    const classic = run('classic', fromPreset(preset)).samples;
+    const storm = run('storm', fromPreset(preset)).samples;
     rows.push(
       `| ${PRESET_LABELS[preset]} | ${es(winRate(classic), 1)} % | ${es(winRate(storm), 1)} % | ${es(
         mean(classic.map((s) => s.combos)),
@@ -197,9 +230,163 @@ function tableReport(): void {
   console.log('');
 }
 
+/* ---------- Equipos de colecciones mezcladas (P-20 del PRD de v2) ---------- */
+
+type Seats = readonly [SeatPreset, SeatPreset, SeatPreset];
+
+/**
+ * Los equipos que mide `--mixed`. Cada uno se juega con todas las formas de repartir sus asientos
+ * entre los tres ninjas, porque no da igual quién lleva el mazo corto.
+ */
+const MIXED_TEAMS: { group: string; seats: Seats }[] = [
+  { group: 'Sandbox (D-50): el mazo de referencia en los tres ninjas', seats: ['bot', 'bot', 'bot'] },
+  { group: 'Tres personas', seats: ['new', 'new', 'new'] },
+  { group: 'Tres personas', seats: ['new', 'new', 'box'] },
+  { group: 'Tres personas', seats: ['new', 'box', 'box'] },
+  { group: 'Tres personas', seats: ['box', 'box', 'box'] },
+  { group: 'Tres personas', seats: ['new', 'new', 'full'] },
+  { group: 'Tres personas', seats: ['new', 'box', 'full'] },
+  { group: 'Tres personas', seats: ['new', 'full', 'full'] },
+  { group: 'Tres personas', seats: ['box', 'box', 'full'] },
+  { group: 'Tres personas', seats: ['box', 'full', 'full'] },
+  { group: 'Tres personas', seats: ['box3', 'box3', 'box3'] },
+  { group: 'Tres personas', seats: ['full', 'full', 'full'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['new', 'new', 'bot'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['new', 'box', 'bot'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['new', 'full', 'bot'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['box', 'box', 'bot'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['box', 'full', 'bot'] },
+  { group: 'Dos personas y el bot (D-35)', seats: ['full', 'full', 'bot'] },
+  { group: 'Personas nuevas fuera de su camino (R-34)', seats: ['new-off', 'new-off', 'new-off'] },
+  { group: 'Personas nuevas fuera de su camino (R-34)', seats: ['new', 'new-off', 'new-off'] },
+  { group: 'Personas nuevas fuera de su camino (R-34)', seats: ['new-off', 'full', 'full'] },
+];
+
+/** Límites de turnos que se prueban para la condición "contra el reloj" (R-21), alrededor del actual. */
+const LIMIT_SWEEP: Record<Difficulty, number[]> = {
+  classic: [11, 12, 13, 14, 15, 16, 18],
+  storm: [16, 17, 18, 19, 20, 22, 24],
+};
+
+const teamName = (seats: Seats): string => seats.map((seat) => SEAT_SHORT[seat]).join(' · ');
+const teamLine = (t: Team): string => ELEMENTS.map((el) => `${pathName[el]}: ${SEAT_SHORT[t[el]]}`).join(' · ');
+const winRate = (xs: Sample[]): number => (100 * xs.filter((s) => s.status === 'victory').length) / xs.length;
+const clearedTurns = (xs: Sample[]): number[] =>
+  xs.map((s) => s.turnsToClearMain).filter((t): t is number => t !== null);
+
+interface TeamResult {
+  seats: Seats;
+  group: string;
+  /** Todas las partidas del equipo, juntando sus repartos. */
+  samples: Sample[];
+  /** Victoria de cada reparto, de menor a mayor. */
+  byArrangement: { team: Team; win: number }[];
+}
+
+function runTeam(diff: Difficulty, seats: Seats, group: string): TeamResult {
+  const byArrangement: TeamResult['byArrangement'] = [];
+  const samples: Sample[] = [];
+  for (const t of arrangements(seats)) {
+    const r = run(diff, fromTeam(t)).samples;
+    byArrangement.push({ team: t, win: winRate(r) });
+    samples.push(...r);
+  }
+  byArrangement.sort((a, b) => a.win - b.win);
+  return { seats, group, samples, byArrangement };
+}
+
+/** Tablas de P-20: cómo le va a cada equipo y qué pasa con el límite de turnos del bonus. */
+function mixedReport(): void {
+  const t0 = Date.now();
+  const results: Record<Difficulty, TeamResult[]> = { classic: [], storm: [] };
+  for (const { group, seats } of MIXED_TEAMS) {
+    for (const diff of ['classic', 'storm'] as const) results[diff].push(runTeam(diff, seats, group));
+  }
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  const diffName: Record<Difficulty, string> = { classic: 'Clásica', storm: 'Tormenta' };
+  console.log(
+    `\nEquipos de colecciones mezcladas (P-20) · ${matches} partidas por reparto · bot con habilidad ${skill} · ${secs} s`,
+  );
+  console.log('\nAsientos:');
+  for (const seat of new Set(MIXED_TEAMS.flatMap((t) => t.seats)))
+    console.log(`- ${SEAT_SHORT[seat]}: ${SEAT_LABELS[seat]}`);
+
+  const range = (r: TeamResult): string => {
+    const lo = r.byArrangement[0];
+    const hi = r.byArrangement[r.byArrangement.length - 1];
+    return lo && hi && r.byArrangement.length > 1 ? `${es(lo.win, 1)} a ${es(hi.win, 1)} %` : '—';
+  };
+  const worst = (r: TeamResult): string => {
+    const lo = r.byArrangement[0];
+    return lo && r.byArrangement.length > 1 ? teamLine(lo.team) : '—';
+  };
+
+  for (const diff of ['classic', 'storm'] as const) {
+    console.log(`\n### ${diffName[diff]}: cómo le va a cada equipo\n`);
+    console.log(
+      '| Equipo | Victoria | Según quién lleva qué ninja | El peor reparto | Combos por partida | Caídas por partida | Monedas por persona |',
+    );
+    console.log('|---|---|---|---|---|---|---|');
+    let group = '';
+    for (const r of results[diff]) {
+      if (r.group !== group) {
+        group = r.group;
+        console.log(`| **${group}** | | | | | | |`);
+      }
+      console.log(
+        `| ${teamName(r.seats)} | ${es(winRate(r.samples), 1)} % | ${range(r)} | ${worst(r)} | ${es(
+          mean(r.samples.map((s) => s.combos)),
+          2,
+        )} | ${es(mean(r.samples.map((s) => s.kos)), 2)} | ${Math.round(mean(r.samples.map((s) => s.coins)))} |`,
+      );
+    }
+  }
+
+  for (const diff of ['classic', 'storm'] as const) {
+    const limit = difficultyConfig(diff).bonusTurnLimit;
+    const sweep = LIMIT_SWEEP[diff];
+    console.log(`\n### ${diffName[diff]}: el límite de turnos del bonus (hoy, ${limit})\n`);
+    console.log(
+      `| Equipo | Superan la ronda 3 | Turnos hasta superarla (p25 · p50 · p75) | ${sweep
+        .map((l) => (l === limit ? `**≤ ${l} (hoy)**` : `≤ ${l}`))
+        .join(' | ')} |`,
+    );
+    console.log(`|---|---|---|${sweep.map(() => '---').join('|')}|`);
+    let group = '';
+    for (const r of results[diff]) {
+      if (r.group !== group) {
+        group = r.group;
+        console.log(`| **${group}** | | |${sweep.map(() => ' ').join('|')}|`);
+      }
+      const cleared = clearedTurns(r.samples);
+      const within = (l: number) =>
+        cleared.length === 0 ? '—' : `${es((100 * cleared.filter((t) => t <= l).length) / cleared.length, 1)} %`;
+      const quartiles =
+        cleared.length === 0
+          ? '—'
+          : `${quantile(cleared, 0.25)} · ${quantile(cleared, 0.5)} · ${quantile(cleared, 0.75)}`;
+      console.log(
+        `| ${teamName(r.seats)} | ${es((100 * cleared.length) / r.samples.length, 1)} %${
+          cleared.length < 100 ? ' \\*' : ''
+        } | ${quartiles} | ${sweep.map((l) => (l === limit ? `**${within(l)}**` : within(l))).join(' | ')} |`,
+      );
+    }
+    console.log(
+      '\nLos porcentajes de cada límite son sobre las partidas que superan la ronda 3. \\* Menos de 100 partidas la superan: la cifra no es representativa.',
+    );
+  }
+  console.log('');
+}
+
 if (table) {
   tableReport();
+} else if (mixed) {
+  mixedReport();
+} else if (team) {
+  const { samples, secs } = run(difficulty, fromTeam(team));
+  report(samples, secs, `Equipo: ${teamLine(team)}`);
 } else {
-  const { samples, secs } = run(difficulty, collection);
-  report(samples, secs);
+  const { samples, secs } = run(difficulty, fromPreset(collection));
+  const reserve = `${PRESET_LABELS[collection]}${usesPath(collection) ? ` · camino de ${pathName[camino]}` : ''}`;
+  report(samples, secs, `Reserva: ${reserve}`);
 }

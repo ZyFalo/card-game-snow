@@ -308,7 +308,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 |---|---|---|
 | **v1 — Single player** (entrega de clase) | Reglas completas de §7, control de los 3 ninjas con ritmos de reloj, IA enemiga, 3 rondas + bonus, pantallas de §9, arte y audio originales | M0 a M6 |
 | **v2 — En línea** | Cuentas, salas con código y emparejamiento para 2 o 3 personas, un ninja cada una y el bot en el ninja libre, con el progreso en la cuenta (`docs/PRD-v2.md`) | M7 a M9 |
-| **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes | M10+ |
+| **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes. Ideas para después, todavía sin decidir: [`docs/ideas/eventos-de-jefe.md`](ideas/eventos-de-jefe.md) y [`docs/ideas/progresion-y-mentora.md`](ideas/progresion-y-mentora.md) | M10+ |
 
 ### 6.1 Alcance de v1 — ✅ D-08
 
@@ -914,7 +914,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | P-15 | Precios de las cajas (R-28) | 100, 180 y 250 monedas por cajas de 1, 2 y 3 |
 | P-16 | Detalle de la carta de camino (R-30) | Elegir entre tres 12 del banco, una por elemento; elección permanente |
 | P-17 | ¿Tormenta paga más que Clásica? | No: misma paga, como el original (que no tenía dificultades) |
-| P-18 | ¿Rangos y experiencia como el original (hasta 24)? | Más adelante; primero monedas y colección. Hay una propuesta en `docs/ideas/progresion-y-mentora.md`, aprobada en su dirección: rangos de origami y una mentora propia, una garza de papel, en lugar del Sensei. Sigue abierta hasta la v3 |
+| P-18 | ¿Rangos y experiencia como el original (hasta 24)? | Más adelante; primero monedas y colección. Hay una propuesta en [`docs/ideas/progresion-y-mentora.md`](ideas/progresion-y-mentora.md), aprobada en su dirección: rangos de origami y una mentora propia, una garza de papel, en lugar del Sensei. Sigue abierta hasta la v3 |
 
 **Resueltas en v0.3**
 

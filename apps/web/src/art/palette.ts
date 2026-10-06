@@ -17,12 +17,35 @@ export interface ElementColors {
   dark: string;
   accent: string;
   accentLight: string;
+  /** El color suave del elemento: el mismo de `--fire-soft`, `--water-soft` y `--snow-soft` en la interfaz. */
+  soft: string;
 }
 
 export const ELEMENT_COLORS: Record<ElementKind, ElementColors> = {
-  fire: { base: '#E4572E', light: '#F07A55', dark: '#B83E1C', accent: '#F2B84B', accentLight: '#F8D78C' },
-  water: { base: '#2F6FDB', light: '#5B8FE6', dark: '#1F4FA8', accent: '#9CC0F5', accentLight: '#CFE0FA' },
-  snow: { base: '#4FC9B8', light: '#7FDBCD', dark: '#2E9E8F', accent: '#D9F4EF', accentLight: '#F2FBF9' },
+  fire: {
+    base: '#E4572E',
+    light: '#F07A55',
+    dark: '#B83E1C',
+    accent: '#F2B84B',
+    accentLight: '#F8D78C',
+    soft: '#FBE3DA',
+  },
+  water: {
+    base: '#2F6FDB',
+    light: '#5B8FE6',
+    dark: '#1F4FA8',
+    accent: '#9CC0F5',
+    accentLight: '#CFE0FA',
+    soft: '#DCE8FB',
+  },
+  snow: {
+    base: '#4FC9B8',
+    light: '#7FDBCD',
+    dark: '#2E9E8F',
+    accent: '#D9F4EF',
+    accentLight: '#F2FBF9',
+    soft: '#DAF4F0',
+  },
 };
 
 export const ICE = {

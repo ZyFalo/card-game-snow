@@ -425,12 +425,15 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(4, hex(c.base), 1);
       hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
+      // Casillas de movimiento, en el color suave del ninja activo.
       for (const t of layers.moves) {
         const r = tileRect(t);
-        hl.fillStyle(0x9cc0f5, 0.42);
+        hl.fillStyle(hex(c.soft), 1);
         hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+        hl.lineStyle(2, hex(c.base), 0.4);
+        hl.strokeRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
         const tc = tileCenter(t);
-        hl.fillStyle(0x2f6fdb, 0.6);
+        hl.fillStyle(hex(c.base), 0.6);
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
 

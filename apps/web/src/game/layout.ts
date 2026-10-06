@@ -16,8 +16,22 @@ export const BOARD_Y = 102;
 
 export const tileRect = (v: Vec) => ({ x: BOARD_X + v.x * TW, y: BOARD_Y + v.y * TH, w: TW, h: TH });
 export const tileCenter = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + TH / 2 });
+
+/*
+ * Cada unidad cabe en su casilla (lineamientos de diseño, sección "Tablero"): la figura, su barra de
+ * vida y sus íconos de estado. Así una unidad no tapa a la de la casilla de arriba ni su barra.
+ */
+
+/** Alto, dentro de la casilla, de la línea donde se apoyan los pies de una unidad. */
+export const FOOT_Y = 67;
+/** La figura se dibuja un poco más abajo que la línea de los pies, para que pise su sombra. */
+export const FIGURE_SINK = 2;
 /** Punto donde se apoyan los pies de una unidad. */
-export const footPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + TH - 20 });
+export const footPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + FOOT_Y });
+/** Centro del cuerpo de una unidad: ahí van las marcas de objetivo y de ahí salen las líneas de mira. */
+export const aimPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + FOOT_Y - 30 });
+/** Esquina de arriba a la izquierda de la casilla: ahí va el número de orden de quien actúa desde ella. */
+export const orderPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + 15, y: BOARD_Y + v.y * TH + 15 });
 
 export function tileAt(x: number, y: number): Vec | null {
   const tx = Math.floor((x - BOARD_X) / TW);
@@ -26,10 +40,22 @@ export function tileAt(x: number, y: number): Vec | null {
   return { x: tx, y: ty };
 }
 
+/** Tamaño en pantalla del lienzo de cada figura. Una prueba mide que lo dibujado quepa en la casilla. */
 export const UNIT_SIZE = {
-  ninja: { w: 82, h: 96 },
-  sniper: { w: 82, h: 96 },
-  artillery: { w: 86, h: 100 },
-  colossus: { w: 108, h: 108 },
+  ninja: { w: 57, h: 66.5 },
+  sniper: { w: 57, h: 66.5 },
+  artillery: { w: 60, h: 70 },
+  colossus: { w: 71, h: 71 },
   rock: { w: 84, h: 76 },
+} as const;
+
+/**
+ * Las piezas que acompañan a una unidad dentro de su casilla, medidas desde sus pies (x desde el centro
+ * de la casilla; y hacia abajo): la barra de vida con su número a la derecha y, arriba a la derecha,
+ * la columna de íconos de estado.
+ */
+export const UNIT_HUD = {
+  bar: { x: -24, y: 5, w: 48, h: 5, frame: 2 },
+  hpText: { x: 29, y: 7.5, size: 13 },
+  icon: { x: 38, y: -55, size: 16, step: 18 },
 } as const;

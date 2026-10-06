@@ -2,7 +2,7 @@ import type { StatusKind, Vec } from '@ventisca/core';
 import * as Phaser from 'phaser';
 import { hex, PALETTE } from '../art/palette';
 import type { RigDef } from '../art/rigs';
-import { footPoint } from './layout';
+import { FIGURE_SINK, footPoint, UNIT_HUD } from './layout';
 import { type Clip, type Playback, Rig } from './rig/Rig';
 
 const INK = hex(PALETTE.ink);
@@ -29,7 +29,10 @@ export interface UnitSpriteOptions {
   track?: <T extends Phaser.GameObjects.GameObject>(obj: T) => T;
 }
 
-/** Una unidad en el tablero: esqueleto articulado, sombra, vida e íconos de estado. */
+/**
+ * Una unidad en el tablero: esqueleto articulado, sombra, vida e íconos de estado. Todo cabe en su
+ * casilla (lineamientos de diseño, sección "Tablero").
+ */
 export class UnitSprite {
   readonly id: string;
   readonly kind: 'ninja' | 'enemy';
@@ -74,18 +77,20 @@ export class UnitSprite {
 
     const shadow = scene.add.graphics();
     shadow.fillStyle(INK, 0.16);
-    shadow.fillEllipse(0, 0, o.size.w * 0.74, 14);
+    shadow.fillEllipse(0, 0, o.size.w * 0.74, 10);
 
-    this.rig = new Rig(scene, o.rig, o.size.w);
+    this.rig = new Rig(scene, o.rig, o.size.w, FIGURE_SINK);
 
-    this.koImage = o.koTexture ? scene.add.image(0, 2, o.koTexture).setOrigin(0.5, 1).setVisible(false) : null;
+    this.koImage = o.koTexture
+      ? scene.add.image(0, FIGURE_SINK, o.koTexture).setOrigin(0.5, 1).setVisible(false)
+      : null;
     this.koImage?.setDisplaySize(o.size.w, o.size.h);
 
     this.bar = scene.add.graphics();
     this.hpText = scene.add
-      .text(33, 12, '', {
+      .text(UNIT_HUD.hpText.x, UNIT_HUD.hpText.y, '', {
         fontFamily: '"Zen Kaku Gothic New", system-ui, sans-serif',
-        fontSize: '11px',
+        fontSize: `${UNIT_HUD.hpText.size}px`,
         fontStyle: '900',
         color: PALETTE.ink,
         resolution: 3,
@@ -178,17 +183,17 @@ export class UnitSprite {
 
   private drawBar(): void {
     const g = this.bar;
-    const w = 56;
+    const { x, y, w, h, frame } = UNIT_HUD.bar;
     const frac = Math.max(0, Math.min(1, this.shownHp / this.maxHp));
     g.clear();
     g.fillStyle(INK, 0.9);
-    g.fillRoundedRect(-w / 2 - 2, 7, w + 4, 10, 4);
+    g.fillRoundedRect(x - frame, y - frame, w + frame * 2, h + frame * 2, 4);
     g.fillStyle(0xf6f9fb, 1);
-    g.fillRoundedRect(-w / 2, 9, w, 6, 3);
+    g.fillRoundedRect(x, y, w, h, 2.5);
     if (frac > 0) {
       const color = frac <= 0.3 ? hex(PALETTE.danger) : this.barColor;
       g.fillStyle(color, 1);
-      g.fillRoundedRect(-w / 2, 9, Math.max(4, w * frac), 6, 3);
+      g.fillRoundedRect(x, y, Math.max(4, w * frac), h, 2.5);
     }
     this.hpText.setText(`${Math.round(this.hp)}`);
   }
@@ -221,11 +226,12 @@ export class UnitSprite {
     const existing = this.icons.get(status);
     if (on && !existing) {
       const icon = this.scene.add.image(0, 0, `icon-${status}`);
-      icon.setDisplaySize(18, 18);
+      icon.setDisplaySize(UNIT_HUD.icon.size, UNIT_HUD.icon.size);
+      const shown = icon.scale;
       this.container.add(icon);
       this.icons.set(status, icon);
       icon.setScale(0);
-      this.scene.tweens.add({ targets: icon, scale: 18 / 64, duration: 180, ease: 'Back.easeOut' });
+      this.scene.tweens.add({ targets: icon, scale: shown, duration: 180, ease: 'Back.easeOut' });
     } else if (!on && existing) {
       this.icons.delete(status);
       this.scene.tweens.add({ targets: existing, alpha: 0, duration: 160, onComplete: () => existing.destroy() });
@@ -259,13 +265,13 @@ export class UnitSprite {
     }
   }
 
-  /** Estrellas que giran sobre la cabeza mientras está aturdido. */
+  /** Estrellas que giran alrededor de la cabeza mientras está aturdido. */
   private setStunFx(on: boolean): void {
     if (on && !this.stunFx && !this.calm) {
-      const cy = -this.size.h - 4;
+      const cy = -this.size.h + 11;
       const stars = [0, 1, 2].map(() => {
         const img = this.scene.add.image(0, cy, 'fx-spark').setTint(0xf2b84b);
-        img.setDisplaySize(13, 13);
+        img.setDisplaySize(11, 11);
         this.container.add(img);
         return img;
       });
@@ -279,7 +285,7 @@ export class UnitSprite {
           const a0 = tw.getValue() ?? 0;
           stars.forEach((img, i) => {
             const a = a0 + (i * Math.PI * 2) / 3;
-            img.setPosition(Math.cos(a) * 22, cy + Math.sin(a) * 7);
+            img.setPosition(Math.cos(a) * 17, cy + Math.sin(a) * 5);
             img.setScale(base * (0.75 + 0.35 * ((Math.sin(a) + 1) / 2)));
             img.setAngle((a * 180) / Math.PI);
           });
@@ -299,11 +305,11 @@ export class UnitSprite {
       const em = this.scene.add.particles(0, -this.size.h * 0.45, 'fx-flame', {
         x: { min: -this.size.w * 0.28, max: this.size.w * 0.28 },
         y: { min: -this.size.h * 0.2, max: this.size.h * 0.25 },
-        speedY: { min: -70, max: -35 },
-        speedX: { min: -12, max: 12 },
-        lifespan: 620,
+        speedY: { min: -48, max: -24 },
+        speedX: { min: -9, max: 9 },
+        lifespan: 520,
         frequency: 85,
-        scale: { start: 0.5, end: 0.05 },
+        scale: { start: 0.38, end: 0.05 },
         alpha: { start: 0.95, end: 0 },
         tint: [0xe4572e, 0xf2b84b, 0xf07a55],
       });
@@ -341,9 +347,10 @@ export class UnitSprite {
   }
 
   private layoutIcons(): void {
+    const { x, y, step } = UNIT_HUD.icon;
     const list = STATUS_ORDER.filter((s) => this.icons.has(s));
     list.forEach((s, i) => {
-      this.icons.get(s)?.setPosition((i - (list.length - 1) / 2) * 20, -this.size.h - 10);
+      this.icons.get(s)?.setPosition(x, y + i * step);
     });
   }
 

@@ -24,7 +24,20 @@ import { bridge } from '../state/bridge';
 import { activeInfo, plansArray, threatTiles } from '../state/planning';
 import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
 import { Fx } from './fx';
-import { BOARD_X, BOARD_Y, footPoint, RES, TH, TW, tileAt, tileCenter, tileRect, UNIT_SIZE } from './layout';
+import {
+  aimPoint,
+  BOARD_X,
+  BOARD_Y,
+  footPoint,
+  orderPoint,
+  RES,
+  TH,
+  TW,
+  tileAt,
+  tileCenter,
+  tileRect,
+  UNIT_SIZE,
+} from './layout';
 import { GOLEM_CLIPS, NINJA_CLIPS } from './rig/clips';
 import { URL_SPEED } from './speed';
 import { cardCinematicMs, FAST_FACTOR, markerMs, TIMING } from './timing';
@@ -208,7 +221,7 @@ export class BattleScene extends Phaser.Scene {
     this.bg.setDisplaySize(1280, 720);
     for (const r of view.rocks) {
       const fp = footPoint(r);
-      const img = this.add.image(fp.x, fp.y + 6, 'rock').setOrigin(0.5, 1);
+      const img = this.add.image(fp.x, fp.y + 3, 'rock').setOrigin(0.5, 1);
       img.setDisplaySize(UNIT_SIZE.rock.w, UNIT_SIZE.rock.h);
       img.setDepth(fp.y);
       this.rocks.push(img);
@@ -293,17 +306,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private reticle(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, solid: boolean): void {
-    g.lineStyle(solid ? 4 : 3, RED, alpha);
-    g.strokeCircle(c.x, c.y, solid ? 20 : 17);
-    const r = solid ? 28 : 24;
-    const r2 = solid ? 13 : 11;
+    g.lineStyle(solid ? 3.5 : 2.5, RED, alpha);
+    g.strokeCircle(c.x, c.y, solid ? 16 : 13);
+    const r = solid ? 23 : 19;
+    const r2 = solid ? 10 : 8;
     g.lineBetween(c.x - r, c.y, c.x - r2, c.y);
     g.lineBetween(c.x + r2, c.y, c.x + r, c.y);
     g.lineBetween(c.x, c.y - r, c.x, c.y - r2);
     g.lineBetween(c.x, c.y + r2, c.x, c.y + r);
   }
 
-  private plus(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, size = 9): void {
+  private plus(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, size = 8): void {
     g.fillStyle(MINT, alpha);
     g.lineStyle(2.5, INK, alpha);
     const s = size;
@@ -327,13 +340,13 @@ export class BattleScene extends Phaser.Scene {
 
   private arrowUp(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number): void {
     const pts = [
-      [0, -14],
-      [12, 0],
-      [5, 0],
-      [5, 12],
-      [-5, 12],
-      [-5, 0],
-      [-12, 0],
+      [0, -12],
+      [10, 0],
+      [4, 0],
+      [4, 10],
+      [-4, 10],
+      [-4, 0],
+      [-10, 0],
     ].map(([x, y]) => new Phaser.Math.Vector2(c.x + (x as number), c.y + (y as number)));
     g.fillStyle(GOLD, alpha);
     g.lineStyle(2.5, INK, alpha);
@@ -342,8 +355,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private unitAim(v: Vec): Pt {
-    const fp = footPoint(v);
-    return { x: fp.x, y: fp.y - 44 };
+    return aimPoint(v);
   }
 
   redrawPlanning(): void {
@@ -378,7 +390,7 @@ export class BattleScene extends Phaser.Scene {
       const col = hex(ELEMENT_COLORS[el].base);
       const fp = footPoint(info.ninja.pos);
       hl.lineStyle(4, col, 1);
-      hl.strokeEllipse(fp.x, fp.y + 2, 76, 22);
+      hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
       if (!s.pendingCard) {
         for (const path of info.moves.values()) {
@@ -411,7 +423,7 @@ export class BattleScene extends Phaser.Scene {
             const e = enemyAt(m, a);
             if (e) this.reticle(ov, this.unitAim(e.pos), 0.9, true);
             const n = m.ninjas.find((x) => eq(x.pos, a));
-            if (n && el === 'snow') this.plus(ov, this.unitAim(n.pos), 0.9, 10);
+            if (n && el === 'snow') this.plus(ov, this.unitAim(n.pos), 0.9);
           }
         }
       }
@@ -463,7 +475,7 @@ export class BattleScene extends Phaser.Scene {
           const to = this.unitAim(t.pos);
           ov.lineStyle(3, a.type === 'heal' ? MINT : GOLD, 0.85);
           ov.lineBetween(from.x, from.y, to.x, to.y);
-          if (a.type === 'heal') this.plus(ov, to, 1, 11);
+          if (a.type === 'heal') this.plus(ov, to, 1, 9);
           else this.arrowUp(ov, to, 1);
         }
       } else if (a?.type === 'card') {
@@ -481,9 +493,8 @@ export class BattleScene extends Phaser.Scene {
         const cc = tileCenter(a.at);
         this.badge({ x: cc.x, y: cc.y }, `${card?.value ?? ''}`, hex(c.dark));
       }
-      const head = footPoint(origin);
       const num = order[n.id];
-      if (num) this.badge({ x: head.x - 30, y: head.y - UNIT_SIZE.ninja.h + 6 }, `${num}`, col);
+      if (num) this.badge(orderPoint(origin), `${num}`, col);
     }
 
     if (s.hover) {
@@ -795,7 +806,7 @@ export class BattleScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onUpdate: () => u.container.setDepth(u.container.y),
       });
-      this.fx.dust(fp, u.kind === 'enemy' && u.size.w > 100 ? 4 : 2);
+      this.fx.dust(fp, u.size.w >= UNIT_SIZE.colossus.w ? 4 : 2);
     }
     u.startIdle();
   }
@@ -869,7 +880,7 @@ export class BattleScene extends Phaser.Scene {
       .track(this.add.image(u.container.x, u.centerY, 'fx-ring'))
       .setTint(color)
       .setDepth(1990);
-    ring.setDisplaySize(40, 40);
+    ring.setDisplaySize(30, 30);
     this.tweens.add({
       targets: ring,
       scale: ring.scale * 3,
@@ -886,7 +897,7 @@ export class BattleScene extends Phaser.Scene {
     if (e.boosted) this.pulse(src, hex(ELEMENT_COLORS.water.light));
     const colors = elementColors(e.sourceId);
     const base = hex(ELEMENT_COLORS[e.sourceId].base);
-    const size = e.boosted ? 92 : 68;
+    const size = e.boosted ? 70 : 52;
     this.actorRing(src);
     const pb = src.act('attack');
     if (e.sourceId === 'fire') {
@@ -896,7 +907,7 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile('fx-dart', src.handPoint(), dst.center(), TIMING.projectile.fire, {
         arc: -40,
         rotate: true,
-        size: [40, 14],
+        size: [30, 10.5],
         trail: { texture: 'fx-bit', colors },
       });
       this.fx.impact(dst.center(), base, size);
@@ -907,7 +918,7 @@ export class BattleScene extends Phaser.Scene {
       const lunge = this.lunge(src, dst, 0.45, TIMING.waterLunge);
       await pb.marker('release');
       audio.play('attack-water');
-      this.fx.impact(dst.center(), base, size + 10);
+      this.fx.impact(dst.center(), base, size + 8);
       this.fx.burst(dst.center(), 'fx-drop', colors, 10, { up: true, gravity: 520, scale: 0.55 });
       this.fx.hitStop(75);
       this.fx.punch(0.012);
@@ -917,14 +928,14 @@ export class BattleScene extends Phaser.Scene {
       audio.play('attack-snow');
       await this.projectile('fx-star', src.handPoint(), dst.center(), TIMING.projectile.snow, {
         spin: 900,
-        size: [26, 26],
+        size: [20, 20],
         trail: { texture: 'fx-flake-small', colors },
       });
       this.fx.impact(dst.center(), base, size);
       this.burst(dst.center(), colors, 7, 0.6);
       this.fx.hitStop(45);
     }
-    if (e.boosted) this.fx.impact(dst.center(), GOLD, 110);
+    if (e.boosted) this.fx.impact(dst.center(), GOLD, 84);
   }
 
   private async animHeal(e: Extract<GameEvent, { t: 'heal' }>): Promise<void> {
@@ -939,16 +950,16 @@ export class BattleScene extends Phaser.Scene {
       const flights = [0, 1, 2].map((i) =>
         this.projectile(
           'fx-crane',
-          { x: from.x + (i - 1) * 10, y: from.y - i * 6 },
-          { x: dst.container.x + (i - 1) * 12, y: dst.centerY },
+          { x: from.x + (i - 1) * 8, y: from.y - i * 5 },
+          { x: dst.container.x + (i - 1) * 9, y: dst.centerY },
           TIMING.heal.cranes,
-          { arc: -60 - i * 10, size: [34, 26], delay: i * TIMING.heal.stagger },
+          { arc: -60 - i * 10, size: [26, 20], delay: i * TIMING.heal.stagger },
         ),
       );
       await Promise.all(flights);
     }
     audio.play('heal');
-    this.fx.groundRing({ x: dst.container.x, y: dst.container.y }, MINT);
+    this.fx.groundRing({ x: dst.container.x, y: dst.container.y }, MINT, 76);
     this.fx.burst(dst.center(), 'fx-spark', [MINT, 0xffffff, hex(ELEMENT_COLORS.snow.accent)], 10, {
       up: true,
       gravity: -40,
@@ -964,11 +975,11 @@ export class BattleScene extends Phaser.Scene {
     const u = this.units.get(targetId);
     if (!u || this.channels.has(targetId)) return;
     const ring = this.add
-      .image(u.container.x, u.container.y - 30, 'fx-ring')
+      .image(u.container.x, u.container.y - 16, 'fx-ring')
       .setTint(GOLD)
       .setAlpha(0.85)
       .setDepth(1990);
-    ring.setDisplaySize(70, 70);
+    ring.setDisplaySize(54, 54);
     this.tweens.add({ targets: ring, angle: 360, scale: ring.scale * 1.12, duration: 900, yoyo: true, repeat: -1 });
     this.channels.set(targetId, ring);
   }
@@ -986,7 +997,7 @@ export class BattleScene extends Phaser.Scene {
     audio.play('revive');
     const foot = { x: u.container.x, y: u.container.y };
     this.fx.beam(foot, GOLD);
-    this.fx.groundRing(foot, GOLD);
+    this.fx.groundRing(foot, GOLD, 76);
     this.burst(u.center(), [GOLD, MINT, 0xffffff], 16, 0.8);
     const pb = u.getUp();
     this.floatText(u, `+${e.hp}`, PALETTE.gold);
@@ -1000,7 +1011,7 @@ export class BattleScene extends Phaser.Scene {
     if (e.blocked) {
       audio.play('block');
       u.crackShield();
-      this.fx.impact(u.center(), MINT, 70);
+      this.fx.impact(u.center(), MINT, 54);
       this.floatText(u, ES.blocked, ELEMENT_COLORS.snow.accent);
       await this.wait(TIMING.blockedHold);
       return;
@@ -1028,7 +1039,7 @@ export class BattleScene extends Phaser.Scene {
     if (u.kind === 'enemy') {
       // El gólem se hace pedazos: cada pieza sale despedida.
       audio.play('shatter');
-      this.fx.impact(u.center(), hex(ICE.glow), 100);
+      this.fx.impact(u.center(), hex(ICE.glow), 78);
       this.fx.hitStop(70);
       this.fx.shake(120, 0.003);
       this.burst(u.center(), ICE_COLORS, 22, 1.2);
@@ -1064,7 +1075,7 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile(`card-${el}`, { x: src.container.x, y: src.headY - 6 }, center, TIMING.projectile.card, {
         arc: -70,
         spin: 360,
-        size: [30, 40],
+        size: [24, 32],
         trail: { texture: 'fx-spark', colors },
       });
     }
@@ -1185,10 +1196,10 @@ export class BattleScene extends Phaser.Scene {
       audio.play('enemy-sniper');
       await this.projectile('fx-icicle', src.handPoint(), dst.center(), TIMING.projectile.sniper, {
         rotate: true,
-        size: [42, 12],
+        size: [32, 9],
         trail: { texture: 'fx-flake-small', colors: ICE_COLORS },
       });
-      this.fx.impact(dst.center(), hex(ICE.base), 64);
+      this.fx.impact(dst.center(), hex(ICE.base), 50);
       this.burst(dst.center(), ICE_COLORS, 6, 0.6);
       this.fx.hitStop(45);
     } else if (e.kind === 'artillery') {
@@ -1196,11 +1207,11 @@ export class BattleScene extends Phaser.Scene {
       await this.projectile('fx-hail', src.handPoint(), dst.center(), TIMING.projectile.artillery, {
         arc: -110,
         spin: 540,
-        size: [22, 22],
+        size: [17, 17],
         trail: { texture: 'fx-bit', colors: ICE_COLORS },
       });
       this.fx.cascade(e.area, origin, RED, { step: 70, hold: 180, alpha: 0.32 });
-      this.fx.impact(dst.center(), hex(ICE.base), 84);
+      this.fx.impact(dst.center(), hex(ICE.base), 66);
       for (const t of e.area) this.fx.dust(footPoint(t), 2);
       this.burst(dst.center(), ICE_COLORS, 14, 1);
       this.fx.shake(110, 0.003);
@@ -1265,7 +1276,7 @@ export class BattleScene extends Phaser.Scene {
         u.container.setAlpha(1);
         u.act('spawn');
         const foot = { x: u.container.x, y: u.container.y };
-        this.fx.groundRing(foot, hex(ICE.base), 110);
+        this.fx.groundRing(foot, hex(ICE.base), 84);
         this.fx.dust(foot, 4);
         this.burst(foot, ICE_COLORS, 8, 0.6);
       });

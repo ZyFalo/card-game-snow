@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import { HUD_BAND_Y } from '../src/art/scenery';
 import { startMatch, type TestWindow } from './helpers';
 
@@ -22,10 +22,20 @@ const ghosts = (page: Page) =>
       .map((o) => o.texture?.key),
   );
 
+/**
+ * Espera a que terminen las animaciones de un elemento. La mano entra subiendo: medida antes de que
+ * termine, su título todavía no está en su sitio.
+ */
+const settled = (el: Locator) =>
+  el.evaluate(async (node) => {
+    await Promise.allSettled(node.getAnimations({ subtree: true }).map((a) => a.finished));
+  });
+
 test('la mano muestra solo las cartas que hay, sin casillas vacías', async ({ page }) => {
   await startMatch(page);
   const hand = page.locator('.hand');
   await expect(hand).toBeVisible();
+  await settled(hand);
   // Al empezar nadie tiene cartas: la mano queda con su título y la frase que dice cómo se ganan.
   await expect(hand.locator('.card')).toHaveCount(0);
   await expect(hand.getByText('Llena el medidor para ganar cartas')).toBeVisible();
@@ -50,6 +60,7 @@ test('la mano muestra solo las cartas que hay, sin casillas vacías', async ({ p
   await expect(hand.getByRole('button', { name: /^Carta de/ })).toHaveCount(2);
   await expect(hand.getByText('Llena el medidor para ganar cartas')).toHaveCount(0);
   // El título no se mueve al llegar las cartas: la mano guarda su alto.
+  await settled(hand);
   expect(await hand.locator('.hand-head').boundingBox()).toEqual(title);
 });
 

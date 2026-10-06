@@ -1,6 +1,6 @@
 # Ideas de microtransacciones (para después)
 
-**Estado:** solo ideas. Nada de esto está decidido ni se implementa en v2. Hoy Ventisca es un proyecto de clase sin fines comerciales, y así lo declara el aviso de privacidad. Cuando llegue el momento, estas notas sirven de punto de partida para decidir con calma.
+**Estado:** solo ideas. Nada de esto está decidido ni se implementa en v2. Hoy Ventisca es el piloto de un proyecto personal, gratuito y sin publicidad, y así lo dice el aviso de privacidad. Cuando llegue el momento, estas notas sirven de punto de partida para decidir con calma.
 
 ## 1. Precedente: el original también cobraba
 
@@ -47,7 +47,7 @@ Casos que habrá que definir:
 
 **Legal y aviso de privacidad**
 
-- Cambiar el aviso de privacidad: quitar "sin fines comerciales" y declarar al procesador de pagos y los datos que recibe. El cambio debe avisarse con el mecanismo del M9, antes de que rija.
+- Cambiar el aviso de privacidad: hoy dice que el juego es gratuito, sin compras ni publicidad. Hay que declarar las compras, el procesador de pagos y los datos que recibe. El cambio debe avisarse con el mecanismo del M9, antes de que rija.
 - Escribir términos de uso: qué se compra, reembolsos y qué pasa si el juego cierra.
 - Revisar con asesoría el Estatuto del Consumidor (Ley 1480 de 2011), en particular el derecho de retracto en ventas en línea y su aplicación al contenido digital.
 - Resolver la parte tributaria con asesoría contable: facturación e impuestos de lo que se venda.

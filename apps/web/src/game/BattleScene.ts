@@ -20,6 +20,7 @@ import {
   aimPoint,
   BOARD_X,
   BOARD_Y,
+  FIGURE_SINK,
   footPoint,
   orderPoint,
   RES,
@@ -84,7 +85,8 @@ export class BattleScene extends Phaser.Scene {
     this.hl = this.add.graphics().setDepth(-5);
     this.ov = this.add.graphics().setDepth(1500);
     for (const el of ELEMENTS) {
-      const g = this.add.image(0, 0, `ninja-${el}`).setOrigin(0.5, 1).setAlpha(0.42).setVisible(false);
+      // El fantasma de un destino planeado es una silueta sin relleno.
+      const g = this.add.image(0, 0, `ninja-${el}-outline`).setOrigin(0.5, 1).setVisible(false);
       g.setDisplaySize(UNIT_SIZE.ninja.w, UNIT_SIZE.ninja.h);
       this.ghosts.set(el, g);
     }
@@ -415,23 +417,19 @@ export class BattleScene extends Phaser.Scene {
       const fp = footPoint(ghost.at);
       this.ghosts
         .get(ghost.ninja)
-        ?.setPosition(fp.x, fp.y)
+        ?.setPosition(fp.x, fp.y + FIGURE_SINK)
         .setVisible(true)
         .setDepth(fp.y - 0.5);
     }
     if (layers.path) {
       const color = colorOf(layers.path.ninja);
+      // Va por la línea de los pies: pasa bajo el ninja y bajo su fantasma, sin taparlos.
       const pts = layers.path.tiles.map((v) => {
-        const tc = tileCenter(v);
-        return new Phaser.Math.Vector2(tc.x, tc.y + 14);
+        const fp = footPoint(v);
+        return new Phaser.Math.Vector2(fp.x, fp.y - 1);
       });
       hl.lineStyle(5, color, 0.75);
       hl.strokePoints(pts, false);
-      const last = pts[pts.length - 1];
-      if (last) {
-        hl.fillStyle(color, 0.9);
-        hl.fillCircle(last.x, last.y, 6);
-      }
     }
     for (const card of layers.cards) {
       const c = ELEMENT_COLORS[card.ninja];

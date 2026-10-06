@@ -1,7 +1,7 @@
 import { ELEMENTS, ENEMY_KINDS } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import { golemSvg } from '../art/golems';
-import { ninjaKoSvg, ninjaStandSvg } from '../art/ninjas';
+import { ninjaKoSvg, ninjaOutlineSvg, ninjaStandSvg } from '../art/ninjas';
 import { golemRig, ninjaRig } from '../art/rigs';
 import { FIGURE_SINK, FOOT_Y, TH, TW, UNIT_HUD, UNIT_SIZE } from './layout';
 
@@ -67,9 +67,11 @@ function expectInsideTile(b: Box, inset = 0): void {
 
 describe('Cada unidad cabe en su casilla', () => {
   for (const el of ELEMENTS) {
-    it(`el ninja de ${el}, de pie y caído, cabe en la casilla`, () => {
+    it(`el ninja de ${el} de pie, su silueta y su figura de caído caben en la casilla`, () => {
       expectInsideTile(inTile(ninjaStandSvg(el), UNIT_SIZE.ninja, ninjaRig(el)));
       expectInsideTile(inTile(ninjaKoSvg(el), UNIT_SIZE.ninja, ninjaRig(el)));
+      // La silueta es la misma figura con un filtro: se mide para que no deje de serlo.
+      expect(ninjaOutlineSvg(el)).toContain(ninjaStandSvg(el).replace(/^<svg[^>]*>|<\/svg>$/g, ''));
     });
   }
 

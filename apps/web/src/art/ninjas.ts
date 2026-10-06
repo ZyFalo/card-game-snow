@@ -306,9 +306,26 @@ const composed = (el: ElementKind): string => {
   return DRAW_ORDER[el].map((k) => parts[k]).join('');
 };
 
-/** Ninja de pie (figura completa: fantasmas de planificación, retratos y menús). */
+/** Ninja de pie (figura completa: retratos y menús). */
 export function ninjaStandSvg(el: ElementKind, scale = 2): string {
   return svgDoc(NINJA_W, NINJA_H, composed(el), scale);
+}
+
+/**
+ * Silueta sin relleno del ninja de pie: solo su contorno, en el color de su elemento. Es el fantasma
+ * que marca la casilla a la que planea moverse. El filtro engorda y adelgaza la figura y se queda con
+ * la franja que hay entre las dos.
+ */
+export function ninjaOutlineSvg(el: ElementKind, scale = 2): string {
+  const filter =
+    '<filter id="contorno" x="-10%" y="-10%" width="120%" height="120%">' +
+    '<feMorphology in="SourceAlpha" operator="dilate" radius="1.2" result="fuera"/>' +
+    '<feMorphology in="SourceAlpha" operator="erode" radius="3.6" result="dentro"/>' +
+    '<feComposite in="fuera" in2="dentro" operator="out" result="franja"/>' +
+    `<feFlood flood-color="${ELEMENT_COLORS[el].base}"/>` +
+    '<feComposite in2="franja" operator="in"/>' +
+    '</filter>';
+  return svgDoc(NINJA_W, NINJA_H, `<defs>${filter}</defs><g filter="url(#contorno)">${composed(el)}</g>`, scale);
 }
 
 /** Retrato (cabeza y hombros) para el HUD y la cinemática de combo. */

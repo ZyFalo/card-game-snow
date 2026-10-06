@@ -179,7 +179,7 @@ Llegaron con las pantallas del progreso de la cuenta: elegir el camino, la colec
 
 El tablero es la escena de Phaser (`apps/web/src/game/`). Mientras se planifica muestra capas, y cada capa dice una sola cosa. Qué capa se ve y cuándo lo decide `state/board.ts`, y qué hace cada clic, `state/steps.ts`; los dos tienen sus pruebas, y la escena solo dibuja. Los colores salen de `art/palette.ts`, que repite los tokens de la sección 2.
 
-Esta sección crece con la ronda de claridad del tablero (D-74). Hoy describe sus dos primeros pasos: el orden visual, y el foco y los pasos.
+Esta sección crece con la ronda de claridad del tablero (D-74). Hoy describe sus dos primeros pasos, el orden visual y el foco y los pasos, y cómo se ve la reanimación (D-77).
 
 ### Un solo modo a la vez
 
@@ -227,6 +227,7 @@ De abajo hacia arriba:
 | Alcance de un gólem | Las casillas que puede golpear en su turno | `--danger`, con relleno tenue y borde | En el modo moverse, con el ratón sobre ese gólem |
 | Ninja activo | Un aro en el suelo, bajo sus pies | El de su elemento | Mientras se planifica a ese ninja |
 | Casillas de movimiento | A dónde puede moverse el ninja activo, y su propia casilla | El color suave de su elemento (`--fire-soft`, `--water-soft` o `--snow-soft`), con el borde y el punto en el color del elemento | En el modo moverse |
+| Casillas vecinas de un caído | Desde dónde se le puede revivir: sus 8 casillas vecinas, menos las rocas y las que ocupa un gólem | Borde `--paper-hi` con tinta alrededor, sin relleno | En el modo moverse, con el ratón sobre ese caído, salvo que ya lo esté reviviendo otro ninja |
 | Casillas de la carta | Dónde cabe la carta elegida; bajo el ratón, el área de 3×3, una diana sobre cada gólem que alcanzaría y, con la carta de Nieve, una cruz sobre cada ninja | `--danger`; las cruces, en `--snow` | En el modo carta |
 | Camino | La línea del ninja a su fantasma, por la línea de los pies | El de su elemento | Solo para el ninja activo |
 | Fantasma | La silueta sin relleno del ninja, en la casilla a la que planea moverse | El de su elemento | Para cada ninja que planea moverse |
@@ -238,7 +239,17 @@ De abajo hacia arriba:
 | Número de orden | El orden real en que actuará cada ninja (D-32) | El de su elemento | Para cada ninja con una acción planeada |
 
 - **Tinta alrededor:** los anillos, los puntos y la línea de mira llevan borde de tinta, para leerse sobre cualquier figura.
+- **Un borde no tiñe:** las casillas vecinas de un caído se marcan solo con su borde. Así, una casilla a la que además puede ir el ninja activo conserva su color.
 - **El panel de cada ninja repite su plan con palabras** ("Atacar a Témpano").
+
+### La reanimación
+
+Revivir se completa al final del turno (R-09), así que el tablero muestra la reanimación mientras dura:
+
+- **Al planificar:** con el ratón sobre un caído se ven sus casillas vecinas, y el anillo blanco con la flecha aparece sobre él solo cuando el ninja activo planeó una de ellas. Si otro ninja ya planeó revivirlo, no hay anillo: queda el punto de ese ninja, y un clic lo dice ("Marea ya va a revivir a Brasa.").
+- **Durante la fase de los gólems:** quien revive mantiene su pose de reanimar, inclinado sobre su aliado, y el caído lleva un anillo `--gold` que gira.
+- **Al terminar:** si se completa, el aliado se levanta con su haz de luz y el aviso dice "Brasa vuelve con 1 de vida". Si quien revivía cae, el anillo se apaga y el aviso dice "Reanimación interrumpida".
+- **La primera vez que cae un ninja en la partida,** el consejo del paso de moverse explica cómo revivirlo.
 
 ### La mano
 

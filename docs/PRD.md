@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.17 |
+| Versión | 0.10.18 |
 | Última actualización | 6 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -153,7 +153,7 @@ Fuentes principales (detalle en el Apéndice B): la Club Penguin Wiki y el códi
    3. Cartas de poder. Si hay 2 o más, primero se muestra la cinemática de combo.
    4. Carta de revivir de pago (solo miembros).
    5. Cada enemigo, uno por uno, se mueve y ataca. Los aturdidos pierden el turno.
-   6. Se completan las reanimaciones (si el reanimador cayó durante la fase enemiga, se cancela). En Ventisca esto cambia: ver D-18.
+   6. Se completan las reanimaciones (si el reanimador cayó durante la fase enemiga, se cancela). Ventisca lo hace igual desde D-77; antes, con D-18, las completaba en el acto.
    7. Las quemaduras del combo de fuego hacen su daño.
    8. Se verifica si terminó la ronda o la partida.
 
@@ -199,7 +199,7 @@ Fuentes principales (detalle en el Apéndice B): la Club Penguin Wiki y el códi
 ### 4.7 Caída y reanimación
 
 - Con 0 HP el ninja queda atrapado en la nieve: sigue ocupando su casilla, no actúa y los enemigos lo ignoran.
-- Revivir consume la acción del reanimador. En la reimplementación de referencia se completa al final del turno, después de los enemigos, y el revivido vuelve con 1 HP. **Nuestra decisión (D-18):** se completa en el acto, antes de la fase enemiga, así que el revivido puede volver a caer ese mismo turno.
+- Revivir consume la acción del reanimador. En la reimplementación de referencia se completa al final del turno, después de los enemigos, y el revivido vuelve con 1 HP. **Nuestra decisión (D-77):** igual que la referencia. Al principio (D-18) se completaba en el acto, antes de la fase enemiga, y el revivido solía volver a caer ese mismo turno.
 - Las cartas de Nieve curan a quien esté en su área, lo que también revive a los caídos.
 - Desde agosto de 2013 los miembros tenían una carta extra que revivía o curaba al 100 % una vez por partida (fuera de alcance para nosotros).
 
@@ -292,7 +292,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 | Mano | Cartas disponibles (máximo 4) |
 | Combo | 2 o más cartas jugadas en el mismo turno |
 | Caído (KO) | Ninja con 0 HP, atrapado en la nieve |
-| Revivir | Acción de un aliado adyacente para levantar a un caído |
+| Revivir | Acción de un aliado adyacente para levantar a un caído. Se completa al final del turno |
 | Aturdido | Enemigo que pierde su siguiente turno |
 | Quemado | Enemigo que recibe daño al final de cada turno durante 3 turnos |
 | Potencia | El próximo ataque o cura básica hace +50 % |
@@ -345,16 +345,17 @@ Los valores numéricos viven en configuración (Apéndice A) para poder balancea
 - **R-06 Acciones.** Una por turno y opcional: atacar, curar (solo Nieve), revivir o jugar carta. Si al resolverse el objetivo ya no es válido (por ejemplo, otro ninja lo derrotó), la acción se pierde sin efecto.
 - **R-07 Ataque básico.** Objetivo: un enemigo a distancia no mayor al alcance desde la casilla planificada. Daño igual al daño de la clase, ×1,5 con Potencia. No requiere línea de visión.
 - **R-08 Curación (Nieve).** Objetivo: un aliado en pie, herido, distinto de sí misma y a distancia no mayor a 3. Cura 6, ×1,5 con Potencia.
-- **R-09 Revivir.** Objetivo: un aliado caído en una de las 8 casillas vecinas a la casilla planificada. Cualquier clase puede revivir. Se completa en el acto, dentro del paso 2 de R-11: el aliado vuelve con 1 HP 🧪 **antes de la fase enemiga**, así que los gólems pueden volver a derribarlo ese mismo turno (D-18). Si varios reanimadores eligen al mismo caído, solo cuenta el primero en el orden de R-11.
+- **R-09 Revivir.** Objetivo: un aliado caído en una de las 8 casillas vecinas a la casilla planificada. Cualquier clase puede revivir, y le cuesta la acción. El aliado no se levanta en el acto: la reanimación queda pendiente y se completa **al final del turno**, en el paso 6 de R-11, después de la fase enemiga y antes de comprobar la derrota. El aliado vuelve con 1 HP 🧪 y planifica con normalidad desde el turno siguiente. Si quien revive cae durante la fase enemiga, la reanimación se interrumpe y el aliado sigue caído. Un caído no puede tener dos reanimadores: el segundo no puede elegirlo al planificar y, si aun así llegan dos planes, vale el del primero en el orden de R-11 y el otro pierde su acción. Las cartas de Nieve siguen reviviendo en el acto (R-17); si una levanta a un caído que alguien estaba reviviendo, esa reanimación ya no hace nada. Es la regla del original (D-77, que reemplaza a D-18).
 - **R-10 Caída.** Con 0 HP el ninja queda caído: ocupa su casilla, no planifica, no carga el medidor y los enemigos lo ignoran. Conserva su mano y sus estados.
 - **R-11 Orden de resolución (determinista).**
   1. Movimientos de todos los ninjas, animados en simultáneo (R-05 impide conflictos).
-  2. Acciones básicas en orden fijo: Fuego, Agua, Nieve. Las reanimaciones se completan aquí mismo (R-09).
+  2. Acciones básicas en orden fijo: Fuego, Agua, Nieve. Revivir empieza aquí y queda pendiente (R-09).
   3. Cartas en el mismo orden. Si hay 2 o más, primero el evento de combo (R-18).
   4. Enemigos, uno por uno en orden de aparición: si está aturdido pierde el turno; si no, actúa según R-12.
   5. Se limpian los aturdimientos.
-  6. Las quemaduras hacen su daño.
-  7. Fin de ronda si no quedan enemigos; derrota si todos los ninjas están caídos.
+  6. Se completan las reanimaciones pendientes: cada caído se levanta con 1 HP si quien lo revive sigue en pie (R-09).
+  7. Las quemaduras hacen su daño.
+  8. Fin de ronda si no quedan enemigos; derrota si todos los ninjas están caídos.
 
 ### Enemigos
 
@@ -412,7 +413,7 @@ Es una función pura del motor: recibe el estado y devuelve un plan por ninja.
 
 **Prioridades por ninja**
 
-1. **Revivir** a un aliado caído si puede quedar adyacente y el caído no está al alcance de un gólem (volvería con 1 HP justo antes de la fase enemiga). Si está expuesto, solo revive cuando no tiene nada mejor que hacer.
+1. **Revivir** a un aliado caído si puede quedar adyacente y a él mismo no lo alcanza un gólem en la casilla desde donde revive: si cae antes del final del turno, la reanimación se interrumpe (R-09). Si ahí lo alcanzan, solo revive cuando no tiene nada mejor que hacer. No manda a dos ninjas a revivir al mismo caído.
 2. **Jugar carta** si tiene una y se cumple algo de lo siguiente: otro ninja del equipo ya planificó carta este turno (se suma para provocar combo), el área alcanza a 2 o más enemigos, la carta derrota a un enemigo, o (Nieve) cura 12 o más en total.
 3. **Rol de su clase:**
    - *Nieve:* cura al aliado con menor porcentaje de vida a su alcance; si nadie lo necesita, ataca desde la mayor distancia posible.
@@ -477,8 +478,8 @@ El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los pan
 
 1. Al empezar el turno queda activo el primer ninja en pie (orden Fuego, Agua, Nieve). Cada ninja se planifica en dos pasos, y el tablero ofrece un solo modo a la vez (D-74; el detalle está en la sección 11 de `docs/lineamientos-de-diseno.md`).
 2. Cambias de ninja con clic sobre él o sobre su panel, o con Tab y Shift+Tab. Un ninja que ya eligió casilla o acción se retoma en el paso de actuar.
-3. **Paso 1, moverse.** El tablero solo muestra casillas: a dónde puede ir el ninja activo y, entre ellas, la suya, que es quedarse. Clic en una casilla: aparece su fantasma, una silueta sin relleno, con el camino hasta él.
-4. **Paso 2, actuar.** El tablero solo muestra anillos, sobre lo que el ninja alcanza desde su casilla planeada: rojos sobre los gólems, blancos sobre los aliados (con una cruz si es curar y una flecha si es revivir) y verde sobre el que ya eligió. Clic en un anillo elige el objetivo. Clic en su casilla, o en su fantasma, vuelve al paso de moverse.
+3. **Paso 1, moverse.** El tablero solo muestra casillas: a dónde puede ir el ninja activo y, entre ellas, la suya, que es quedarse. Clic en una casilla: aparece su fantasma, una silueta sin relleno, con el camino hasta él. Con el ratón sobre un aliado caído se iluminan sus casillas vecinas: desde cualquiera de ellas se le revive (R-09).
+4. **Paso 2, actuar.** El tablero solo muestra anillos, sobre lo que el ninja alcanza desde su casilla planeada: rojos sobre los gólems, blancos sobre los aliados (con una cruz si es curar y una flecha si es revivir) y verde sobre el que ya eligió. Clic en un anillo elige el objetivo. Clic en su casilla, o en su fantasma, vuelve al paso de moverse. El anillo de revivir aparece sobre un caído solo si el ninja activo planeó una de sus casillas vecinas, y no si otro ninja ya planeó revivirlo.
 5. **Modo carta.** Elegir una carta (1 a 4 o clic en la mano), en cualquiera de los dos pasos, cambia el tablero: solo muestra, en rojo, las casillas donde cabe, con la previsualización del patrón 3×3 y de los enemigos que alcanzaría.
 6. Al elegir el objetivo o colocar la carta se activa solo el siguiente ninja con algo por decidir; tras moverse también, si desde esa casilla no alcanza a nadie ni tiene cartas (se puede desactivar).
 7. Los ninjas que no están activos quedan en silueta y punto: su fantasma, un punto de su color sobre su objetivo y el valor de su carta en la casilla donde la colocó. La línea de mira de un plan aparece al pasar el ratón. Cada ninja con una acción planificada muestra, en su panel y en la casilla desde la que actúa, el orden real en que actuará (R-11, D-32): primero las acciones básicas (atacar, curar, revivir) en orden Fuego, Agua, Nieve, y después las cartas en el mismo orden. Los movimientos son simultáneos y no se numeran; un ninja sin acción no muestra número. El orden se recalcula con cada cambio de plan.
@@ -493,6 +494,7 @@ El tablero, las unidades y los efectos se dibujan en el canvas (Phaser); los pan
 - Íconos de estado: aturdido, quemado, potencia y escudo.
 - Estado del plan de cada ninja en su panel (sin plan, movimiento, acción, carta) y los últimos 3 segundos del reloj destacados con sonido.
 - Indicador de combo cuando 2 o más de tus ninjas tienen carta colocada en el turno.
+- Una reanimación se ve mientras dura (R-09): quien revive mantiene su pose de reanimar y el caído lleva un anillo durante la fase de los gólems. Al completarse, un aviso dice "[Ninja] vuelve con 1 de vida"; si quien revivía cayó, "Reanimación interrumpida".
 
 ### 9.5 Consejos propios (tono y contenido)
 
@@ -503,9 +505,11 @@ Redactados por nosotros, uno por pantalla de carga y uno contextual por fase si 
 - "El Carámbano pega más fuerte de lejos. Acércate para que duela menos."
 - "El Granizo salpica a los vecinos de su objetivo. No se amontonen."
 - "El Témpano barre tres casillas. No se pongan hombro con hombro frente a él."
-- "Revivir ocupa tu acción: el ninja vuelve con 1 de vida antes del turno de los gólems. Revive lejos de su alcance."
+- "Revivir ocupa tu acción: el ninja se levanta al final del turno, con 1 de vida. Protege a quien lo revive."
 - "Las acciones se resuelven en orden: primero Fuego, luego Agua y al final Nieve."
 - "Tu medidor sube al moverte, al actuar y al recibir golpes. Llénalo para ganar cartas."
+
+La primera vez que cae un ninja en la partida, el consejo del paso de moverse explica cómo revivirlo: "Muévete junto a [Ninja] para revivirlo. Se levanta al final del turno: protege a quien lo revive." (R-09).
 
 ### 9.6 Logros locales (nombres propios)
 
@@ -764,10 +768,11 @@ export function resolveTurn(prev: MatchState, plans: Plan[]): TurnResult {
   const ev: GameEvent[] = [];
 
   applyMoves(s, plans, ev);                 // R-05, R-15
-  applyBasicActions(s, plans, ev);          // R-07, R-08, R-09 (la reanimación se completa aquí)
+  applyBasicActions(s, plans, ev);          // R-07, R-08, R-09 (revivir queda pendiente)
   applyCards(s, plans, ev);                 // R-16 a R-18
   for (const e of livingEnemies(s)) enemyTurn(s, e, rng, ev);  // R-12, R-13
   clearStuns(s, ev);
+  completeRevives(s, ev);                   // R-09: se levantan los caídos cuyo reanimador sigue en pie
   tickBurns(s, ev);                         // R-18
   checkRoundAndMatch(s, rng, ev);           // R-20 a R-22
 
@@ -993,7 +998,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-15 | Arte original escrito como SVG en código y rasterizado al iniciar (ADR 0003) | ✅ | 2026-09-29 |
 | D-16 | El tiempo de juego sigue al reloj real: `smoothStep` desactivado (ADR 0004) | ✅ | 2026-09-29 |
 | D-17 | Escenario lógico de 1280×720 escalado a la ventana; canvas a 1920×1080 con zoom 1,5 y HUD de React encima (ADR 0002) | ✅ | 2026-09-29 |
-| D-18 | La reanimación se completa en el acto (paso 2 de R-11), antes de la fase enemiga: el recién revivido puede volver a caer ese mismo turno. Decisión del dueño de producto; la referencia la completaba al final | ✅ | 2026-09-29 |
+| D-18 | La reanimación se completa en el acto (paso 2 de R-11), antes de la fase enemiga: el recién revivido puede volver a caer ese mismo turno. Decisión del dueño de producto; la referencia la completaba al final | Reemplazada por D-77 | 2026-09-29 |
 | D-19 | Todas las cartas de un elemento tienen el mismo efecto; solo cambia el número (simplicidad de Card-Jitsu) | ✅ | 2026-09-29 |
 | D-20 | Reserva en batalla fiel al original: toda la colección del elemento, con repetidas, y robo al azar (R-26) | ✅ | 2026-09-29 |
 | D-21 | Colección de 0 a 20 cartas distintas por elemento, más copias repetidas (R-25) | ✅ | 2026-09-29 |
@@ -1001,6 +1006,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-77 | La reanimación vuelve a la regla del original y reemplaza a D-18. En el original, según el código de Snowflake (el servidor reconstruido que funciona con el cliente original), quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. Con D-18, el revivido se levantaba antes de los enemigos y solía volver a caer en el mismo turno; el bot casi nunca revivía a un caído amenazado, y para una persona era frustrante y confuso. Revivir sigue costando la acción y exigiendo una de las 8 casillas vecinas; un caído no puede tener dos reanimadores; las cartas de Nieve siguen reviviendo en el acto (R-09 y R-11). El bot pasa a evaluar si alcanzan a quien revive, en la casilla desde donde revive. Medido en el simulador: con D-18 se perdía cerca de la mitad de las reanimaciones, porque el revivido volvía a caer ese turno; con D-77 se interrumpe entre el 1 y el 6 %. La victoria en Tormenta sube unos 3 puntos con el mismo mazo en los tres ninjas y entre 3 y 8 en los equipos mezclados; en Clásica solo se mueve donde todavía se pierde, 4 puntos con la colección de inicio (`docs/balance-report.md`) | ✅ | 2026-10-06 |
 | D-76 | Ventisca reconoce su inspiración en Club Penguin, Card-Jitsu y Card-Jitsu Nieve: `CREDITOS.md` en el repositorio, enlazado desde el README, y una pantalla de créditos en el juego, que se abre desde el pie de la portada y muestra el texto corto de `CREDITOS.md`. Es la única mención del original dentro del juego; en lo demás vale D-01: ningún nombre, arte, audio ni texto del original | ✅ | 2026-10-06 |
 | D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo; desde que haya cuentas de otras personas, cualquier cambio pasará por el mecanismo del M9 (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-74 | Ronda de claridad del tablero: quienes probaron el juego dicen que es confuso, porque los planes de los tres ninjas se superponen. La inspiración es el original, donde cada persona controlaba un ninja y el tablero mostraba un solo modo a la vez. La claridad del tablero no cambia ninguna regla. Primer paso, el orden visual: los personajes caben en su casilla y la barra de vida va dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su línea de camino; el ataque se marca con un anillo en el color del atacante sobre el objetivo, con un punto por atacante; la línea de mira aparece solo al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano no muestra las casillas de cartas vacías. Segundo paso, el foco y los pasos: solo el ninja activo muestra sus opciones, y los otros quedan en silueta y punto; la planificación va en dos pasos, moverse (solo casillas) y actuar (solo anillos: rojos sobre enemigos, blancos sobre aliados y verde el elegido), y luego pasa solo al siguiente ninja; elegir una carta cambia el tablero a modo carta, con casillas rojas (sección 11 de `docs/lineamientos-de-diseno.md`) | ✅ | 2026-10-06 |
@@ -1059,6 +1065,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.18 | 2026-10-06 | La reanimación vuelve a la regla del original (D-77, que reemplaza a D-18). R-09 y R-11: revivir queda pendiente y el caído se levanta al final del turno, después de los gólems, con 1 HP; si quien revive cae antes, la reanimación se interrumpe; un caído no puede tener dos reanimadores; las cartas de Nieve siguen reviviendo en el acto. El motor resuelve las reanimaciones en un paso nuevo, el 6, con un evento al completarse y otro al interrumpirse, y sube a 3 la versión de las repeticiones. El bot evalúa si alcanzan a quien revive. En el tablero: las casillas vecinas de un caído se iluminan al pasar el ratón, quien revive mantiene su pose durante la fase de los gólems, y hay dos avisos y un consejo nuevos. Balance medido antes y después: el sandbox y las tablas de P-20 |
 | 0.10.17 | 2026-10-06 | Ronda de claridad del tablero, segundo paso (D-74): el foco y los pasos. El tablero ofrece un solo modo a la vez. Cada ninja se planifica en dos pasos: moverse, donde solo hay casillas (la suya es quedarse), y actuar, donde solo hay anillos (rojos sobre gólems, blancos sobre aliados y verde el elegido). Elegir una carta cambia el tablero al modo carta, con casillas rojas. Al terminar, pasa solo al siguiente ninja con algo por decidir. Los ninjas que no están activos quedan en silueta y punto. Deshacer va paso a paso: la carta, la acción, la casilla. No cambia ninguna regla. Qué hace cada clic en cada paso se decide en `apps/web/src/state/steps.ts`, con pruebas |
 | 0.10.16 | 2026-10-06 | Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal (D-75). El aviso de privacidad lo dice en su primer párrafo y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. El cambio del aviso va como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas; desde que haya cuentas de otras personas, cualquier cambio pasará por el mecanismo del M9. El resto del repositorio deja de describirlo como proyecto de clase, y P-09 ya no aplica. Ventisca reconoce su inspiración (D-76): `CREDITOS.md`, enlazado desde el README, y una pantalla de créditos en el juego, que se abre desde el pie de la portada y es la única mención del original dentro del juego. El pie de la portada queda "Piloto de un proyecto personal · Créditos · Aviso de privacidad". El PRD de v2 anota, como idea para después, el pase de ayudas en línea, con enlaces a `docs/ideas/` |
 | 0.10.15 | 2026-10-06 | Ronda de claridad del tablero, primer paso (D-74): el orden visual. Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su camino; un ataque planeado se marca con un anillo en el color del atacante y un punto por atacante; la línea de mira aparece al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano muestra solo las cartas que hay y, vacía, dice cómo se ganan. El fondo deja lisa la franja del HUD, para que ninguna línea cruce la pista de las teclas. No cambia ninguna regla. Lo que muestra el tablero al planificar se decide en un módulo con pruebas (`apps/web/src/state/board.ts`) y la escena solo lo dibuja. Las capas quedan en la sección 11 de `docs/lineamientos-de-diseno.md`. Aparte, `docs/ideas/` guarda ideas del dueño de producto para después, que no son decisiones ni tareas, y P-18 anota la propuesta de rangos de origami y de una mentora propia |
@@ -1128,7 +1135,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 
 ### 18.3 Datos que respaldan el diseño
 
-Simulación con el bot en habilidad 0,6 ("juego flojo"), modelo de reserva fiel y reanimación de D-18. Entre 500 y 800 partidas por fila.
+Simulación con el bot en habilidad 0,6 ("juego flojo"), modelo de reserva fiel y reanimación de D-18. Entre 500 y 800 partidas por fila. Con la reanimación de D-77 la victoria sube unos puntos: la medición está en `docs/balance-report.md`.
 
 **El número de la carta importa, sobre todo en Tormenta** (mazo de 6 cartas, 1.000 partidas por fila):
 

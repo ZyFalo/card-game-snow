@@ -30,6 +30,8 @@ Antes de tocar la escena, consulta las guías oficiales para agentes que vienen 
 - `fps.smoothStep` está desactivado a propósito (ADR 0004).
 - Lo que el tablero muestra al planificar (casillas, fantasmas, anillos, puntos, líneas de mira) se decide en `src/state/board.ts`, y lo que hace cada clic en cada paso, en `src/state/steps.ts`. Los dos son puros y tienen pruebas; `BattleScene.redrawPlanning` solo dibuja y `state/actions.ts` solo aplica. El tablero ofrece un solo modo a la vez: moverse, actuar o colocar una carta. Las capas están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - Cada unidad cabe en su casilla: los tamaños y las piezas de una unidad viven en `src/game/layout.ts`, y `layout.test.ts` mide que quepan.
+- Para probar o capturar un tablero concreto, en desarrollo `window.__ventiscaLoad(estado)` deja la partida en curso en ese estado, también en el anfitrión (`state/actions.ts`): el turno siguiente se resuelve de verdad sobre él.
+- Las capturas de la escena se toman con la tarjeta gráfica (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist`). El render por software (SwiftShader) recorta las piezas giradas de las figuras: no es un defecto del juego.
 
 ## Antes de terminar una tarea
 `pnpm run ci` en verde, capturas si cambió algo visible y una línea en `docs/ai-log.md` si fue una decisión relevante.

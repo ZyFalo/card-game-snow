@@ -370,8 +370,9 @@ function Hand() {
         {ES.hand(NINJA_TEXT[shown].name)}
         <span>{HUD.handHint}</span>
       </div>
-      {/* Solo las cartas que hay: un lugar sin carta no se dibuja. */}
+      {/* Solo las cartas que hay: un lugar sin carta no se dibuja. Sin ninguna, dice cómo se ganan. */}
       <div className="cards">
+        {ninja.hand.length === 0 ? <p className="hand-empty">{HUD.handEmpty}</p> : null}
         {ninja.hand.map((card, i) => {
           const t = NINJA_TEXT[card.element];
           return (

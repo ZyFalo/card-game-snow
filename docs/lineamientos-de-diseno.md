@@ -117,6 +117,7 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 
 - Español neutro, frases cortas y verbos en los botones: "Entrar", "Crear cuenta", "Enviar código".
 - Los errores dicen qué pasó y cómo arreglarlo, en una frase, sin jerga técnica.
+- Se le habla siempre a quien juega, y el ninja se nombra en tercera persona: "Elige a dónde se mueve Brasa", no "Brasa: elige a dónde moverte".
 
 ## 7. Movimiento y accesibilidad
 

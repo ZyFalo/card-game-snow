@@ -4,14 +4,13 @@ import {
   eq,
   isActionValid,
   isRock,
-  isThreatened,
   key,
   ninjaAt,
   type Plan,
   type Vec,
 } from '@ventisca/core';
 import { NINJA_TEXT, NOTICE } from '../i18n/es';
-import { activeInfo, plansArray, withoutAction } from './planning';
+import { activeInfo, plansArray, reviverOf, withoutAction } from './planning';
 import type { AppState, PlanStep } from './store';
 
 /*
@@ -55,6 +54,7 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
   if (!info) return occupant && occupant.hp > 0 ? { select: occupant.id } : NOTHING;
   const { ninja, plan } = info;
   const name = NINJA_TEXT[ninja.id].name;
+  const others = plansArray(s.plans).filter((p) => p.ninjaId !== ninja.id);
   const other = occupant && occupant.id !== ninja.id ? occupant : null;
 
   // Modo carta: el tablero solo ofrece dónde colocarla.
@@ -69,6 +69,15 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
 
   const own = occupant?.id === ninja.id;
   const onGhost = !!plan.moveTo && eq(plan.moveTo, v);
+  /** Un caído que el ninja activo no puede revivir: o ya lo revive otro (R-09), o le falta estar al lado. */
+  const cannotRevive = (fallen: ElementKind): StepOutcome => {
+    const reviver = reviverOf(s.plans, fallen);
+    const text =
+      reviver && reviver !== ninja.id
+        ? NOTICE.reviveTaken(NINJA_TEXT[reviver].name, NINJA_TEXT[fallen].name)
+        : NOTICE.reviveFromNeighbor(NINJA_TEXT[fallen].name);
+    return { notice: text, sound: 'error' };
+  };
 
   if (s.step === 'move') {
     // Quedarse: su propia casilla. Si había elegido otra, la suelta.
@@ -99,10 +108,10 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
     }
     if (other) {
       if (other.hp > 0) return { select: other.id };
-      return { notice: NOTICE.reviveFromNeighbor(NINJA_TEXT[other.id].name), sound: 'error' };
+      return cannotRevive(other.id);
     }
     if (enemyAt(m, v)) return { notice: NOTICE.moveFirst(name), sound: 'error' };
-    const reservedBy = plansArray(s.plans).find((p) => p.ninjaId !== ninja.id && p.moveTo && eq(p.moveTo, v));
+    const reservedBy = others.find((p) => p.moveTo && eq(p.moveTo, v));
     if (reservedBy) return { notice: NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name), sound: 'error' };
     if (isRock(m, v)) return { notice: NOTICE.rock, sound: 'error' };
     return { notice: NOTICE.outOfReach(name), sound: 'error' };
@@ -115,17 +124,10 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
       return { plan: { ...plan, action: { type: 'heal', targetId: other.id } }, finished: 'act', sound: 'place' };
     }
     if (info.revive.some((a) => a.id === other.id)) {
-      // R-09 (D-18): se levanta con 1 de vida antes del turno de los gólems.
-      const exposed = isThreatened(m, other.pos);
-      return {
-        plan: { ...plan, action: { type: 'revive', targetId: other.id } },
-        finished: 'act',
-        sound: 'place',
-        ...(exposed ? { notice: NOTICE.exposedRevive(NINJA_TEXT[other.id].name) } : {}),
-      };
+      return { plan: { ...plan, action: { type: 'revive', targetId: other.id } }, finished: 'act', sound: 'place' };
     }
     if (other.hp > 0) return { select: other.id };
-    return { notice: NOTICE.reviveFromNeighbor(NINJA_TEXT[other.id].name), sound: 'error' };
+    return cannotRevive(other.id);
   }
   const enemy = enemyAt(m, v);
   if (enemy) {

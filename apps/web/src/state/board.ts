@@ -6,13 +6,15 @@ import {
   eq,
   getEnemy,
   getNinja,
+  isRock,
   key,
   moveOptions,
+  neighbors8,
   ninjaAt,
   resolutionOrder,
   type Vec,
 } from '@ventisca/core';
-import { activeInfo, plansArray, threatTiles } from './planning';
+import { activeInfo, plansArray, reviverOf, threatTiles } from './planning';
 import type { AppState } from './store';
 
 /*
@@ -69,6 +71,8 @@ export interface BoardLayers {
   stay: Vec | null;
   /** Modo moverse: las casillas que puede golpear el gólem que está bajo el ratón. */
   threat: Vec[];
+  /** Modo moverse: las casillas vecinas al caído que está bajo el ratón, desde las que se le revive (R-09). */
+  reviveSpots: Vec[];
 
   /** Modo actuar: los objetivos que el ninja activo puede elegir desde su casilla planeada, sin el elegido. */
   options: TargetOption[];
@@ -108,6 +112,7 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     moves: [],
     stay: null,
     threat: [],
+    reviveSpots: [],
     options: [],
     chosen: null,
     card: null,
@@ -136,6 +141,15 @@ export function boardLayers(s: BoardState): BoardLayers | null {
       layers.stay = info.ninja.pos;
       const enemy = hover ? enemyAt(m, hover) : undefined;
       if (enemy) layers.threat = threatTiles(m, enemy);
+      // Un caído se revive desde cualquiera de sus 8 casillas vecinas: al pasar el ratón por él, se ven.
+      // Si ya lo revive otro ninja, no: un caído solo puede tener un reanimador.
+      const fallen = hover ? ninjaAt(m, hover) : undefined;
+      if (fallen && fallen.hp <= 0) {
+        const reviver = reviverOf(s.plans, fallen.id);
+        if (!reviver || reviver === info.ninja.id) {
+          layers.reviveSpots = neighbors8(fallen.pos).filter((t) => !isRock(m, t) && !enemyAt(m, t));
+        }
+      }
     } else {
       const picked = info.plan.action;
       const all: (TargetOption & { id: string })[] = [

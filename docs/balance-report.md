@@ -4,6 +4,8 @@ Fecha: 29 de septiembre de 2026 · Motor: `@ventisca/core`, con D-18 y D-33 · R
 
 El 1 de octubre de 2026 se agregó la sección "En línea: equipos de colecciones mezcladas", que responde a P-20 del PRD de v2. El motor y los valores son los mismos. El 6 de octubre, el dueño de producto decidió con esos números (D-69 a D-72), y sus respuestas quedaron en las dos secciones de preguntas.
 
+El 6 de octubre de 2026 también cambió una regla: la reanimación vuelve a completarse al final del turno (D-77, que reemplaza a D-18). La sección "La reanimación del original (D-77): antes y después" trae todos los números con una regla y con la otra. Las demás secciones conservan la medición hecha con D-18.
+
 ## Por qué se rehízo
 
 Desde la v0.5, la reserva de cada ninja es la colección del jugador (R-26). El reporte de M4 medía con el mazo fijo de v1 (6 cartas de 8 a 12), que el juego ya no usa, así que describía un juego distinto al que se juega. Este reporte mide la progresión real en tres etapas. El mazo fijo queda solo como referencia, en el anexo.
@@ -267,6 +269,152 @@ Respondidas el 6 de octubre de 2026. Con ellas se cerró P-20.
 
 **Tras la ronda de ajustes de jugabilidad** que viene antes del M8 hay que volver a correr estas tablas (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`), porque los ajustes pueden mover sus números.
 
+## La reanimación del original (D-77): antes y después
+
+Agregado el 6 de octubre de 2026 (PRD 0.10.18). Cambia una regla, no un valor: la reanimación vuelve a completarse al final del turno, como en el original (R-09 y R-11).
+
+### Qué cambió
+
+- **Antes (D-18):** el caído se levantaba en el acto, con 1 de vida, antes de la fase de los gólems.
+- **Ahora (D-77):** se levanta al final del turno, con 1 de vida, si quien lo revive sigue en pie. Las cartas de Nieve siguen reviviendo en el acto.
+- **El bot:** antes casi no revivía a un caído al que alcanzaba un gólem. Ahora mira si alcanzan a quien revive, en la casilla desde donde revive.
+
+### Método
+
+- Son las corridas del resto del reporte, antes y después: 2.000 partidas por configuración, con las mismas semillas. "Antes" es el motor de `main` en `febd156`; "después", el de este cambio.
+- **Comprobación:** "antes" reproduce los números publicados: 99,8 y 88,0 % en el sandbox, 62,1 % con la colección de inicio, y las tablas de P-20.
+- El simulador cuenta ahora las reanimaciones: cuántas se empiezan por partida y cuántas se interrumpen. Para "antes" se contó, con un contador temporal, cuántas veces el revivido volvía a caer ese mismo turno.
+- Para reproducirlo: `pnpm sim -- --matches 2000 --skill 0.6 [--storm]`, lo mismo con `--collection starter|box|full`, `pnpm sim -- --table`, `pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`.
+
+Cada celda dice "antes → después".
+
+### El sandbox (mazo de referencia, D-50)
+
+| Métrica | Clásica · 0,6 | Tormenta · 0,6 | Clásica · 1 | Tormenta · 1 |
+|---|---|---|---|---|
+| Victoria | 99,8 → 99,8 % (igual) | 88,0 → 91,5 % (+3,5) | 99,8 → 100,0 % (+0,2) | 93,3 → 95,5 % (+2,2) |
+| Derrotas en ronda 1 / 2 / 3 | 1 / 0 / 4 → 1 / 3 / 1 | 32 / 75 / 134 → 23 / 44 / 102 | 0 / 1 / 2 → 0 / 0 / 0 | 23 / 29 / 82 → 13 / 15 / 61 |
+| Turnos por partida (media) | 15,9 → 15,9 | 22,5 → 22,6 | 15,3 → 15,3 | 22,4 → 22,5 |
+| Combos por partida | 3,80 → 3,79 | 4,36 → 4,46 | 3,66 → 3,66 | 4,44 → 4,51 |
+| Caídas de ninjas por partida | 0,13 → 0,12 | 2,40 → 2,30 | 0,08 → 0,07 | 2,08 → 2,07 |
+| Reanimaciones por partida (la acción de revivir) | 0,03 → 0,04 | 0,46 → 0,66 | 0,01 → 0,02 | 0,36 → 0,63 |
+| De esas, las que se pierden | 43,9 → 2,7 % | 48,9 → 2,6 % | 72,0 → 0,0 % | 49,1 → 2,5 % |
+| Caídos que levanta una carta de Nieve, por partida | 0,07 → 0,07 | 0,80 → 0,75 | 0,05 → 0,04 | 0,77 → 0,72 |
+| Entra al bonus: sin caídas | 96,3 → 96,6 % | 59,5 → 57,3 % | 98,4 → 98,4 % | 64,6 → 63,1 % |
+| Entra al bonus: vida completa | 31,9 → 31,8 % | 8,9 → 8,6 % | 32,6 → 32,5 % | 8,3 → 8,9 % |
+| Entra al bonus: contra el reloj | 63,8 → 64,0 % | 43,5 → 43,0 % | 78,2 → 78,1 % | 47,3 → 47,9 % |
+| Bonus ganados (de los jugados) | 99,8 → 99,8 % | 40,3 → 41,4 % | 99,8 → 99,9 % | 50,0 → 52,8 % |
+| Monedas por partida | 376 → 376 | 294 → 302 | 383 → 384 | 310 → 317 |
+
+### Por colección
+
+Victoria, con el camino de Fuego:
+
+| Colección | Clásica · 0,6 | Tormenta · 0,6 | Clásica · 1 | Tormenta · 1 | Reanimaciones que se pierden (Tormenta · 0,6) |
+|---|---|---|---|---|---|
+| Inicio | 62,1 → 66,3 % (+4,2) | 0,8 → 0,9 % (+0,1) | 70,8 → 75,3 % (+4,5) | 2,4 → 3,1 % (+0,7) | 51,9 → 5,5 % |
+| Tras una caja | 99,8 → 99,8 % (igual) | 60,3 → 64,3 % (+4,0) | 99,7 → 100,0 % (+0,3) | 69,3 → 73,2 % (+3,9) | 51,0 → 4,4 % |
+| Completa | 99,7 → 99,8 % (+0,1) | 92,6 → 95,5 % (+2,9) | 99,8 → 100,0 % (+0,2) | 95,0 → 97,2 % (+2,2) | 48,8 → 3,1 % |
+
+La tabla del §18.3 (habilidad 0,6):
+
+| Colección (por elemento) | Clásica | Tormenta |
+|---|---|---|
+| 0 cartas | 18,4 → 23,1 % (+4,7) | 0,1 → 0,1 % (igual) |
+| 1 carta de 9 (inicio de R-30, sin camino) | 49,6 → 55,0 % (+5,4) | 0,8 → 1,2 % (+0,4) |
+| 1 carta de 9 + carta de camino (un 12) | 62,1 → 66,3 % (+4,2) | 0,8 → 0,9 % (+0,1) |
+| Tras una caja de 3 por elemento | 99,8 → 99,8 % (igual) | 60,3 → 64,3 % (+4,0) |
+| 8 cartas al azar del banco | 99,7 → 99,8 % (+0,1) | 91,9 → 94,5 % (+2,6) |
+| Las 20 (colección completa) | 99,7 → 99,8 % (+0,1) | 92,6 → 95,5 % (+2,9) |
+| Solo las 7 más altas (11 y 12) | 99,7 → 100,0 % (+0,3) | 95,6 → 97,3 % (+1,7) |
+
+### Equipos de colecciones mezcladas (P-20)
+
+Habilidad 0,6, salvo en las dos columnas que dicen "con habilidad 1". La columna "según quién lleva qué ninja" es la de después.
+
+| Equipo | Clásica: victoria | Clásica, con habilidad 1 | Tormenta: victoria | Tormenta, según quién lleva qué ninja | Tormenta, con habilidad 1 |
+|---|---|---|---|---|---|
+| **Sandbox (D-50): el mazo de referencia en los tres ninjas** | | | | | |
+| Bot · Bot · Bot | 99,8 → 99,8 % (igual) | 99,8 → 100,0 % (+0,2) | 88,0 → 91,5 % (+3,5) | — | 93,3 → 95,5 % (+2,2) |
+| **Tres personas** | | | | | |
+| Nueva · Nueva · Nueva | 83,3 → 84,3 % (+1,0) | 89,9 → 92,1 % (+2,2) | 4,8 → 5,6 % (+0,8) | — | 9,7 → 10,6 % (+0,9) |
+| Nueva · Nueva · Una caja | 96,0 → 97,3 % (+1,3) | 98,1 → 98,7 % (+0,6) | 18,4 → 21,6 % (+3,2) | 21,2 a 22,1 % | 25,0 → 28,7 % (+3,7) |
+| Nueva · Una caja · Una caja | 99,3 → 99,8 % (+0,5) | 99,8 → 100,0 % (+0,2) | 49,4 → 53,7 % (+4,3) | 51,3 a 55,4 % | 58,1 → 62,7 % (+4,6) |
+| Una caja · Una caja · Una caja | 99,7 → 99,8 % (+0,1) | 99,8 → 100,0 % (+0,2) | 79,3 → 83,5 % (+4,2) | — | 87,5 → 89,7 % (+2,2) |
+| Nueva · Nueva · Completa | 96,9 → 98,0 % (+1,1) | 98,5 → 99,0 % (+0,5) | 31,6 → 36,6 % (+5,0) | 25,0 a 46,5 % | 38,3 → 45,0 % (+6,7) |
+| Nueva · Una caja · Completa | 99,3 → 99,8 % (+0,5) | 99,8 → 99,9 % (+0,1) | 62,6 → 68,5 % (+5,9) | 57,7 a 78,7 % | 70,5 → 76,1 % (+5,6) |
+| Nueva · Completa · Completa | 99,4 → 99,8 % (+0,4) | 99,8 → 99,9 % (+0,1) | 72,6 → 78,9 % (+6,3) | 68,5 a 89,3 % | 79,0 → 84,8 % (+5,8) |
+| Una caja · Una caja · Completa | 99,7 → 99,8 % (+0,1) | 99,9 → 100,0 % (+0,1) | 86,5 → 90,0 % (+3,5) | 88,8 a 92,2 % | 92,0 → 94,5 % (+2,5) |
+| Una caja · Completa · Completa | 99,7 → 99,8 % (+0,1) | 99,9 → 100,0 % (+0,1) | 90,6 → 94,0 % (+3,4) | 92,6 a 95,0 % | 94,2 → 96,5 % (+2,3) |
+| Tres cajas · Tres cajas · Tres cajas | 99,7 → 99,9 % (+0,2) | 99,8 → 100,0 % (+0,2) | 92,6 → 95,5 % (+2,9) | — | 95,4 → 97,8 % (+2,4) |
+| Completa · Completa · Completa | 99,7 → 99,8 % (+0,1) | 99,8 → 100,0 % (+0,2) | 92,6 → 95,5 % (+2,9) | — | 95,0 → 97,2 % (+2,2) |
+| **Dos personas y el bot (D-35)** | | | | | |
+| Nueva · Nueva · Bot | 96,6 → 97,8 % (+1,2) | 98,1 → 98,8 % (+0,7) | 22,0 → 25,3 % (+3,3) | 22,9 a 26,9 % | 29,1 → 33,2 % (+4,1) |
+| Nueva · Una caja · Bot | 99,3 → 99,7 % (+0,4) | 99,8 → 100,0 % (+0,2) | 53,6 → 59,0 % (+5,4) | 54,3 a 61,7 % | 63,1 → 68,6 % (+5,5) |
+| Nueva · Completa · Bot | 99,3 → 99,7 % (+0,4) | 99,8 → 100,0 % (+0,2) | 67,0 → 73,6 % (+6,6) | 63,1 a 84,8 % | 74,8 → 80,6 % (+5,8) |
+| Una caja · Una caja · Bot | 99,7 → 99,8 % (+0,1) | 99,8 → 100,0 % (+0,2) | 83,5 → 86,9 % (+3,4) | 86,5 a 87,5 % | 89,9 → 92,5 % (+2,6) |
+| Una caja · Completa · Bot | 99,7 → 99,8 % (+0,1) | 99,9 → 100,0 % (+0,1) | 89,0 → 92,3 % (+3,3) | 90,8 a 94,3 % | 93,0 → 95,8 % (+2,8) |
+| Completa · Completa · Bot | 99,7 → 99,8 % (+0,1) | 99,8 → 100,0 % (+0,2) | 91,5 → 94,6 % (+3,1) | 93,7 a 95,3 % | 94,7 → 97,1 % (+2,4) |
+| **Personas nuevas fuera de su camino (R-34)** | | | | | |
+| Nueva fuera de su camino · Nueva fuera de su camino · Nueva fuera de su camino | 49,6 → 55,0 % (+5,4) | 57,6 → 63,1 % (+5,5) | 0,8 → 1,2 % (+0,4) | — | 1,4 → 2,0 % (+0,6) |
+| Nueva · Nueva fuera de su camino · Nueva fuera de su camino | 62,1 → 66,0 % (+3,9) | 70,7 → 75,1 % (+4,4) | 1,1 → 1,3 % (+0,2) | 0,9 a 1,5 % | 2,7 → 3,8 % (+1,1) |
+| Nueva fuera de su camino · Completa · Completa | 98,7 → 99,4 % (+0,7) | 99,3 → 99,7 % (+0,4) | 63,3 → 71,5 % (+8,2) | 54,3 a 86,0 % | 69,8 → 77,2 % (+7,4) |
+
+**Quién lleva el mazo corto.** En Tormenta, con habilidad 0,6:
+
+| Equipo | La persona distinta lleva a Fuego | A Agua | A Nieve |
+|---|---|---|---|
+| Una nueva con dos completas | 75,3 → 79,0 % | 84,9 → 89,3 % | 57,6 → 68,5 % |
+| Una completa con dos nuevas | 27,8 → 38,4 % | 22,1 → 25,0 % | 45,0 → 46,5 % |
+
+**El límite de turnos del bonus.** De las partidas que superan la ronda 3, las que lo logran dentro del límite de hoy (13 turnos en Clásica y 18 en Tormenta):
+
+| Equipo | Clásica: dentro de 13 turnos | Clásica, con habilidad 1 | Tormenta: dentro de 18 turnos | Tormenta, con habilidad 1 |
+|---|---|---|---|---|
+| **Sandbox (D-50): el mazo de referencia en los tres ninjas** | | | | |
+| Bot · Bot · Bot | 64,1 → 64,0 % | 77,8 → 77,8 % | 44,7 → 43,8 % | 51,2 → 51,3 % |
+| **Tres personas** | | | | |
+| Nueva · Nueva · Nueva | 43,5 → 42,9 % | 54,8 → 53,4 % | 16,7 → 13,4 % | 21,8 → 20,4 % |
+| Nueva · Nueva · Una caja | 48,0 → 47,3 % | 59,8 → 59,4 % | 25,7 → 21,8 % | 29,0 → 25,5 % |
+| Nueva · Una caja · Una caja | 58,2 → 58,0 % | 69,4 → 69,4 % | 33,7 → 31,7 % | 38,4 → 36,2 % |
+| Una caja · Una caja · Una caja | 68,2 → 68,0 % | 80,0 → 80,1 % | 45,9 → 44,9 % | 51,9 → 52,0 % |
+| Nueva · Nueva · Completa | 47,3 → 46,8 % | 58,8 → 58,6 % | 16,0 → 14,2 % | 19,5 → 16,6 % |
+| Nueva · Una caja · Completa | 57,7 → 57,5 % | 69,1 → 69,0 % | 27,7 → 25,7 % | 32,6 → 30,7 % |
+| Nueva · Completa · Completa | 57,4 → 57,3 % | 68,6 → 68,6 % | 24,0 → 22,7 % | 30,3 → 28,9 % |
+| Una caja · Una caja · Completa | 67,6 → 67,4 % | 79,6 → 79,7 % | 44,1 → 43,5 % | 51,4 → 51,5 % |
+| Una caja · Completa · Completa | 66,8 → 66,7 % | 79,1 → 79,2 % | 43,9 → 43,6 % | 52,2 → 52,6 % |
+| Tres cajas · Tres cajas · Tres cajas | 67,1 → 67,1 % | 79,6 → 79,5 % | 45,3 → 45,3 % | 52,3 → 52,7 % |
+| Completa · Completa · Completa | 66,4 → 66,3 % | 78,5 → 78,6 % | 44,8 → 44,8 % | 54,0 → 54,5 % |
+| **Dos personas y el bot (D-35)** | | | | |
+| Nueva · Nueva · Bot | 46,8 → 46,3 % | 58,5 → 58,1 % | 20,9 → 18,5 % | 24,2 → 21,1 % |
+| Nueva · Una caja · Bot | 57,1 → 56,8 % | 68,6 → 68,6 % | 30,3 → 28,2 % | 35,6 → 33,3 % |
+| Nueva · Completa · Bot | 56,6 → 56,4 % | 68,0 → 68,0 % | 25,3 → 23,8 % | 31,1 → 29,5 % |
+| Una caja · Una caja · Bot | 66,9 → 66,8 % | 79,3 → 79,3 % | 45,2 → 44,4 % | 52,2 → 51,9 % |
+| Una caja · Completa · Bot | 66,1 → 66,0 % | 78,9 → 79,0 % | 44,1 → 43,5 % | 52,3 → 52,3 % |
+| Completa · Completa · Bot | 65,5 → 65,4 % | 78,3 → 78,4 % | 44,5 → 44,1 % | 53,5 → 53,6 % |
+| **Personas nuevas fuera de su camino (R-34)** | | | | |
+| Nueva fuera de su camino · Nueva fuera de su camino · Nueva fuera de su camino | 24,3 → 21,7 % | 35,6 → 32,4 % | 6,3 → 4,2 % | 0,0 → 0,0 % |
+| Nueva · Nueva fuera de su camino · Nueva fuera de su camino | 29,5 → 27,8 % | 40,6 → 38,2 % | 11,6 → 9,3 % | 11,6 → 8,8 % |
+| Nueva fuera de su camino · Completa · Completa | 45,8 → 45,6 % | 59,2 → 59,1 % | 18,5 → 17,0 % | 21,0 → 19,5 % |
+
+### El ritmo
+
+`pnpm pacing` (300 partidas por dificultad, bot 0,8). El turno dura lo mismo: 3,0 s de mediana en Clásica y 3,5 s en Tormenta sin combo, y 6,6 y 6,7 s con combo. La partida entera sigue en 70,2 s en Clásica y pasa de 101,0 a 103,1 s en Tormenta.
+
+### Lectura
+
+1. **La reanimación deja de perderse.** Con D-18, cerca de la mitad de las veces el revivido volvía a caer ese mismo turno: del 44 al 54 % con habilidad 0,6. Con D-77 se interrumpe entre el 1 y el 6 %.
+2. **El bot revive más.** En Tormenta, con el mazo de referencia, pasa de 0,46 a 0,66 reanimaciones por partida.
+3. **Las caídas casi no cambian:** de 2,40 a 2,30 por partida en Tormenta. Se cae igual, pero levantarse sirve.
+4. **Clásica no se mueve donde ya era fácil.** Sube donde todavía se pierde: de 62,1 a 66,3 % con la colección de inicio, y de 49,6 a 55,0 % con tres personas nuevas fuera de su camino.
+5. **Tormenta sube unos 3 puntos con el mismo mazo en los tres ninjas:** de 88,0 a 91,5 % en el sandbox y de 92,6 a 95,5 % con la colección completa.
+6. **En los equipos mezclados sube entre 3 y 8 puntos,** y más cuando una persona nueva juega con otras que ya tienen cartas: con dos completas pasa de 72,6 a 78,9 %. Los equipos que casi no ganan en Tormenta siguen igual: tres personas nuevas pasan de 4,8 a 5,6 %.
+7. **Importa menos quién lleva el mazo corto.** Una persona nueva entre dos completas, con Nieve, pasa de 57,6 a 68,5 %.
+8. **El límite del bonus no se mueve para los equipos con cartas.** Con personas nuevas baja: entre 1 y 4 puntos en Tormenta, y unos 2 en Clásica cuando juegan fuera de su camino. Ahora superan la ronda 3 partidas que antes se perdían, y esas llegan tarde.
+9. **Los números con que se cerró P-20** (D-69 a D-72) quedan así en Tormenta: con una caja por persona, de 79,3 a 83,5 %; una persona nueva en un equipo completo, de 72,6 a 78,9 %; tres completas, de 92,6 a 95,5 %. En Clásica, tres personas con una caja pasan de 99,7 a 99,8 %.
+
+Las secciones anteriores de este reporte conservan la medición hecha con D-18, que es con la que se decidió. Se vuelven a correr al terminar la ronda de claridad del tablero.
+
 ## Anexo: mazo fijo de v1
 
 Es la configuración del reporte de M4: un mazo de 6 cartas (8, 9, 10, 10, 11 y 12) por ninja. El juego ya no la usa, pero se conserva porque con ella se calibró D-12. Se volvió a medir con D-33, que solo cambia Tormenta. Antes de D-33, la victoria en Tormenta era de 94,0 % con habilidad 1 y 88,7 % con habilidad 0,6. Comando: `pnpm sim -- --collection fixed`.
@@ -287,3 +435,4 @@ Es la configuración del reporte de M4: un mazo de 6 cartas (8, 9, 10, 10, 11 y 
 **Historia.**
 - **M4:** con este mazo y control total de los tres ninjas, el juego resultó trivial, y por eso nació Tormenta (D-13).
 - **D-18:** la primera simulación dio 17,3 caídas por partida en Tormenta, porque el bot revivía al alcance de los gólems y volvían a derribarlo. Se corrigió en el bot, no en la regla: ahora solo revive expuesto si no tiene nada mejor que hacer.
+- **D-77:** la reanimación vuelve a completarse al final del turno, y el bot mira si alcanzan a quien revive. Con este mazo, Tormenta pasa de 88,0 a 91,5 % con habilidad 0,6 y de 93,3 a 95,5 % con habilidad 1.

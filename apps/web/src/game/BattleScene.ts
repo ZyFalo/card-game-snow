@@ -10,8 +10,8 @@ import * as Phaser from 'phaser';
 import { ELEMENT_COLORS, hex, ICE, PALETTE } from '../art/palette';
 import { golemRig, ninjaRig } from '../art/rigs';
 import { audio } from '../audio/audio';
-import { ES } from '../i18n/es';
-import { clickTile, setHover, undo } from '../state/actions';
+import { ES, NINJA_TEXT, REVIVE_TEXT } from '../i18n/es';
+import { clickTile, notify, setHover, undo } from '../state/actions';
 import { type AimLine, boardLayers, type TargetOption } from '../state/board';
 import { bridge } from '../state/bridge';
 import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
@@ -68,6 +68,8 @@ export class BattleScene extends Phaser.Scene {
   private readonly units = new Map<string, UnitSprite>();
   private rocks: Phaser.GameObjects.Image[] = [];
   private readonly channels = new Map<string, Phaser.GameObjects.Image>();
+  /** Reanimaciones en curso (R-09): a cada caído, quién lo revive. */
+  private readonly reviving = new Map<string, string>();
   private generation = 0;
   private readonly pending = new Set<() => void>();
   private speed = 1;
@@ -218,6 +220,7 @@ export class BattleScene extends Phaser.Scene {
     this.rocks = [];
     for (const c of this.channels.values()) c.destroy();
     this.channels.clear();
+    this.reviving.clear();
 
     this.bg.setTexture(`bg-${view.mapId}`);
     this.bg.setDisplaySize(1280, 720);
@@ -411,6 +414,15 @@ export class BattleScene extends Phaser.Scene {
     g.lineBetween(from.x, from.y, to.x, to.y);
   }
 
+  /** El borde de una casilla, sin relleno y con tinta alrededor: no tiñe lo que tenga debajo. */
+  private outline(g: Phaser.GameObjects.Graphics, t: Vec, color: number): void {
+    const r = tileRect(t);
+    g.lineStyle(6, INK, 0.5);
+    g.strokeRoundedRect(r.x + 8, r.y + 8, r.w - 16, r.h - 16, 7);
+    g.lineStyle(3, color, 1);
+    g.strokeRoundedRect(r.x + 8, r.y + 8, r.w - 16, r.h - 16, 7);
+  }
+
   /** Una casilla resaltada: relleno y borde, dentro del papel de la casilla. */
   private tile(
     g: Phaser.GameObjects.Graphics,
@@ -468,6 +480,9 @@ export class BattleScene extends Phaser.Scene {
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
       if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), 1, hex(c.base), 0.4);
+      // Modo moverse, con el ratón sobre un caído: las casillas desde las que se le revive (R-09). Solo un
+      // borde blanco, el color de lo que se hace por un aliado: así no se mezcla con el de las casillas.
+      for (const t of layers.reviveSpots) this.outline(hl, t, WHITE);
 
       // Modo carta: casillas rojas donde se puede colocar; bajo el ratón, el área y a quién alcanza.
       if (layers.card) {
@@ -585,6 +600,7 @@ export class BattleScene extends Phaser.Scene {
     let step: ResolveStep = null;
     if ((e.t === 'move' && !isNinjaId(e.unitId)) || e.t === 'enemyAttack' || e.t === 'enemySkip') step = 'enemies';
     else if (
+      (e.t === 'revive' && e.cause === 'basic') ||
       (e.t === 'damage' && e.cause === 'burn') ||
       e.t === 'roundEnd' ||
       e.t === 'bonusCheck' ||
@@ -736,18 +752,28 @@ export class BattleScene extends Phaser.Scene {
         apply(e);
         return;
       case 'reviveStart': {
+        // R-09: quien revive se queda en su pose, y el caído bajo el anillo, hasta el final del turno.
         const src = this.units.get(e.sourceId);
         this.actorRing(src);
-        src?.act('reviveOther');
+        src?.setReviving(true);
+        this.reviving.set(e.targetId, e.sourceId);
         this.startChannel(e.targetId);
         apply(e);
         await this.wait(TIMING.reviveStart);
         return;
       }
       case 'revive':
-        this.stopChannel(e.targetId);
+        this.endRevive(e.targetId);
         await this.animRevive(e);
         apply(e);
+        return;
+      case 'reviveInterrupted':
+        // Cayó quien revivía: el anillo se apaga y el aliado sigue caído.
+        this.endRevive(e.targetId);
+        audio.play('error');
+        notify(REVIVE_TEXT.interrupted);
+        apply(e);
+        await this.wait(TIMING.reviveInterrupted);
         return;
       case 'damage':
         await this.animDamage(e);
@@ -1025,10 +1051,20 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: ring, alpha: 0, duration: 200, onComplete: () => ring.destroy() });
   }
 
+  /** Termina una reanimación en curso, se complete o no: se apaga el anillo y quien revivía suelta su pose. */
+  private endRevive(targetId: string): void {
+    this.stopChannel(targetId);
+    const reviver = this.reviving.get(targetId);
+    this.reviving.delete(targetId);
+    if (reviver) this.units.get(reviver)?.setReviving(false);
+  }
+
   private async animRevive(e: Extract<GameEvent, { t: 'revive' }>): Promise<void> {
     const u = this.units.get(e.targetId);
     if (!u) return;
     audio.play('revive');
+    // La reanimación que se completa al final del turno lo dice; la de una carta ya se ve en el acto.
+    if (e.cause === 'basic') notify(REVIVE_TEXT.back(NINJA_TEXT[e.targetId].name, e.hp));
     const foot = { x: u.container.x, y: u.container.y };
     this.fx.beam(foot, GOLD);
     this.fx.groundRing(foot, GOLD, 76);

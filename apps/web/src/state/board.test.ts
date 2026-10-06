@@ -131,6 +131,44 @@ describe('Capas del tablero al planificar', () => {
         step: 'act',
       });
       expect(revive.options.filter((o) => o.kind !== 'attack')).toEqual([{ kind: 'revive', at: { x: 3, y: 2 } }]);
+      // Si Escarcha ya planeó revivirla, Marea no puede elegirla: un caído solo tiene un reanimador (R-09).
+      // Sobre Brasa queda el punto de Escarcha.
+      const taken = layers({
+        match: m,
+        plans: {
+          water: { ninjaId: 'water', moveTo: { x: 3, y: 1 } },
+          snow: { ninjaId: 'snow', moveTo: { x: 2, y: 3 }, action: { type: 'revive', targetId: 'fire' } },
+        },
+        active: 'water',
+        step: 'act',
+      });
+      expect(taken.options.filter((o) => o.kind === 'revive')).toEqual([]);
+      expect(taken.dots).toEqual([{ at: { x: 3, y: 2 }, by: ['snow'] }]);
+    });
+
+    it('moverse: con el ratón sobre un caído se ven sus casillas vecinas, desde las que se le revive (R-09)', () => {
+      const m = match();
+      // Brasa cayó en (3,1): de sus 8 vecinas, (2,0) es una roca y en (4,2) está Témpano.
+      Object.assign(ninja(m, 'fire'), { hp: 0, pos: { x: 3, y: 1 } });
+      const over = { match: m, active: 'water' as const, hover: { x: 3, y: 1 } };
+      const spots = layers({ ...over, step: 'move' }).reviveSpots.map((t) => `${t.x},${t.y}`);
+      expect(spots.sort()).toEqual(['2,1', '2,2', '3,0', '3,2', '4,0', '4,1']);
+      // Solo con el ratón sobre el caído, y solo en el paso de moverse: en los otros modos no hay casillas.
+      expect(layers({ ...over, step: 'move', hover: { x: 3, y: 2 } }).reviveSpots).toEqual([]);
+      expect(layers({ ...over, step: 'move', hover: { x: 1, y: 3 } }).reviveSpots).toEqual([]);
+      expect(layers({ ...over, step: 'act' }).reviveSpots).toEqual([]);
+      ninja(m, 'water').hand = [{ id: 'water-1', element: 'water', value: 10 }];
+      expect(layers({ ...over, step: 'move', pendingCard: 'water-1' }).reviveSpots).toEqual([]);
+    });
+
+    it('moverse: si a ese caído ya lo revive otro ninja, sus casillas no se iluminan (R-09)', () => {
+      const m = match();
+      Object.assign(ninja(m, 'fire'), { hp: 0, pos: { x: 3, y: 1 } });
+      const reviving: Plan = { ninjaId: 'snow', moveTo: { x: 2, y: 2 }, action: { type: 'revive', targetId: 'fire' } };
+      const over = { match: m, plans: { snow: reviving }, step: 'move' as const, hover: { x: 3, y: 1 } };
+      expect(layers({ ...over, active: 'water' }).reviveSpots).toEqual([]);
+      // A quien lo revive sí: puede cambiar de casilla y seguir al lado.
+      expect(layers({ ...over, active: 'snow' }).reviveSpots).toHaveLength(6);
     });
 
     it('carta: solo las casillas donde cabe la carta y, bajo el ratón, su área', () => {

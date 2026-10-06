@@ -46,7 +46,7 @@ describe('Animación por esqueletos (fase 1)', () => {
     for (const el of ELEMENTS) {
       const clips = NINJA_CLIPS[el];
       expect(Object.keys(clips).sort()).toEqual(
-        ['attack', 'celebrate', 'heal', 'hit', 'idle', 'koStart', 'move', 'power', 'revived', 'reviveOther'].sort(),
+        ['attack', 'celebrate', 'heal', 'hit', 'idle', 'koStart', 'move', 'power', 'revived', 'reviving'].sort(),
       );
       expect(clips.power.frames.some((f) => f.marker === 'release')).toBe(true);
       expect(clips.heal.frames.some((f) => f.marker === 'release')).toBe(true);

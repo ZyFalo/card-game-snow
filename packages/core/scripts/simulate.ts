@@ -57,6 +57,11 @@ interface Sample {
   fullHealthAtRound3: boolean;
   /** Monedas que pagaría la partida (R-29), sin las monedas dobles. */
   coins: number;
+  /** Reanimaciones que se empezaron (R-09) y las que se interrumpieron porque cayó quien revivía. */
+  reviveTries: number;
+  reviveLost: number;
+  /** Caídos que levantó una carta de Nieve (R-17). */
+  cardRevives: number;
 }
 
 function arg(name: string, fallback: number): number {
@@ -118,9 +123,17 @@ function play(seed: number, diff: Difficulty, decksFor: DeckSource): Sample {
   const rng = rngFrom(seed ^ 0x9e3779b9);
   let noKoAtRound3 = false;
   let fullHealthAtRound3 = false;
+  let reviveTries = 0;
+  let reviveLost = 0;
+  let cardRevives = 0;
   while (state.status === 'playing' && state.turn < 200) {
     const plans = planTeam(state, { skill, rng });
     const r = resolveTurn(state, plans);
+    for (const e of r.events) {
+      if (e.t === 'reviveStart') reviveTries += 1;
+      else if (e.t === 'reviveInterrupted') reviveLost += 1;
+      else if (e.t === 'revive' && e.cause === 'card') cardRevives += 1;
+    }
     if (r.events.some((e) => e.t === 'bonusCheck')) {
       noKoAtRound3 = r.state.ninjas.every((n) => !n.everKo);
       fullHealthAtRound3 = r.state.ninjas.every((n) => n.hp === n.maxHp);
@@ -143,6 +156,9 @@ function play(seed: number, diff: Difficulty, decksFor: DeckSource): Sample {
     noKoAtRound3,
     fullHealthAtRound3,
     coins: coinsForMatch(state, false).total,
+    reviveTries,
+    reviveLost,
+    cardRevives,
   };
 }
 
@@ -185,6 +201,12 @@ function report(samples: Sample[], secs: string, reserve: string): void {
   console.log(`Combos triples por partida   ${avg(samples.map((s) => s.tripleCombos))}`);
   console.log(`Cartas jugadas por partida   ${avg(samples.map((s) => s.cards))}`);
   console.log(`Caídas de ninjas por partida ${avg(samples.map((s) => s.kos))}`);
+  const tries = samples.reduce((acc, s) => acc + s.reviveTries, 0);
+  const lost = samples.reduce((acc, s) => acc + s.reviveLost, 0);
+  console.log(
+    `Reanimaciones por partida    ${avg(samples.map((s) => s.reviveTries))} · se interrumpen ${pct(lost, tries)}`,
+  );
+  console.log(`Caídos que levanta una carta ${avg(samples.map((s) => s.cardRevives))}`);
   console.log(`Monedas por partida (media)  ${avg(samples.map((s) => s.coins))}`);
   console.log('\nCondición del bonus (entre partidas que superaron la ronda 3):');
   for (const c of ['noKo', 'fullHealth', 'turnLimit'] as const) {

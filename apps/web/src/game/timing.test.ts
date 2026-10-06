@@ -37,4 +37,14 @@ describe('Coreografía del turno (fase 3)', () => {
   it('las animaciones rápidas recortan el turno a 0,6 del tiempo', () => {
     expect(FAST_FACTOR).toBeCloseTo(0.6);
   });
+
+  it('R-09: una reanimación cuenta al empezar y al terminar, se complete o se interrumpa', () => {
+    const start = { t: 'reviveStart', sourceId: 'water', targetId: 'fire' } as const;
+    const begun = estimateEventsMs([start]);
+    expect(begun).toBe(TIMING.reviveStart);
+    const done = estimateEventsMs([start, { t: 'revive', sourceId: 'water', targetId: 'fire', hp: 1, cause: 'basic' }]);
+    expect(done).toBeGreaterThan(begun);
+    const cut = estimateEventsMs([start, { t: 'reviveInterrupted', sourceId: 'water', targetId: 'fire' }]);
+    expect(cut).toBe(begun + TIMING.reviveInterrupted);
+  });
 });

@@ -155,19 +155,41 @@ describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
     expect(clickOutcome(snow(), { x: 1, y: 1 })).toEqual({ select: 'fire' });
   });
 
-  it('revivir pide estar en una casilla vecina al caído, y avisa si ahí lo alcanzan', () => {
+  it('R-09 revivir pide estar en una casilla vecina al caído', () => {
     const m = match();
     Object.assign(ninja(m, 'water'), { hp: 0, pos: { x: 3, y: 2 } });
-    // Brasa, desde (3,1), está junto a Marea, que cayó al lado de Témpano.
+    // Brasa, desde (3,1), está junto a Marea, que cayó al lado de Témpano. Elegirla ya no avisa de nada:
+    // Marea se levanta al final del turno, después de los gólems.
     expect(clickOutcome(acting({ match: m }), { x: 3, y: 2 })).toEqual({
       plan: { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'revive', targetId: 'water' } },
       finished: 'act',
       sound: 'place',
-      notice: NOTICE.exposedRevive('Marea'),
     });
     // Desde su casilla de salida no llega.
     const far = state({ match: m, step: 'act' });
     expect(clickOutcome(far, { x: 3, y: 2 })).toEqual({ notice: NOTICE.reviveFromNeighbor('Marea'), sound: 'error' });
+  });
+
+  it('R-09 un caído no puede tener dos reanimadores: el segundo no puede elegirlo', () => {
+    const m = match();
+    Object.assign(ninja(m, 'water'), { hp: 0, pos: { x: 3, y: 2 } });
+    // Brasa ya planeó revivir a Marea desde (3,1). Escarcha se mueve a (2,3), que también está junto a Marea.
+    const fire: Plan = { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'revive', targetId: 'water' } };
+    const moved: Plan = { ninjaId: 'snow', moveTo: { x: 2, y: 3 } };
+    const second = state({ match: m, plans: { fire, snow: moved }, active: 'snow', step: 'act' });
+    const taken = { notice: NOTICE.reviveTaken('Brasa', 'Marea'), sound: 'error' };
+    expect(clickOutcome(second, { x: 3, y: 2 })).toEqual(taken);
+    expect(clickOutcome({ ...second, step: 'move' }, { x: 3, y: 2 })).toEqual(taken);
+    // Sin el plan de Brasa, Escarcha sí puede.
+    const free = state({ match: m, plans: { snow: moved }, active: 'snow', step: 'act' });
+    expect(clickOutcome(free, { x: 3, y: 2 }).plan?.action).toEqual({ type: 'revive', targetId: 'water' });
+    // A Brasa su propio plan no la estorba: si cambia de casilla y sigue al lado, conserva la acción.
+    const again = state({ match: m, plans: { fire }, active: 'fire', step: 'move' });
+    expect(clickOutcome(again, { x: 2, y: 1 }).plan).toEqual({
+      ninjaId: 'fire',
+      moveTo: { x: 2, y: 1 },
+      action: { type: 'revive', targetId: 'water' },
+    });
   });
 });
 
@@ -246,6 +268,11 @@ describe('Pasar solo al siguiente ninja', () => {
     expect(canAct(m, { fire: MOVED }, 'fire')).toBe(true);
     ninja(m, 'fire').hand = [{ id: 'fire-1', element: 'fire', value: 10 }];
     expect(canAct(m, {}, 'fire')).toBe(true);
+    // Un caído al lado también es algo que hacer, salvo que ya lo reviva otro ninja (R-09).
+    const k = match();
+    ninja(k, 'water').hp = 0;
+    expect(canAct(k, {}, 'fire')).toBe(true);
+    expect(canAct(k, { snow: { ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } } }, 'fire')).toBe(false);
   });
 
   it('a un ninja le queda algo por decidir si no tiene acción y todavía puede moverse o actuar', () => {

@@ -157,7 +157,7 @@ export const TIPS: readonly string[] = [
   'Carámbano pega más fuerte de lejos. Acércate para que duela menos.',
   'Granizo salpica a los vecinos de su objetivo. No se amontonen.',
   'Témpano barre tres casillas. No se pongan hombro con hombro frente a él.',
-  'Revivir ocupa tu acción: el ninja vuelve con 1 de vida antes del turno de los gólems. Revive lejos de su alcance.',
+  'Revivir ocupa tu acción: el ninja se levanta al final del turno, con 1 de vida. Protege a quien lo revive.',
   'El medidor sube al moverte, al actuar y al recibir golpes. Llénalo para ganar cartas.',
   'Las acciones se resuelven en orden: primero Fuego, luego Agua y al final Nieve.',
   'Pasa el cursor sobre un gólem para ver hasta dónde puede atacar el próximo turno.',
@@ -190,8 +190,8 @@ const ORDER_NAMES = `${NINJA_TEXT.fire.name}, ${NINJA_TEXT.water.name} y ${NINJA
 /** Avisos al planear un paso que no vale (§9.3). */
 export const NOTICE = {
   cardOutOfRange: 'Esa casilla queda fuera del alcance de la carta.',
-  exposedRevive: (name: string) => `Ojo: ${name} volverá con 1 de vida y ahí lo pueden alcanzar.`,
   reviveFromNeighbor: (name: string) => `Para revivir a ${name}, planea terminar en una casilla vecina.`,
+  reviveTaken: (reviver: string, fallen: string) => `${reviver} ya va a revivir a ${fallen}.`,
   enemyOutOfRange: 'Ese gólem está fuera de alcance desde la casilla planeada.',
   actionLost: 'La acción anterior ya no alcanza desde aquí: elige otra.',
   moveFirst: (name: string) => `Primero elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
@@ -199,6 +199,12 @@ export const NOTICE = {
   tileReserved: (name: string) => `Esa casilla ya la reservó ${name}.`,
   rock: 'Ahí hay una roca.',
   outOfReach: (name: string) => `${name} no llega hasta ahí este turno.`,
+} as const;
+
+/** Avisos de una reanimación al resolverse el turno (R-09). */
+export const REVIVE_TEXT = {
+  interrupted: 'Reanimación interrumpida',
+  back: (name: string, hp: number) => `${name} vuelve con ${hp} de vida`,
 } as const;
 
 /** Estado del plan de cada ninja, en su panel. */
@@ -218,11 +224,14 @@ export const TIP_TEXT = {
   holdToBoost: 'Mantén Espacio para acelerar.',
   ninjas: (hint: string) => `Actúan tus ninjas: ${ORDER_NAMES}, en ese orden. ${hint}`,
   enemies: (hint: string) => `Responden los gólems, uno por uno. ${hint}`,
-  end: (hint: string) => `Final del turno: quemaduras y cierre de ronda. ${hint}`,
+  end: (hint: string) => `Final del turno: reanimaciones, quemaduras y cierre de ronda. ${hint}`,
   enemy: (name: string, role: string, hp: number, maxHp: number, tip: string) =>
     `${name}, ${role.toLowerCase()} (${hp}/${maxHp}). ${tip}`,
   confirm: 'Confirma el turno.',
   placeCard: (name: string) => `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`,
+  /** La primera vez que cae un ninja en la partida: cómo se revive (R-09). */
+  reviveHow: (name: string) =>
+    `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   move: (name: string) => `Elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
   act: (name: string) => `Elige qué hace ${name}: un objetivo o una carta.`,
   pending: (names: readonly string[]) => `Tab pasa al siguiente ninja. Falta planear a ${names.join(' y ')}.`,
@@ -327,7 +336,7 @@ export const HELP = {
   koTitle: 'Caer y revivir',
   ko: [
     'Un ninja caído no actúa, pero puede ser revivido desde una casilla vecina (también en diagonal).',
-    'Revivir ocupa la acción. El caído se levanta al instante con 1 de vida, antes de que actúen los gólems: si lo alcanzan, puede volver a caer ese mismo turno.',
+    'Revivir ocupa la acción. El caído se levanta al final del turno, con 1 de vida, después de que actúen los gólems. Si quien lo revive cae antes, la reanimación se interrumpe.',
   ],
   keysTitle: 'Controles',
   keys: [

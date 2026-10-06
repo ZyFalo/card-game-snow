@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   createMatch,
   earnedAchievements,
+  isThreatened,
   type Plan,
   planTeam,
   REPLAY_VERSION,
   resolveTurn,
   runReplay,
   sanitizePlans,
+  suggestPlan,
 } from '../src';
+import { addEnemy, blank, place } from './helpers';
 
 function playWithBot(seed: number, maxTurns = 80) {
   let { state } = createMatch({ seed });
@@ -50,7 +53,7 @@ describe('Determinismo (R-23)', () => {
       turns: a.turns,
     };
     // Las de la versión 1 son de antes de D-33: en Tormenta ya no se reproducirían igual.
-    expect(() => runReplay({ ...replay, version: 1 })).toThrow(/versión 1 de las reglas.*la actual es la 2/);
+    expect(() => runReplay({ ...replay, version: 1 })).toThrow(/versión 1 de las reglas.*la actual es la 3/);
     expect(() => runReplay(replay)).not.toThrow();
   });
 
@@ -69,6 +72,40 @@ describe('Bot de ninjas (§8)', () => {
         state = resolveTurn(state, plans).state;
       }
     }
+  });
+
+  it('R-09 revive si a quien revive no lo alcanzan en su casilla, aunque al caído sí', () => {
+    const s = blank();
+    place(s, 'fire', 3, 2, { hp: 0, everKo: true });
+    place(s, 'water', 0, 0);
+    place(s, 'snow', 0, 2);
+    addEnemy(s, 'colossus', 5, 2);
+    // El coloso alcanza la casilla del caído, pero no la de al lado: desde ahí, revivir vale más que atacar.
+    expect(isThreatened(s, { x: 3, y: 2 })).toBe(true);
+    const plan = planTeam(s).find((p) => p.ninjaId === 'snow');
+    expect(plan?.action).toEqual({ type: 'revive', targetId: 'fire' });
+    expect(isThreatened(s, plan?.moveTo ?? { x: 0, y: 2 })).toBe(false);
+  });
+
+  it('R-09 no revive desde una casilla donde lo alcanzan si tiene algo mejor que hacer, aunque al caído no lo alcancen', () => {
+    const s = blank();
+    place(s, 'water', 1, 2, { hp: 0, everKo: true });
+    place(s, 'fire', 4, 2);
+    place(s, 'snow', 0, 4);
+    const sniper = addEnemy(s, 'sniper', 8, 2);
+    // A Marea no la alcanza el francotirador; a Brasa, en la única casilla vecina a la que llega, sí.
+    expect(isThreatened(s, { x: 1, y: 2 })).toBe(false);
+    expect(isThreatened(s, { x: 2, y: 2 })).toBe(true);
+    expect(suggestPlan(s, 'fire', [])?.action).toEqual({ type: 'attack', targetId: sniper.id });
+  });
+
+  it('R-09 no manda a dos ninjas a revivir al mismo caído', () => {
+    const s = blank();
+    place(s, 'fire', 1, 2, { hp: 0, everKo: true });
+    place(s, 'water', 0, 1);
+    place(s, 'snow', 0, 3);
+    const revivers = planTeam(s).filter((p) => p.action?.type === 'revive');
+    expect(revivers.map((p) => p.ninjaId)).toEqual(['water']);
   });
 
   it('termina partidas y logra victorias', () => {

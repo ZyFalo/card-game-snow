@@ -16,7 +16,16 @@ import { LocalHost } from '../host/LocalHost';
 import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import { canAct, nextPending, nextPlannable, plansArray, stepFor, turnClockMs, withoutAction } from './planning';
+import {
+  canAct,
+  firstFallTip,
+  nextPending,
+  nextPlannable,
+  plansArray,
+  stepFor,
+  turnClockMs,
+  withoutAction,
+} from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
@@ -96,6 +105,8 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
     step: 'move',
     pendingCard: null,
     hover: null,
+    reviveTip: null,
+    reviveTipSeen: false,
     overlay: null,
     paused: false,
     results: null,
@@ -120,8 +131,9 @@ export function planningMs(): number | null {
 }
 
 export function beginPlanning(): void {
-  const { match } = store.getState();
+  const { match, reviveTipSeen } = store.getState();
   if (match?.status !== 'playing') return;
+  const reviveTip = firstFallTip(match, reviveTipSeen);
   const ms = planningMs();
   host.startTimer(ms, () => {
     void confirmTurn(true);
@@ -134,8 +146,22 @@ export function beginPlanning(): void {
     active: nextPlannable(match, {}, null, 1),
     step: 'move',
     pendingCard: null,
+    reviveTip,
+    reviveTipSeen: reviveTipSeen || reviveTip !== null,
     timer: { ...host.timer(), total: ms },
   });
+}
+
+/**
+ * Solo para las pruebas e2e y las capturas (main.tsx la expone en desarrollo): deja la partida en curso
+ * en un tablero preparado, en el anfitrión, en el estado y en la escena, y empieza a planificar.
+ */
+export function loadBoard(state: MatchState): void {
+  if (!(host instanceof LocalHost)) return;
+  host.load(state);
+  store.setState({ match: state, view: state, hover: null, notice: null });
+  bridge.scene?.setupMatch(state);
+  beginPlanning();
 }
 
 /** Fin de la planificación: sin planes, selección ni reloj. */
@@ -149,6 +175,7 @@ function closePlanning(): void {
     active: null,
     step: 'move',
     hover: null,
+    reviveTip: null,
     timer: { deadline: null, remaining: null, total: null },
   });
 }

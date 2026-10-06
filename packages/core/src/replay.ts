@@ -6,9 +6,10 @@ import type { MatchState, ReplayData } from './types';
 /**
  * Versión de las reglas con que se graba una repetición. Súbela cada vez que un cambio
  * de reglas altere cómo se reproduce una partida grabada: la repetición vieja se rechaza
- * en vez de reproducirse distinta. Historial: 1 → 2 con D-33 (vida redondeada en Tormenta).
+ * en vez de reproducirse distinta. Historial: 1 → 2 con D-33 (vida redondeada en Tormenta);
+ * 2 → 3 con D-77 (la reanimación se completa al final del turno).
  */
-export const REPLAY_VERSION = 2;
+export const REPLAY_VERSION = 3;
 
 /** Reproduce una partida completa a partir de su semilla y sus planes (R-23). */
 export function runReplay(replay: ReplayData): { state: MatchState; hashes: string[] } {

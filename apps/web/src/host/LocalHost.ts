@@ -36,6 +36,15 @@ export class LocalHost implements GameHost {
     this.send({ type: 'turnResult', ...result });
   }
 
+  /**
+   * Reemplaza el estado de la partida en curso por un tablero preparado. Solo para las pruebas e2e y
+   * las capturas: la repetición grabada deja de corresponder a la partida.
+   */
+  load(state: MatchState): void {
+    if (!this.state) throw new Error('No hay partida en curso.');
+    this.state = structuredClone(state);
+  }
+
   startTimer(ms: number | null, onTimeout: () => void): void {
     this.stopTimer();
     this.onTimeout = onTimeout;

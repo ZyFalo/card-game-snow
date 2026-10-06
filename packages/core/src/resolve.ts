@@ -33,6 +33,8 @@ interface Ctx {
   s: MatchState;
   rng: Rng;
   ev: GameEvent[];
+  /** Reanimaciones pendientes de este turno (R-09): quién revive a quién. */
+  reviving: { sourceId: ElementKind; targetId: ElementKind }[];
 }
 
 /**
@@ -42,7 +44,7 @@ interface Ctx {
 export function resolveTurn(prev: MatchState, rawPlans: readonly Plan[]): TurnResult {
   if (prev.status !== 'playing') throw new Error('La partida ya terminó.');
   const s = structuredClone(prev);
-  const ctx: Ctx = { s, rng: rngFrom(s.rng), ev: [{ t: 'turnStart', turn: s.turn + 1 }] };
+  const ctx: Ctx = { s, rng: rngFrom(s.rng), ev: [{ t: 'turnStart', turn: s.turn + 1 }], reviving: [] };
   const plans = sanitizePlans(s, rawPlans);
   const planOf = (id: ElementKind): Plan | undefined => plans.find((p) => p.ninjaId === id);
 
@@ -51,6 +53,7 @@ export function resolveTurn(prev: MatchState, rawPlans: readonly Plan[]): TurnRe
   applyCards(ctx, planOf);
   applyEnemyPhase(ctx);
   clearStuns(ctx);
+  completeRevives(ctx);
   tickBurns(ctx);
 
   s.turn += 1;
@@ -108,14 +111,13 @@ function applyBasicActions(ctx: Ctx, planOf: (id: ElementKind) => Plan | undefin
       ev.push({ t: 'heal', sourceId: n.id, targetId: target.id, amount: healed, hp });
       chargeMeter(ctx, n);
     } else if (a.type === 'revive') {
-      // R-09 (D-18): el aliado se levanta en este mismo paso, antes de la fase enemiga,
-      // así que los gólems pueden volver a derribarlo en este turno.
+      // R-09 (D-77): revivir no levanta todavía al aliado. La reanimación queda pendiente hasta el
+      // paso 6 de R-11, y para entonces quien revive tiene que seguir en pie. Un caído solo tiene un
+      // reanimador: sanitizePlans ya dejó al primero en el orden de R-11.
       const target = getNinja(s, a.targetId);
       if (!target || target.hp > 0) continue;
+      ctx.reviving.push({ sourceId: n.id, targetId: target.id });
       ev.push({ t: 'reviveStart', sourceId: n.id, targetId: target.id });
-      target.hp = Math.min(target.maxHp, BALANCE.reviveHp);
-      s.stats.revives += 1;
-      ev.push({ t: 'revive', sourceId: n.id, targetId: target.id, hp: target.hp });
       chargeMeter(ctx, n);
     }
   }
@@ -200,9 +202,11 @@ function applyCards(ctx: Ctx, planOf: (id: ElementKind) => Plan | undefined): vo
 function healOrRevive(ctx: Ctx, n: Ninja, amount: number, sourceId: ElementKind): void {
   const { s, ev } = ctx;
   if (n.hp <= 0) {
+    // La carta de Nieve revive en el acto (R-09). Si alguien lo estaba reviviendo, ya no hace falta.
     n.hp = Math.min(n.maxHp, amount);
     s.stats.revives += 1;
-    ev.push({ t: 'revive', sourceId, targetId: n.id, hp: n.hp });
+    ctx.reviving = ctx.reviving.filter((p) => p.targetId !== n.id);
+    ev.push({ t: 'revive', sourceId, targetId: n.id, hp: n.hp, cause: 'card' });
     return;
   }
   if (n.hp >= n.maxHp) return;
@@ -275,6 +279,20 @@ function clearStuns(ctx: Ctx): void {
     e.stunned = false;
     ctx.ev.push({ t: 'status', unitId: e.id, status: 'stun', on: false });
   }
+}
+
+/** Paso 6 (R-09, D-77): se levantan con 1 HP los caídos cuyo reanimador sigue en pie. */
+function completeRevives(ctx: Ctx): void {
+  const { s, ev } = ctx;
+  // Quien cayó mientras revivía ya no está en la lista, y a quien levantó una carta tampoco lo espera nadie.
+  for (const p of ctx.reviving) {
+    const target = getNinja(s, p.targetId);
+    if (!target) continue;
+    target.hp = Math.min(target.maxHp, BALANCE.reviveHp);
+    s.stats.revives += 1;
+    ev.push({ t: 'revive', sourceId: p.sourceId, targetId: target.id, hp: target.hp, cause: 'basic' });
+  }
+  ctx.reviving = [];
 }
 
 function tickBurns(ctx: Ctx): void {
@@ -373,6 +391,11 @@ function damageNinja(ctx: Ctx, n: Ninja, amount: number, cause: DamageCause, sou
   n.everKo = true;
   s.stats.ninjaKos += 1;
   if (!s.stats.fallenNinjas.includes(n.id)) s.stats.fallenNinjas.push(n.id);
+  // R-09: si estaba reviviendo a un aliado, la reanimación se interrumpe y ese aliado no se levanta.
+  for (const p of ctx.reviving) {
+    if (p.sourceId === n.id) ev.push({ t: 'reviveInterrupted', sourceId: p.sourceId, targetId: p.targetId });
+  }
+  ctx.reviving = ctx.reviving.filter((p) => p.sourceId !== n.id);
 }
 
 /** R-15. +2 por evento; al llegar al máximo reparte una carta si hay espacio. */

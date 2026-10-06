@@ -28,7 +28,7 @@ Antes de tocar la escena, consulta las guías oficiales para agentes que vienen 
 - La cámara tiene zoom 1,5: la escena trabaja en coordenadas lógicas de 1280×720.
 - Las texturas se generan desde SVG en `src/art` y se agregan con `textures.addImage`, sin cargador XHR.
 - `fps.smoothStep` está desactivado a propósito (ADR 0004).
-- Lo que el tablero muestra al planificar (casillas, fantasmas, marcas de objetivo, líneas de mira) se decide en `src/state/board.ts`, que es puro y tiene pruebas; `BattleScene.redrawPlanning` solo lo dibuja. Las capas están en la sección 11 de `docs/lineamientos-de-diseno.md`.
+- Lo que el tablero muestra al planificar (casillas, fantasmas, anillos, puntos, líneas de mira) se decide en `src/state/board.ts`, y lo que hace cada clic en cada paso, en `src/state/steps.ts`. Los dos son puros y tienen pruebas; `BattleScene.redrawPlanning` solo dibuja y `state/actions.ts` solo aplica. El tablero ofrece un solo modo a la vez: moverse, actuar o colocar una carta. Las capas están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - Cada unidad cabe en su casilla: los tamaños y las piezas de una unidad viven en `src/game/layout.ts`, y `layout.test.ts` mide que quepan.
 
 ## Antes de terminar una tarea

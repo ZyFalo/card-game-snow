@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con su primer paso hecho; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
+Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con sus dos primeros pasos hechos; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
 ## Qué hay
 
@@ -30,7 +30,8 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
   - El aviso de privacidad dice que hoy el juego es gratuito: no vende nada ni muestra publicidad. Si eso cambia algún día, el aviso cambia antes.
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
-  - Lo que el tablero muestra al planificar son capas: casillas de movimiento, fantasmas, marcas de objetivo, líneas de mira. `state/board.ts` decide cuál se ve y cuándo, con sus pruebas, y la escena solo dibuja.
+  - El tablero ofrece un solo modo a la vez: moverse (solo casillas), actuar (solo anillos) o colocar una carta (casillas rojas). Los ninjas que no están activos quedan en silueta y punto.
+  - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic en cada paso. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
@@ -139,7 +140,7 @@ El M7 y P-20 están cerrados. Va en este orden:
 
 1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en cinco PRs pequeños, cada uno con capturas de antes y después a 1280×720 junto a "Tu equipo":
    1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
-   2. **Foco y pasos.** Solo el ninja activo muestra sus opciones, y los otros quedan en silueta y punto. La planificación va en dos pasos: moverse (solo casillas) y actuar (solo anillos: rojos sobre enemigos, blancos sobre aliados y verde el elegido); luego pasa solo al siguiente ninja. Elegir una carta cambia el tablero a modo carta, con casillas rojas.
+   2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, la planificación va en dos pasos (moverse y actuar) y elegir una carta cambia el tablero a modo carta.
    3. **La reanimación vuelve a la regla del original** y reemplaza a D-18: quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. Cambia R-09 y R-11, el motor, el bot y la interfaz, y lleva su decisión, sus pruebas y la medición del balance antes y después (el sandbox y las tablas de P-20).
    4. **Información a pedido.** En el modo normal trae solo dos cosas: el resumen del plan de cada ninja en los paneles, sin números ("Moverse → atacar a Témpano"), y, al pasar sobre un enemigo, su nombre y un consejo corto sobre cómo ataca, sin pintar casillas. La vida que perderá el objetivo y el alcance de los enemigos pasan a ser ayudas apagadas por defecto, en el grupo "Ayudas" de la pantalla de equipo: "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos". Existen solo en las partidas locales; en línea no están disponibles, y con el M8 las partidas en línea las ignoran y no las muestran. Lleva su decisión.
    5. **Consejos en el momento.** Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno.

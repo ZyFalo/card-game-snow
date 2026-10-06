@@ -9,6 +9,7 @@ import {
   runReplay,
   sanitizePlans,
 } from '../src';
+import { blank, place } from './helpers';
 
 function playWithBot(seed: number, maxTurns = 80) {
   let { state } = createMatch({ seed });
@@ -50,7 +51,7 @@ describe('Determinismo (R-23)', () => {
       turns: a.turns,
     };
     // Las de la versión 1 son de antes de D-33: en Tormenta ya no se reproducirían igual.
-    expect(() => runReplay({ ...replay, version: 1 })).toThrow(/versión 1 de las reglas.*la actual es la 2/);
+    expect(() => runReplay({ ...replay, version: 1 })).toThrow(/versión 1 de las reglas.*la actual es la 3/);
     expect(() => runReplay(replay)).not.toThrow();
   });
 
@@ -69,6 +70,15 @@ describe('Bot de ninjas (§8)', () => {
         state = resolveTurn(state, plans).state;
       }
     }
+  });
+
+  it('R-09 no manda a dos ninjas a revivir al mismo caído', () => {
+    const s = blank();
+    place(s, 'fire', 1, 2, { hp: 0, everKo: true });
+    place(s, 'water', 0, 1);
+    place(s, 'snow', 0, 3);
+    const revivers = planTeam(s).filter((p) => p.action?.type === 'revive');
+    expect(revivers.map((p) => p.ninjaId)).toEqual(['water']);
   });
 
   it('termina partidas y logra victorias', () => {

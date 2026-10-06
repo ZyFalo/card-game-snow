@@ -82,7 +82,7 @@ function bestPlanFor(s: MatchState, n: Ninja, others: readonly Plan[], comboJoin
       }
     };
 
-    for (const t of reviveTargets(s, n.id, pos)) {
+    for (const t of reviveTargets(s, n.id, pos, others)) {
       // R-09 (D-18): vuelve con 1 HP antes de la fase enemiga. Si un gólem lo alcanza, casi seguro
       // vuelve a caer: solo vale la pena si no hay nada mejor que hacer (evita bucles de revivir y caer).
       consider({ type: 'revive', targetId: t.id }, isThreatened(s, t.pos) ? 4 : 45);

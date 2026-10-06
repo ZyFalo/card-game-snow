@@ -67,11 +67,16 @@ export function healTargets(s: MatchState, ninjaId: string, from: Vec): Ninja[] 
   return s.ninjas.filter((a) => a.id !== n.id && a.hp > 0 && a.hp < a.maxHp && manhattan(from, a.pos) <= range);
 }
 
-/** R-09. Aliados caídos en una de las 8 casillas vecinas a `from`. */
-export function reviveTargets(s: MatchState, ninjaId: string, from: Vec): Ninja[] {
+/**
+ * R-09. Aliados caídos en una de las 8 casillas vecinas a `from`. Un caído solo puede tener un
+ * reanimador: si el plan de otro ninja ya lo eligió, no se ofrece (el primero en elegirlo gana).
+ */
+export function reviveTargets(s: MatchState, ninjaId: string, from: Vec, plans: readonly Plan[] = []): Ninja[] {
   const n = getNinja(s, ninjaId);
   if (!n || n.hp <= 0) return [];
-  return s.ninjas.filter((a) => a.id !== n.id && a.hp <= 0 && chebyshev(from, a.pos) === 1);
+  const taken = new Set<string>();
+  for (const p of plans) if (p.ninjaId !== ninjaId && p.action?.type === 'revive') taken.add(p.action.targetId);
+  return s.ninjas.filter((a) => a.id !== n.id && a.hp <= 0 && chebyshev(from, a.pos) === 1 && !taken.has(a.id));
 }
 
 /** R-16. Casillas donde se puede colocar una carta: distancia ≤ movimiento desde `from`. */
@@ -98,14 +103,21 @@ export function unitsInArea(s: MatchState, area: readonly Vec[]): { ninjas: Ninj
   };
 }
 
-export function isActionValid(s: MatchState, ninjaId: string, from: Vec, action: Action): boolean {
+/** ¿Vale esa acción desde `from`? `plans` son los planes de los demás, por si ya eligieron a ese caído (R-09). */
+export function isActionValid(
+  s: MatchState,
+  ninjaId: string,
+  from: Vec,
+  action: Action,
+  plans: readonly Plan[] = [],
+): boolean {
   switch (action.type) {
     case 'attack':
       return attackTargets(s, ninjaId, from).some((e) => e.id === action.targetId);
     case 'heal':
       return healTargets(s, ninjaId, from).some((a) => a.id === action.targetId);
     case 'revive':
-      return reviveTargets(s, ninjaId, from).some((a) => a.id === action.targetId);
+      return reviveTargets(s, ninjaId, from, plans).some((a) => a.id === action.targetId);
     case 'card': {
       const n = getNinja(s, ninjaId);
       if (!n?.hand.some((c) => c.id === action.cardId)) return false;
@@ -123,7 +135,8 @@ export function actionOrigin(s: MatchState, plan: Plan): Vec {
 
 /**
  * Descarta las partes inválidas de los planes, en orden de resolución
- * (Fuego, Agua, Nieve), respetando las reservas de casilla (R-05, R-06).
+ * (Fuego, Agua, Nieve), respetando las reservas de casilla (R-05, R-06) y que
+ * un caído solo tenga un reanimador (R-09).
  */
 export function sanitizePlans(s: MatchState, plans: readonly Plan[]): Plan[] {
   const out: Plan[] = [];
@@ -134,7 +147,7 @@ export function sanitizePlans(s: MatchState, plans: readonly Plan[]): Plan[] {
     const clean: Plan = { ninjaId: id };
     if (raw.moveTo && canMoveTo(s, id, raw.moveTo, out)) clean.moveTo = { x: raw.moveTo.x, y: raw.moveTo.y };
     const from = clean.moveTo ?? n.pos;
-    if (raw.action && isActionValid(s, id, from, raw.action)) clean.action = structuredClone(raw.action);
+    if (raw.action && isActionValid(s, id, from, raw.action, out)) clean.action = structuredClone(raw.action);
     out.push(clean);
   }
   return out;

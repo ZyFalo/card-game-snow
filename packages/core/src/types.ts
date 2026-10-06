@@ -111,14 +111,19 @@ export interface MatchState {
 }
 
 export type DamageCause = 'attack' | 'card' | 'splash' | 'sweep' | 'burn' | 'enemy';
+/** basic: la acción de revivir, que se completa al final del turno (R-09). card: una carta de Nieve, en el acto. */
+export type ReviveCause = 'basic' | 'card';
 
 export type GameEvent =
   | { t: 'turnStart'; turn: number }
   | { t: 'move'; unitId: string; path: Vec[] }
   | { t: 'attack'; sourceId: ElementKind; targetId: string; boosted: boolean }
   | { t: 'heal'; sourceId: ElementKind | null; targetId: ElementKind; amount: number; hp: number }
+  /** Empieza una reanimación (R-09): queda pendiente hasta `revive` o `reviveInterrupted`. */
   | { t: 'reviveStart'; sourceId: ElementKind; targetId: ElementKind }
-  | { t: 'revive'; sourceId: ElementKind | null; targetId: ElementKind; hp: number }
+  | { t: 'revive'; sourceId: ElementKind | null; targetId: ElementKind; hp: number; cause: ReviveCause }
+  /** Quien revivía cayó antes de terminar: el aliado no se levanta. */
+  | { t: 'reviveInterrupted'; sourceId: ElementKind; targetId: ElementKind }
   | {
       t: 'damage';
       targetId: string;

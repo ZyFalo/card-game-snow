@@ -7,6 +7,7 @@ import {
   type EnemyKind,
   type GameEvent,
   healTargets,
+  isActionValid,
   key,
   moveOptions,
   resolutionOrder,
@@ -146,51 +147,116 @@ describe('Acciones básicas', () => {
     expect(ninja(r.state, 'fire').hp).toBe(16);
   });
 
-  it('R-09 revivir levanta al aliado con 1 HP en el acto, antes de la fase enemiga', () => {
+  it('R-09 revivir queda pendiente: el aliado se levanta con 1 HP al final del turno, después de los gólems', () => {
     const s = blank();
     place(s, 'fire', 0, 3, { hp: 0, everKo: true });
     addEnemy(s, 'colossus', 8, 0);
     expect(reviveTargets(s, 'snow', { x: 0, y: 4 }).map((n) => n.id)).toEqual(['fire']);
     const r = resolveTurn(s, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'fire' } }]);
     const t = types(r.events);
-    expect(t.indexOf('reviveStart')).toBeLessThan(t.indexOf('revive'));
-    expect(t.indexOf('revive')).toBeLessThan(
-      t.findIndex((x) => x === 'move' || x === 'enemyAttack' || x === 'enemySkip'),
-    );
-    expect(ninja(r.state, 'fire').hp).toBe(BALANCE.reviveHp);
+    const iStart = t.indexOf('reviveStart');
+    const iGolem = t.findIndex((x) => x === 'move' || x === 'enemyAttack' || x === 'enemySkip');
+    const iRevive = t.indexOf('revive');
+    expect(r.events[iStart]).toEqual({ t: 'reviveStart', sourceId: 'snow', targetId: 'fire' });
+    expect(iGolem).toBeGreaterThan(iStart);
+    expect(iRevive).toBeGreaterThan(iGolem);
+    expect(BALANCE.reviveHp).toBe(1);
+    expect(r.events[iRevive]).toEqual({ t: 'revive', sourceId: 'snow', targetId: 'fire', hp: 1, cause: 'basic' });
+    expect(ninja(r.state, 'fire').hp).toBe(1);
     expect(r.state.stats.revives).toBe(1);
+    // Revivir cuesta la acción: carga el medidor de quien revive, como cualquier acción (R-15).
+    expect(ninja(r.state, 'snow').meter).toBe(BALANCE.meter.perEvent);
   });
 
-  it('R-09 el recién revivido puede volver a caer en el turno de los gólems', () => {
+  it('R-09 mientras actúan los gólems el caído sigue caído: no lo atacan, y se levanta después', () => {
     const s = blank();
-    s.difficulty = 'storm'; // los gólems priorizan rematar: el objetivo es determinista
+    s.difficulty = 'storm'; // los gólems rematan al más débil: con la regla anterior iban por el recién revivido
     place(s, 'water', 3, 2, { hp: 0, everKo: true });
     place(s, 'snow', 3, 3);
     place(s, 'fire', 0, 0);
     addEnemy(s, 'sniper', 6, 2);
     const r = resolveTurn(s, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } }]);
+    const hits = r.events.filter((e) => e.t === 'enemyAttack');
+    expect(hits.map((e) => e.t === 'enemyAttack' && e.targetId)).toEqual(['snow']);
+    expect(r.events.some((e) => e.t === 'damage' && e.targetId === 'water')).toBe(false);
+    const iHit = r.events.findIndex((e) => e.t === 'enemyAttack');
     const iRevive = r.events.findIndex((e) => e.t === 'revive' && e.targetId === 'water');
-    const iHit = r.events.findIndex((e) => e.t === 'enemyAttack' && e.targetId === 'water');
-    const iKo = r.events.findIndex((e) => e.t === 'ko' && e.unitId === 'water');
-    expect(iRevive).toBeGreaterThanOrEqual(0);
-    expect(iHit).toBeGreaterThan(iRevive);
-    expect(iKo).toBeGreaterThan(iHit);
-    expect(ninja(r.state, 'water').hp).toBe(0);
+    expect(iRevive).toBeGreaterThan(iHit);
+    expect(ninja(r.state, 'water').hp).toBe(1);
     expect(ninja(r.state, 'snow').hp).toBeGreaterThan(0);
     expect(r.state.stats.revives).toBe(1);
   });
 
-  it('R-09 dos reanimadores sobre el mismo caído no suman efecto', () => {
+  it('R-09 si quien revive cae en la fase enemiga, la reanimación se interrumpe y el caído no se levanta', () => {
+    const s = blank();
+    place(s, 'water', 3, 2, { hp: 0, everKo: true });
+    place(s, 'snow', 3, 3, { hp: 3 }); // cualquier disparo del francotirador la derriba
+    place(s, 'fire', 0, 0);
+    addEnemy(s, 'sniper', 6, 2);
+    const r = resolveTurn(s, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } }]);
+    const t = types(r.events);
+    const iKo = r.events.findIndex((e) => e.t === 'ko' && e.unitId === 'snow');
+    const iStop = t.indexOf('reviveInterrupted');
+    expect(t).toContain('reviveStart');
+    expect(iKo).toBeGreaterThanOrEqual(0);
+    expect(iStop).toBeGreaterThan(iKo);
+    expect(r.events[iStop]).toEqual({ t: 'reviveInterrupted', sourceId: 'snow', targetId: 'water' });
+    expect(t).not.toContain('revive');
+    expect(ninja(r.state, 'water').hp).toBe(0);
+    expect(r.state.stats.revives).toBe(0);
+    // Brasa sigue en pie: la partida continúa.
+    expect(r.state.status).toBe('playing');
+  });
+
+  it('R-09 un caído no puede tener dos reanimadores: el segundo no puede elegirlo al planificar', () => {
     const s = blank();
     place(s, 'fire', 1, 2, { hp: 0, everKo: true });
     place(s, 'water', 0, 1);
     place(s, 'snow', 0, 3);
-    const r = resolveTurn(s, [
-      { ninjaId: 'water', action: { type: 'revive', targetId: 'fire' } },
-      { ninjaId: 'snow', action: { type: 'revive', targetId: 'fire' } },
+    const revive = { type: 'revive', targetId: 'fire' } as const;
+    const water = { ninjaId: 'water', action: revive } as const;
+    const snow = { ninjaId: 'snow', action: revive } as const;
+    // Sin planes, las dos pueden elegirlo. Con el plan de Marea, Escarcha ya no; a Marea su propio plan no la estorba.
+    expect(reviveTargets(s, 'snow', { x: 0, y: 3 }).map((n) => n.id)).toEqual(['fire']);
+    expect(reviveTargets(s, 'snow', { x: 0, y: 3 }, [water])).toEqual([]);
+    expect(isActionValid(s, 'snow', { x: 0, y: 3 }, revive, [water])).toBe(false);
+    expect(reviveTargets(s, 'water', { x: 0, y: 1 }, [water]).map((n) => n.id)).toEqual(['fire']);
+    // Si aun así llegan los dos planes, vale el primero en el orden de R-11 y el otro pierde su acción.
+    expect(sanitizePlans(s, [snow, water])).toEqual([water, { ninjaId: 'snow' }]);
+    const r = resolveTurn(s, [snow, water]);
+    expect(r.events.filter((e) => e.t === 'reviveStart')).toEqual([
+      { t: 'reviveStart', sourceId: 'water', targetId: 'fire' },
     ]);
     expect(r.events.filter((e) => e.t === 'revive')).toHaveLength(1);
-    expect(ninja(r.state, 'fire').hp).toBe(BALANCE.reviveHp);
+    expect(ninja(r.state, 'fire').hp).toBe(1);
+    expect(r.state.stats.revives).toBe(1);
+    expect(ninja(r.state, 'snow').meter).toBe(0);
+  });
+
+  it('R-09 la carta de Nieve sigue reviviendo en el acto, y la reanimación pendiente sobre ese caído ya no hace nada', () => {
+    const s = blank();
+    s.difficulty = 'storm'; // el francotirador remata a quien puede derribar: va por Marea
+    place(s, 'fire', 1, 2, { hp: 0, everKo: true });
+    place(s, 'water', 0, 1, { hp: 3 });
+    place(s, 'snow', 0, 3, { hand: [{ id: 'n', element: 'snow', value: 9 }] });
+    addEnemy(s, 'sniper', 4, 1);
+    // El área de la carta alcanza a Brasa, pero no a Marea: a ella no la cura.
+    const r = resolveTurn(s, [
+      { ninjaId: 'water', action: { type: 'revive', targetId: 'fire' } },
+      { ninjaId: 'snow', action: { type: 'card', cardId: 'n', at: { x: 2, y: 3 } } },
+    ]);
+    const t = types(r.events);
+    const iGolem = r.events.findIndex((e) => (e.t === 'move' && e.unitId !== 'fire') || e.t === 'enemyAttack');
+    // La carta levanta a Brasa en el acto, con el valor de la carta, antes de los gólems.
+    expect(r.events.filter((e) => e.t === 'revive')).toEqual([
+      { t: 'revive', sourceId: 'snow', targetId: 'fire', hp: 9, cause: 'card' },
+    ]);
+    expect(t.indexOf('reviveStart')).toBeLessThan(t.indexOf('revive'));
+    expect(t.indexOf('revive')).toBeLessThan(iGolem);
+    // Marea cae después, pero ya no revivía a nadie: no hay nada que interrumpir, y Brasa sigue en pie.
+    expect(ninja(r.state, 'water').hp).toBe(0);
+    expect(t).not.toContain('reviveInterrupted');
+    expect(ninja(r.state, 'fire').hp).toBe(9);
     expect(r.state.stats.revives).toBe(1);
   });
 
@@ -234,6 +300,23 @@ describe('Acciones básicas', () => {
     expect(water.meter).toBe(6);
     expect(water.hand).toEqual(hand);
     expect(water.boost).toBe(true);
+  });
+
+  it('R-11 las reanimaciones pendientes se completan después de los gólems y antes de las quemaduras', () => {
+    const s = blank();
+    place(s, 'fire', 0, 3, { hp: 0, everKo: true });
+    addEnemy(s, 'colossus', 8, 0, { stunned: true, burnTicks: 2 });
+    const r = resolveTurn(s, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'fire' } }]);
+    const at = (find: (e: GameEvent) => boolean) => r.events.findIndex(find);
+    const order = [
+      at((e) => e.t === 'reviveStart'),
+      at((e) => e.t === 'enemySkip'),
+      at((e) => e.t === 'status' && e.status === 'stun' && !e.on),
+      at((e) => e.t === 'revive'),
+      at((e) => e.t === 'damage' && e.cause === 'burn'),
+    ];
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
   });
 
   it('R-11 las acciones se resuelven en orden Fuego, Agua, Nieve', () => {
@@ -536,6 +619,31 @@ describe('Rondas, bonus y final (R-20 a R-22)', () => {
     const r2 = resolveTurn(t, [{ ninjaId: 'water', action: { type: 'attack', targetId: e2.id } }]);
     // El turno resuelto suma 1 y supera el límite.
     expect(r2.events.find((x) => x.t === 'bonusCheck')).toMatchObject({ met: false });
+  });
+
+  it('R-22 con una reanimación pendiente: si cae quien revive y no queda nadie en pie, es derrota', () => {
+    const s = blank();
+    place(s, 'fire', 0, 0, { hp: 0, everKo: true });
+    place(s, 'water', 3, 2, { hp: 0, everKo: true });
+    place(s, 'snow', 3, 3, { hp: 3 });
+    addEnemy(s, 'sniper', 6, 2);
+    const r = resolveTurn(s, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } }]);
+    const t = types(r.events);
+    expect(t.indexOf('reviveInterrupted')).toBeGreaterThanOrEqual(0);
+    expect(t.indexOf('matchEnd')).toBeGreaterThan(t.indexOf('reviveInterrupted'));
+    expect(t).not.toContain('revive');
+    expect(r.state.ninjas.every((n) => n.hp === 0)).toBe(true);
+    expect(r.state.status).toBe('defeat');
+
+    // Si quien revive aguanta, la reanimación se completa antes de comprobar la derrota: quedan dos en pie.
+    const ok = blank();
+    place(ok, 'fire', 0, 0, { hp: 0, everKo: true });
+    place(ok, 'water', 3, 2, { hp: 0, everKo: true });
+    place(ok, 'snow', 3, 3);
+    addEnemy(ok, 'sniper', 6, 2);
+    const r2 = resolveTurn(ok, [{ ninjaId: 'snow', action: { type: 'revive', targetId: 'water' } }]);
+    expect(r2.state.ninjas.filter((n) => n.hp > 0).map((n) => n.id)).toEqual(['water', 'snow']);
+    expect(r2.state.status).toBe('playing');
   });
 
   it('R-22 derrota si caen los tres; perder el bonus no quita la victoria', () => {

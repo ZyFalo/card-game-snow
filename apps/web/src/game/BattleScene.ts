@@ -1,17 +1,9 @@
 import {
-  area3x3,
   difficultyConfig,
   ELEMENTS,
   type ElementKind,
-  enemyAt,
-  eq,
   type GameEvent,
-  getEnemy,
-  getNinja,
-  key,
   type MatchState,
-  moveOptions,
-  resolutionOrder,
   type Vec,
 } from '@ventisca/core';
 import * as Phaser from 'phaser';
@@ -20,8 +12,8 @@ import { golemRig, ninjaRig } from '../art/rigs';
 import { audio } from '../audio/audio';
 import { ES } from '../i18n/es';
 import { clickTile, setHover, undo } from '../state/actions';
+import { type AimLine, boardLayers } from '../state/board';
 import { bridge } from '../state/bridge';
-import { activeInfo, plansArray, threatTiles } from '../state/planning';
 import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
 import { Fx } from './fx';
 import {
@@ -354,12 +346,17 @@ export class BattleScene extends Phaser.Scene {
     g.strokePoints(pts, true);
   }
 
-  private unitAim(v: Vec): Pt {
-    return aimPoint(v);
+  /** Línea de mira de una acción planeada. */
+  private aimLine(g: Phaser.GameObjects.Graphics, aim: AimLine): void {
+    const from = aimPoint(aim.from);
+    const to = aimPoint(aim.to);
+    if (aim.kind === 'attack') g.lineStyle(3, RED, 0.75);
+    else g.lineStyle(3, aim.kind === 'heal' ? MINT : GOLD, 0.85);
+    g.lineBetween(from.x, from.y, to.x, to.y);
   }
 
+  /** Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. */
   redrawPlanning(): void {
-    const s = store.getState();
     const hl = this.hl;
     const ov = this.ov;
     if (!hl || !ov) return;
@@ -367,138 +364,110 @@ export class BattleScene extends Phaser.Scene {
     ov.clear();
     this.clearLabels();
     for (const g of this.ghosts.values()) g.setVisible(false);
-    if (s.phase !== 'planning' || !s.match || s.screen !== 'battle') return;
-    const m = s.match;
-    const info = activeInfo(s);
+    const layers = boardLayers(store.getState());
+    if (!layers) return;
+    const colorOf = (el: ElementKind) => hex(ELEMENT_COLORS[el].base);
 
     // Vista previa de amenaza al pasar sobre un gólem.
-    if (s.hover && !s.pendingCard) {
-      const e = enemyAt(m, s.hover);
-      if (e) {
-        for (const t of threatTiles(m, e)) {
-          const r = tileRect(t);
-          hl.fillStyle(RED, 0.1);
-          hl.fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
-          hl.lineStyle(2, RED, 0.45);
-          hl.strokeRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
-        }
-      }
+    for (const t of layers.threat) {
+      const r = tileRect(t);
+      hl.fillStyle(RED, 0.1);
+      hl.fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
+      hl.lineStyle(2, RED, 0.45);
+      hl.strokeRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6);
     }
 
-    if (info) {
-      const el = info.ninja.id;
-      const col = hex(ELEMENT_COLORS[el].base);
-      const fp = footPoint(info.ninja.pos);
-      hl.lineStyle(4, col, 1);
+    if (layers.active) {
+      const c = ELEMENT_COLORS[layers.active.ninja];
+      const fp = footPoint(layers.active.at);
+      hl.lineStyle(4, hex(c.base), 1);
       hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
-      if (!s.pendingCard) {
-        for (const path of info.moves.values()) {
-          const t = path[path.length - 1] as Vec;
-          const r = tileRect(t);
-          hl.fillStyle(0x9cc0f5, 0.42);
-          hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
-          const c = tileCenter(t);
-          hl.fillStyle(0x2f6fdb, 0.6);
-          hl.fillCircle(c.x, c.y + 8, 4.5);
-        }
-        for (const e of info.attack) this.reticle(ov, this.unitAim(e.pos), 0.5, false);
-        for (const a of info.heal) this.plus(ov, this.unitAim(a.pos), 0.55);
-        for (const a of info.revive) this.arrowUp(ov, this.unitAim(a.pos), 0.65);
-      } else {
-        const c = ELEMENT_COLORS[el];
-        for (const t of info.cardTiles) {
+      for (const t of layers.moves) {
+        const r = tileRect(t);
+        hl.fillStyle(0x9cc0f5, 0.42);
+        hl.fillRoundedRect(r.x + 6, r.y + 6, r.w - 12, r.h - 12, 8);
+        const tc = tileCenter(t);
+        hl.fillStyle(0x2f6fdb, 0.6);
+        hl.fillCircle(tc.x, tc.y + 8, 4.5);
+      }
+
+      if (layers.card) {
+        for (const t of layers.card.tiles) {
           const tc = tileCenter(t);
           hl.fillStyle(hex(c.light), 0.28);
           hl.fillCircle(tc.x, tc.y, 16);
           hl.lineStyle(2, hex(c.dark), 0.6);
           hl.strokeCircle(tc.x, tc.y, 16);
         }
-        const hover = s.hover;
-        if (hover && info.cardTiles.some((t) => eq(t, hover))) {
-          for (const a of area3x3(hover)) {
-            const r = tileRect(a);
-            hl.fillStyle(hex(c.base), 0.3);
-            hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
-            const e = enemyAt(m, a);
-            if (e) this.reticle(ov, this.unitAim(e.pos), 0.9, true);
-            const n = m.ninjas.find((x) => eq(x.pos, a));
-            if (n && el === 'snow') this.plus(ov, this.unitAim(n.pos), 0.9);
-          }
-        }
-      }
-    }
-
-    // Planes de todos los ninjas: fantasmas, caminos, objetivos y orden de resolución.
-    const plans = plansArray(s.plans);
-    // D-32: cada fantasma muestra el orden real de R-11; sin acción no hay número.
-    const order = resolutionOrder(m, plans);
-    for (const plan of plans) {
-      const n = getNinja(m, plan.ninjaId);
-      if (!n || n.hp <= 0) continue;
-      const col = hex(ELEMENT_COLORS[n.id].base);
-      const origin = plan.moveTo ?? n.pos;
-      if (plan.moveTo) {
-        const ghost = this.ghosts.get(n.id);
-        const fp = footPoint(plan.moveTo);
-        ghost
-          ?.setPosition(fp.x, fp.y)
-          .setVisible(true)
-          .setDepth(fp.y - 0.5);
-        const others = plans.filter((p) => p.ninjaId !== n.id);
-        const path = moveOptions(m, n.id, others).get(key(plan.moveTo)) ?? [n.pos, plan.moveTo];
-        const pts = path.map((v) => {
-          const c = tileCenter(v);
-          return new Phaser.Math.Vector2(c.x, c.y + 14);
-        });
-        hl.lineStyle(5, col, 0.75);
-        hl.strokePoints(pts, false);
-        const last = pts[pts.length - 1];
-        if (last) {
-          hl.fillStyle(col, 0.9);
-          hl.fillCircle(last.x, last.y, 6);
-        }
-      }
-      const from = this.unitAim(origin);
-      const a = plan.action;
-      if (a?.type === 'attack') {
-        const e = getEnemy(m, a.targetId);
-        if (e) {
-          const to = this.unitAim(e.pos);
-          ov.lineStyle(3, RED, 0.75);
-          ov.lineBetween(from.x, from.y, to.x, to.y);
-          this.reticle(ov, to, 1, true);
-        }
-      } else if (a?.type === 'heal' || a?.type === 'revive') {
-        const t = getNinja(m, a.targetId);
-        if (t) {
-          const to = this.unitAim(t.pos);
-          ov.lineStyle(3, a.type === 'heal' ? MINT : GOLD, 0.85);
-          ov.lineBetween(from.x, from.y, to.x, to.y);
-          if (a.type === 'heal') this.plus(ov, to, 1, 9);
-          else this.arrowUp(ov, to, 1);
-        }
-      } else if (a?.type === 'card') {
-        const c = ELEMENT_COLORS[n.id];
-        for (const t of area3x3(a.at)) {
+        for (const t of layers.card.area) {
           const r = tileRect(t);
-          hl.fillStyle(hex(c.base), 0.22);
+          hl.fillStyle(hex(c.base), 0.3);
           hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
         }
-        const tl = tileRect({ x: Math.max(0, a.at.x - 1), y: Math.max(0, a.at.y - 1) });
-        const br = tileRect({ x: Math.min(8, a.at.x + 1), y: Math.min(4, a.at.y + 1) });
-        ov.lineStyle(4, hex(c.dark), 0.95);
-        ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
-        const card = n.hand.find((x) => x.id === a.cardId);
-        const cc = tileCenter(a.at);
-        this.badge({ x: cc.x, y: cc.y }, `${card?.value ?? ''}`, hex(c.dark));
+        for (const t of layers.card.enemies) this.reticle(ov, aimPoint(t), 0.9, true);
+        for (const t of layers.card.allies) this.plus(ov, aimPoint(t), 0.9);
       }
-      const num = order[n.id];
-      if (num) this.badge(orderPoint(origin), `${num}`, col);
     }
 
-    if (s.hover) {
-      const r = tileRect(s.hover);
+    // Planes: el fantasma de cada ninja y, solo para el activo, el camino hasta él.
+    for (const ghost of layers.ghosts) {
+      const fp = footPoint(ghost.at);
+      this.ghosts
+        .get(ghost.ninja)
+        ?.setPosition(fp.x, fp.y)
+        .setVisible(true)
+        .setDepth(fp.y - 0.5);
+    }
+    if (layers.path) {
+      const color = colorOf(layers.path.ninja);
+      const pts = layers.path.tiles.map((v) => {
+        const tc = tileCenter(v);
+        return new Phaser.Math.Vector2(tc.x, tc.y + 14);
+      });
+      hl.lineStyle(5, color, 0.75);
+      hl.strokePoints(pts, false);
+      const last = pts[pts.length - 1];
+      if (last) {
+        hl.fillStyle(color, 0.9);
+        hl.fillCircle(last.x, last.y, 6);
+      }
+    }
+    for (const card of layers.cards) {
+      const c = ELEMENT_COLORS[card.ninja];
+      for (const t of card.area) {
+        const r = tileRect(t);
+        hl.fillStyle(hex(c.base), 0.22);
+        hl.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 7);
+      }
+      const tl = tileRect({ x: Math.max(0, card.at.x - 1), y: Math.max(0, card.at.y - 1) });
+      const br = tileRect({ x: Math.min(8, card.at.x + 1), y: Math.min(4, card.at.y + 1) });
+      ov.lineStyle(4, hex(c.dark), 0.95);
+      ov.strokeRoundedRect(tl.x + 3, tl.y + 3, br.x + br.w - tl.x - 6, br.y + br.h - tl.y - 6, 10);
+      this.badge(tileCenter(card.at), `${card.value ?? ''}`, hex(c.dark));
+    }
+
+    // Las líneas de mira van debajo de las marcas: solo las que pide el ratón.
+    for (const aim of layers.aims) this.aimLine(ov, aim);
+
+    // Objetivos que el ninja activo todavía puede elegir.
+    for (const t of layers.options.attack) this.reticle(ov, aimPoint(t), 0.5, false);
+    for (const t of layers.options.heal) this.plus(ov, aimPoint(t), 0.55);
+    for (const t of layers.options.revive) this.arrowUp(ov, aimPoint(t), 0.65);
+
+    // Objetivos ya elegidos.
+    for (const mark of layers.marks) {
+      const at = aimPoint(mark.at);
+      if (mark.kind === 'attack') this.reticle(ov, at, 1, true);
+      else if (mark.kind === 'heal') this.plus(ov, at, 1, 9);
+      else this.arrowUp(ov, at, 1);
+    }
+
+    // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.
+    for (const o of layers.order) this.badge(orderPoint(o.at), `${o.n}`, colorOf(o.ninja));
+
+    if (layers.hover) {
+      const r = tileRect(layers.hover);
       ov.lineStyle(2.5, INK, 0.55);
       ov.strokeRoundedRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6, 7);
     }

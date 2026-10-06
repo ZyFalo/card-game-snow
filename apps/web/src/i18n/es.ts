@@ -271,7 +271,8 @@ export const OVERLAY_TEXT = {
 
 export const SCREEN_TEXT = {
   kicker: 'Tácticas por turnos · 1 jugador',
-  credits: 'Proyecto de clase. Arte, sonido y música generados en código.',
+  /** Pie de la portada (D-75). */
+  pilot: 'Piloto de un proyecto personal',
   cardLabel: 'Carta:',
   comboLabel: 'Combo:',
   stats: { hp: 'Vida', attack: 'Daño', range: 'Alcance', move: 'Paso' },
@@ -281,6 +282,21 @@ export const SCREEN_TEXT = {
   defeat: 'La escarcha cubrió a los tres. Revisa el orden de acciones y vuelve a intentarlo.',
   matchMeta: (difficulty: string, map: string) => `Dificultad ${difficulty}, mapa ${map}.`,
   clearedIn: (turns: number) => `Rondas 1 a 3 en ${turns} turnos.`,
+} as const;
+
+/*
+ * Créditos (D-76): Ventisca reconoce su inspiración. Los tres primeros párrafos son el "Texto corto para
+ * el juego" de CREDITOS.md, tal como lo escribió el dueño de producto (una prueba los compara); el último
+ * es la frase que estaba en el pie de la portada. Es el único lugar del juego que nombra al original (D-01).
+ */
+export const CREDITS_TEXT = {
+  title: 'Créditos',
+  body: [
+    'Ventisca es un homenaje a Card-Jitsu Nieve, de la saga Card-Jitsu de Club Penguin. De ahí viene la idea; los personajes, el arte, la música, los sonidos y el código son propios.',
+    'Club Penguin y Card-Jitsu son marcas de Disney, y Ventisca no está afiliado ni respaldado por Disney.',
+    'Gracias al equipo de Club Penguin y a su comunidad.',
+    'Arte, sonido y música generados en código.',
+  ],
 } as const;
 
 /* ---------- Ayuda ---------- */
@@ -527,16 +543,18 @@ export const ACCOUNT_ERRORS = {
 /*
  * Aviso de privacidad, aprobado por el dueño de producto el 2026-09-30, con la frase de Resend (envío desde
  * São Paulo) y la del plazo de los códigos (R-50) aprobadas en la revisión del PR #11. El contacto pasa a
- * ventisca@wpena.dev (D-62).
+ * ventisca@wpena.dev (D-62). Su primer párrafo cambió con D-75: Ventisca dejó de ser un proyecto de clase y
+ * es el piloto de un proyecto personal. Ese párrafo nombra de forma explícita al responsable del tratamiento
+ * de los datos. La fecha de vigencia es la de la fusión de ese cambio.
  */
 export const PRIVACY_NOTICE = {
   title: 'Aviso de privacidad de Ventisca',
-  since: 'Vigente desde el 30 de septiembre de 2026',
+  since: 'Vigente desde el 6 de octubre de 2026',
   sections: [
     {
       title: '',
       body: [
-        'Ventisca es un proyecto de clase sin fines comerciales. Su responsable es William Andres Peña Vargas. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
+        'Ventisca es el piloto de un proyecto personal que William Andrés Peña Vargas avanza en sus ratos libres. Él es el responsable del tratamiento de tus datos personales. Hoy el juego es gratuito: no vende nada ni muestra publicidad. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
       ],
     },
     {

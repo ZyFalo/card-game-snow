@@ -5,7 +5,7 @@ import { createStore } from 'zustand/vanilla';
 import { TIPS } from '../i18n/es';
 import { loadSettings, type Settings } from './persist';
 
-export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results' | 'account';
+export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results' | 'account' | 'credits';
 
 /** Vistas de la pantalla de cuenta (modo en línea). */
 export type AccountView =

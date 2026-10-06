@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con su primer paso hecho; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
+Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con su primer paso hecho; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
 ## Qué hay
 
@@ -24,6 +24,10 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
   - El cliente conserva ese identificador solo si la respuesta se pierde (D-68): comprar de nuevo la misma caja no cobra dos veces. Entonces vuelve a leer el progreso, para mostrar el saldo real, y esa caja se puede reintentar aunque el saldo ya no alcance. Cualquier respuesta definitiva, sea la caja o un rechazo, borra el identificador.
   - En el código (`purchaseLost` en `state/progress.ts`), una respuesta perdida es que no llegó ninguna o que el servidor falló con un 500, porque un 500 tampoco dice si cobró.
   - **Hoy nadie puede ganar monedas:** se ganarán en las partidas en línea (M8). La tienda lo dice en futuro y con "Próximamente". Las e2e le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e; el servidor no tiene ninguna ruta que regale monedas.
+- **Portada y créditos:**
+  - El pie de la portada dice "Piloto de un proyecto personal" (D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
+  - La pantalla de créditos (`CreditsScreen` en `ui/Screens.tsx`) muestra el texto corto de `CREDITOS.md` (D-76); una prueba los compara. Es el único lugar del juego que nombra al original.
+  - El aviso de privacidad dice que hoy el juego es gratuito: no vende nada ni muestra publicidad. Si eso cambia algún día, el aviso cambia antes.
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
   - Lo que el tablero muestra al planificar son capas: casillas de movimiento, fantasmas, marcas de objetivo, líneas de mira. `state/board.ts` decide cuál se ve y cuándo, con sus pruebas, y la escena solo dibuja.
@@ -166,7 +170,7 @@ Para que no se pierdan. Los seis primeros están también en su hito del PRD de 
 - **Comprobación de `Origin` en la conexión WebSocket** (M8). `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno: necesita su propia comprobación, con su prueba (D-65).
 - **Logros calculados por el servidor** (M8). Hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 el servidor los calcula desde su propia tabla al resolver la partida, incluido el doble de monedas; nunca llegan del cliente.
 - **Mínimo para Tormenta** (R-51): en las salas con código (M8) y en la cola (M9).
-- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes del próximo cambio del aviso, porque el aviso lo promete en "Cambios".
+- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes de que haya cuentas de otras personas: desde entonces, cualquier cambio del aviso pasa por él, porque el aviso lo promete en "Cambios". El cambio del 6 de octubre de 2026 (D-75) fue una corrección previa a la apertura, sin aviso previo, porque todas las cuentas seguían siendo internas.
 - **Investigación del teléfono** (D-73), antes de programar el M8.
 - **Con el M8:**
   - "Juega en línea con amigos" deja de decir "Próximamente" en los beneficios de la cuenta (`BENEFITS` en `ui/Account.tsx`);

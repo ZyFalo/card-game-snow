@@ -16,7 +16,7 @@ El PRD de v2 pide un servidor Node autoritativo en el monorepo (`apps/server`). 
 |---|---|
 | Express 5 | Menos tipado y sin plugins oficiales para WebSocket y límites; habría que armar más a mano |
 | Hono | Muy bueno en el borde de la red, pero en Node su WebSocket y su ecosistema de cookies y límites son menos maduros que los de Fastify |
-| NestJS | Demasiada estructura para un proyecto de clase con un solo servidor |
+| NestJS | Demasiada estructura para un proyecto pequeño con un solo servidor |
 | Colyseus | Ya descartado en el §11.2 del PRD: el motor de reglas existe y las salas son simples |
 | Kysely | Buen constructor de consultas, pero sin esquema declarativo: las migraciones se escriben a mano |
 | Prisma | Motor aparte y cliente generado: imagen más pesada y menos control del SQL |

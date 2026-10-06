@@ -19,7 +19,7 @@
 
 - **Un solo juego que aprender:** las rondas 1 a 3 son las de siempre.
 - **Razones para volver:** siempre hay algo nuevo esperando al final.
-- **Momentos compartidos:** por ejemplo, toda la clase persiguiendo al jefe de la semana.
+- **Momentos compartidos:** por ejemplo, un grupo de amigos persiguiendo al jefe de la semana.
 - **Reconocimiento que se gana, no que se compra.**
 
 ## Decisiones para cuando se retome

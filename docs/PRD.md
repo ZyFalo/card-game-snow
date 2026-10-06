@@ -5,11 +5,11 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.15 |
+| Versión | 0.10.16 |
 | Última actualización | 6 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
-| Contexto | Proyecto de clase: recrear con IA el juego favorito de la infancia |
+| Contexto | Piloto de un proyecto personal, que su responsable avanza en sus ratos libres: recrear con IA el juego favorito de la infancia. Empezó como proyecto de clase (D-75) |
 | Nombre | "Proyecto Ventisca" es un nombre en clave provisional (P-05) |
 
 ### Estado rápido
@@ -77,7 +77,7 @@ Tres ninjas elementales (Fuego, Agua y Nieve) defienden una cima nevada en un ta
 
 | Fase | Qué | Para quién |
 |---|---|---|
-| v1 | Single player en el navegador, controlando a los 3 ninjas | Entrega de la clase |
+| v1 | Single player en el navegador, controlando a los 3 ninjas | La primera versión jugable; fue la entrega de la clase |
 | v2 | Modo en línea con cuentas: salas con código y emparejamiento, de 2 a 3 personas (`docs/PRD-v2.md`) | Tú, tus amigos y el público |
 | v3 | Jefe final, mentor aliado y progresión | Versión "completa" |
 
@@ -95,9 +95,9 @@ Tres ninjas elementales (Fuego, Agua y Nieve) defienden una cima nevada en un ta
 
 1. Ningún asset se extrae, calca, convierte o "limpia" del juego original ni de servidores o repositorios de fans (varios redistribuyen los archivos originales).
 2. Los prompts para generar arte o audio nunca mencionan el juego original, sus personajes ni "su estilo".
-3. Los nombres del original solo aparecen en este documento como referencia de investigación (encabezado, §4 y apéndices); nunca dentro del juego.
+3. Los nombres del original solo aparecen como referencia de investigación (en este documento y en `docs/`) y como reconocimiento de la inspiración (D-76): en `CREDITOS.md`, en el README y en la pantalla de créditos del juego. En ningún otro lugar del juego.
 
-**Por qué:** el proyecto se puede mostrar sin depender de material de terceros (clase, repositorio público, portafolio), y la identidad propia se puede diseñar y generar con IA sin restricciones.
+**Por qué:** el proyecto se puede mostrar sin depender de material de terceros (repositorio público, portafolio), y la identidad propia se puede diseñar y generar con IA sin restricciones.
 
 ---
 
@@ -109,7 +109,7 @@ Tres ninjas elementales (Fuego, Agua y Nieve) defienden una cima nevada en un ta
 - **G2.** Fidelidad mecánica: las reglas de la §7 reproducen los valores del original (§4 y Apéndice A).
 - **G3.** Que "se sienta" como el original: planificación simultánea con reloj, combos con cinemática, feedback claro de cada golpe.
 - **G4.** Arquitectura lista para multijugador: motor de reglas determinista y "host" intercambiable (§11).
-- **G5.** Proceso de desarrollo con IA documentado, como evidencia para la clase (§12, P-09).
+- **G5.** Proceso de desarrollo con IA documentado (§12).
 
 ### 3.2 No-objetivos de v1
 
@@ -306,7 +306,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 
 | Fase | Contenido | Hitos |
 |---|---|---|
-| **v1 — Single player** (entrega de clase) | Reglas completas de §7, control de los 3 ninjas con ritmos de reloj, IA enemiga, 3 rondas + bonus, pantallas de §9, arte y audio originales | M0 a M6 |
+| **v1 — Single player** | Reglas completas de §7, control de los 3 ninjas con ritmos de reloj, IA enemiga, 3 rondas + bonus, pantallas de §9, arte y audio originales | M0 a M6 |
 | **v2 — En línea** | Cuentas, salas con código y emparejamiento para 2 o 3 personas, un ninja cada una y el bot en el ninja libre, con el progreso en la cuenta (`docs/PRD-v2.md`) | M7 a M9 |
 | **v3 — Jefe y progresión** | Jefe y mentora, rangos, recompensas, logros persistentes. Ideas para después, todavía sin decidir: [`docs/ideas/eventos-de-jefe.md`](ideas/eventos-de-jefe.md) y [`docs/ideas/progresion-y-mentora.md`](ideas/progresion-y-mentora.md) | M10+ |
 
@@ -322,7 +322,7 @@ Por qué la recomiendo: conecta con las "cartas" (todo es papel), da siluetas mu
 - Cada hito tiene una caja de tiempo (las estimaciones de §13). Si se pasa en más de 50 %, se recorta su alcance y lo pendiente va al backlog.
 - Tres puntos de demostración:
   - **Demo 1** (fin de M1): combate básico jugable.
-  - **Demo 2** (fin de M3): corte vertical con cartas y combos, ideal para mostrar avance en clase.
+  - **Demo 2** (fin de M3): corte vertical con cartas y combos, ideal para mostrar avance.
   - **v1** (fin de M6): arte original, audio y enlace público.
 - Nada de v2 o v3 entra antes de cerrar v1, salvo lo que ya exige la arquitectura (motor determinista y host intercambiable).
 
@@ -431,6 +431,7 @@ Nivel de habilidad configurable (qué tan a menudo elige la mejor opción) 🧪,
 ```mermaid
 flowchart LR
   T[Título] --> S[Tu equipo y ritmo]
+  T <--> C[Créditos]
   S --> L[Carga con consejo]
   L --> B1[Ronda 1] --> B2[Ronda 2] --> B3[Ronda 3]
   B3 -->|condición cumplida| BB[Ronda bonus]
@@ -441,6 +442,8 @@ flowchart LR
   R -->|Menú| T
 ```
 
+- **Título:** su pie dice qué es el proyecto ("Piloto de un proyecto personal", D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
+- **Créditos:** una pantalla de lectura con el texto corto de `CREDITOS.md`, donde Ventisca reconoce su inspiración (D-76).
 - **Tu equipo:** resumen de las tres clases (barras de movimiento, alcance y daño; qué hacen su carta y su combo; cartas en el mazo), elección de ritmo y casilla de modo consejos. En v2 vuelve la elección de elemento por jugador.
 - **Carga:** un consejo propio al azar (§9.5).
 - **Resultados:** victoria o derrota, rondas, bonus, combos, caídas, curaciones, turnos y tiempo, logros obtenidos y botones de reintentar o volver al menú.
@@ -805,14 +808,14 @@ Reemplaza el plan anterior de un Durable Object de Cloudflare por sala (D-03).
 
 ## 12. Flujo de trabajo con IA
 
-Como la clase pide crear el juego con IA, el proceso también es un entregable.
+El juego se crea con IA, y el proceso también se documenta.
 
 - **Este PRD vive en el repositorio** (`docs/PRD.md`) y es el contexto principal para cualquier asistente de código.
 - **Skills oficiales de Phaser 4:** el repositorio de Phaser incluye una carpeta `skills/` con 28 archivos (uno por subsistema y uno de migración desde v3). El archivo de instrucciones debe apuntar a ellos para que el asistente use APIs de v4 y no patrones de v3.
 - **Archivo de instrucciones para el asistente** en la raíz (por ejemplo `AGENTS.md` o el que use tu herramienta): convenciones, comandos, "el motor no importa nada del render", "el reloj vive en el host", "los tests llevan el ID de la regla", "prohibido usar assets del original".
 - **Ciclo por hito:** pedir un plan de implementación citando IDs → implementar en pasos pequeños con tests → revisar el diff y jugar → actualizar casillas y changelog del PRD.
 - **Prompts con IDs**, por ejemplo: *"Implementa R-12 en `packages/core` con tests que prueben que el francotirador prefiere distancia 3, que el artillero maximiza la salpicadura y que los empates se resuelven con el RNG de la partida."*
-- **Bitácora `docs/ai-log.md`:** fecha, herramienta, qué se pidió, qué se aceptó y qué se corrigió a mano. Sirve como evidencia para la clase.
+- **Bitácora `docs/ai-log.md`:** fecha, herramienta, qué se pidió, qué se aceptó y qué se corrigió a mano. Es el registro de cómo se construyó el juego.
 - **Evidencia visual:** una captura o GIF por hito y un video de demostración final.
 
 ---
@@ -863,7 +866,7 @@ Estimaciones en días de trabajo con asistencia de IA. Funcionan como caja de ti
 - [x] Página jugable publicada (un solo HTML)
 - [ ] Railway (D-37, con el M7) e itch.io, video de demo
 - [x] Bitácora de IA (`docs/ai-log.md`)
-- **Listo cuando:** la clase puede jugar desde un enlace. → **v1**
+- **Listo cuando:** cualquiera puede jugar desde un enlace. → **v1**
 
 ### M7 a M9 — Modo en línea (v2)
 
@@ -943,7 +946,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | P-06 | ¿Debe funcionar en móvil desde v1? | Escritorio primero, táctil en horizontal como "mejor esfuerzo" |
 | P-07 | Ritmo por defecto en single player | Normal (30 s), con Relajado y Experto disponibles |
 | P-08 | Valores dudosos (coloso lateral 10, revivir con 1 HP, límite de turnos del bonus, mazo de 6) | Los del Apéndice A, ajustados con la simulación de M4 |
-| P-09 | ¿Qué exige exactamente la clase? (repositorio, demo, documento del proceso con IA, video, presentación) | Repositorio + enlace jugable + bitácora de IA + video corto |
+| P-09 | ¿Qué exige exactamente la clase? (repositorio, demo, documento del proceso con IA, video, presentación) | Ya no aplica: Ventisca dejó de ser un proyecto de clase (D-75). Se conservan el repositorio, el enlace jugable y la bitácora de IA |
 | P-10 | ¿Música en v1? | Efectos sí; música provisional CC0 |
 | P-11 | Idioma | Español, con textos externalizados para traducir |
 | P-12 | ¿Algo del jefe o la progresión es imprescindible en v1? | No; quedan para v3 |
@@ -997,6 +1000,8 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-76 | Ventisca reconoce su inspiración en Club Penguin, Card-Jitsu y Card-Jitsu Nieve: `CREDITOS.md` en el repositorio, enlazado desde el README, y una pantalla de créditos en el juego, que se abre desde el pie de la portada y muestra el texto corto de `CREDITOS.md`. Es la única mención del original dentro del juego; en lo demás vale D-01: ningún nombre, arte, audio ni texto del original | ✅ | 2026-10-06 |
+| D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo; desde que haya cuentas de otras personas, cualquier cambio pasará por el mecanismo del M9 (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-74 | Ronda de claridad del tablero: quienes probaron el juego dicen que es confuso, porque los planes de los tres ninjas se superponen. La inspiración es el original, donde cada persona controlaba un ninja y el tablero mostraba un solo modo a la vez. La claridad del tablero no cambia ninguna regla. Primer paso, el orden visual: los personajes caben en su casilla y la barra de vida va dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su línea de camino; el ataque se marca con un anillo en el color del atacante sobre el objetivo, con un punto por atacante; la línea de mira aparece solo al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano no muestra las casillas de cartas vacías (sección 11 de `docs/lineamientos-de-diseno.md`) | ✅ | 2026-10-06 |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas: el combate en línea del M8 se diseña para computador, y sus pantallas nuevas se construyen adaptables, con diseño fluido (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja: es el modo para empezar, y el simulador es un techo para personas reales (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
@@ -1053,6 +1058,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.16 | 2026-10-06 | Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal (D-75). El aviso de privacidad lo dice en su primer párrafo y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. El cambio del aviso va como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas; desde que haya cuentas de otras personas, cualquier cambio pasará por el mecanismo del M9. El resto del repositorio deja de describirlo como proyecto de clase, y P-09 ya no aplica. Ventisca reconoce su inspiración (D-76): `CREDITOS.md`, enlazado desde el README, y una pantalla de créditos en el juego, que se abre desde el pie de la portada y es la única mención del original dentro del juego. El pie de la portada queda "Piloto de un proyecto personal · Créditos · Aviso de privacidad". El PRD de v2 anota, como idea para después, el pase de ayudas en línea, con enlaces a `docs/ideas/` |
 | 0.10.15 | 2026-10-06 | Ronda de claridad del tablero, primer paso (D-74): el orden visual. Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro; el fantasma es una silueta sin relleno; solo el ninja activo muestra su camino; un ataque planeado se marca con un anillo en el color del atacante y un punto por atacante; la línea de mira aparece al pasar el ratón; las casillas de movimiento usan el color suave del ninja activo; y la mano muestra solo las cartas que hay y, vacía, dice cómo se ganan. El fondo deja lisa la franja del HUD, para que ninguna línea cruce la pista de las teclas. No cambia ninguna regla. Lo que muestra el tablero al planificar se decide en un módulo con pruebas (`apps/web/src/state/board.ts`) y la escena solo lo dibuja. Las capas quedan en la sección 11 de `docs/lineamientos-de-diseno.md`. Aparte, `docs/ideas/` guarda ideas del dueño de producto para después, que no son decisiones ni tareas, y P-18 anota la propuesta de rangos de origami y de una mentora propia |
 | 0.10.14 | 2026-10-06 | P-20, resuelta con la medición del simulador: Tormenta en línea pide 5 cartas del elemento del ninja (D-69 y R-51 del PRD de v2), el emparejamiento junta a cualquiera dentro de la dificultad elegida (D-70), el límite del bonus se queda en 13 y 18 (D-71) y se acepta que Clásica sea fácil desde la primera caja (D-72). D-68 precisa que un error 500 cuenta como respuesta perdida y que el cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes. D-73: el juego debe funcionar en computador y en teléfono, por etapas. Con el M7 y P-20 se cierra esta fase: sigue una ronda de ajustes de jugabilidad y, después, el M8, que empieza por su especificación técnica y la investigación del teléfono |
 | 0.10.13 | 2026-10-01 | P-20, medida: el simulador arma la partida asiento por asiento (`pnpm sim -- --team` y `--mixed`), como en línea, donde cada persona juega con su colección y el bot con el mazo de referencia (R-34, D-47). El reporte de balance suma la sección de equipos de colecciones mezcladas y el límite de turnos del bonus con cada equipo. No cambia ningún valor; la curva de dificultad en línea queda por decidir |

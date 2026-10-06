@@ -8,8 +8,8 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 
 ## Documentos que mandan
 
-- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, D-63 y D-74, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
-- `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-51, las decisiones D-34 a D-62 y D-64 a D-73, y los hitos M7 a M9. En todo lo del modo en línea manda sobre `docs/PRD.md`.
+- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, D-63, D-74 y D-76, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
+- `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-51, las decisiones D-34 a D-62, D-64 a D-73 y D-75, y los hitos M7 a M9. En todo lo del modo en línea manda sobre `docs/PRD.md`.
 - `docs/traspaso.md`: estado del proyecto, puesta en marcha y próximos pasos.
 - `docs/adr/`, `docs/balance-report.md` y `docs/ai-log.md`: decisiones de arquitectura, balance medido y bitácora del trabajo con IA.
 
@@ -20,7 +20,7 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 - **Commits pequeños,** uno por paso lógico, con mensajes que expliquen el porqué.
 - **Registro:** toda decisión de producto o arquitectura va al registro de decisiones del PRD (D-xx), con una línea en `docs/ai-log.md`.
 - **Diseño (D-63):** toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo".
-- **Identidad (D-01):** nunca uses nombres, arte, audio ni textos del juego original.
+- **Identidad (D-01):** nunca uses nombres, arte, audio ni textos del juego original. La única mención del original dentro del juego es la pantalla de créditos (D-76), con el texto de `CREDITOS.md`.
 - **Motor puro (D-02):** `packages/core` no conoce el DOM, Phaser ni la red. El multijugador debe reutilizarlo tal cual en el servidor.
 - **Balance y ritmo se miden:** si cambias números, vuelve a correr `pnpm sim` o `pnpm pacing` y actualiza el reporte correspondiente.
 

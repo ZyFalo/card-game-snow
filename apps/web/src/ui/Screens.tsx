@@ -5,6 +5,7 @@ import {
   ACCOUNT_TEXT,
   BONUS_OUTCOME_TEXT,
   BONUS_SHORT,
+  CREDITS_TEXT,
   DIFFICULTIES,
   ES,
   MAP_NAMES,
@@ -17,7 +18,7 @@ import {
 import { openAccount } from '../state/account';
 import { goto, setHelp, startMatch, updateSettings } from '../state/actions';
 import { useApp } from '../state/store';
-import { Icon, Segmented, Toggle, useCountUp } from './common';
+import { Icon, NinjaTrio, ScreenActions, ScreenHead, Segmented, Toggle, useCountUp } from './common';
 
 export function TitleScreen() {
   const account = useApp((s) => s.account);
@@ -57,13 +58,46 @@ export function TitleScreen() {
         ))}
       </div>
       <div className="title-foot">
-        {SCREEN_TEXT.credits}
+        <span>{SCREEN_TEXT.pilot}</span>
+        <span aria-hidden="true">·</span>
+        <button type="button" className="link" onClick={() => goto('credits')}>
+          {CREDITS_TEXT.title}
+        </button>
+        {/* El aviso de privacidad vive en la pantalla de cuenta: sin servidor no hay cuentas ni aviso. */}
         {account.status === 'ready' ? (
-          <button type="button" className="link" onClick={() => openAccount('privacy')}>
-            {ACCOUNT_TEXT.privacy}
-          </button>
+          <>
+            <span aria-hidden="true">·</span>
+            <button type="button" className="link" onClick={() => openAccount('privacy')}>
+              {ACCOUNT_TEXT.privacy}
+            </button>
+          </>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Créditos (D-76): una pantalla de lectura como la del aviso de privacidad, pero corta, así que su panel
+ * se ajusta al texto. No depende del servidor: también se abre en el juego de un solo archivo.
+ */
+export function CreditsScreen() {
+  return (
+    <div className="screen account-screen">
+      <ScreenHead title={CREDITS_TEXT.title} />
+      <div className="reading-body">
+        <section className="paper reading reading-short" aria-label={CREDITS_TEXT.title}>
+          {CREDITS_TEXT.body.map((p) => (
+            <p key={p}>{p}</p>
+          ))}
+        </section>
+        <NinjaTrio />
+      </div>
+      <ScreenActions>
+        <button type="button" className="btn btn-lg" onClick={() => goto('title')}>
+          {ES.back}
+        </button>
+      </ScreenActions>
     </div>
   );
 }

@@ -21,9 +21,10 @@ import type { AppState } from './store';
  * Capas del tablero durante la planificación (lineamientos de diseño, sección "Tablero"). Este módulo
  * decide qué se muestra y cuándo; la escena solo lo dibuja.
  *
- * El ninja activo tiene tres modos: moverse (solo casillas), actuar (anillos sobre sus objetivos, con las
- * casillas a la vista para cambiar de destino) o colocar una carta, que es exclusivo (solo las casillas
- * donde cabe). Los demás ninjas quedan en silueta y punto.
+ * El ninja activo tiene tres modos: moverse (solo casillas), actuar (sus objetivos, con las casillas a la
+ * vista para cambiar de destino) o colocar una carta, que es exclusivo (solo las casillas donde cabe). Los
+ * planes del equipo quedan en silueta y marca: el fantasma de cada ninja y una marca sobre cada objetivo
+ * elegido, con quienes lo eligieron.
  */
 
 /** Las acciones que apuntan a una unidad. Una carta apunta a una casilla y se dibuja como un área. */
@@ -38,8 +39,9 @@ export interface TargetOption {
   at: Vec;
 }
 
-/** Los puntos sobre el objetivo de una acción planeada: uno por ninja, en orden Fuego, Agua, Nieve. */
-export interface TargetDots {
+/** Marca sobre el objetivo de una acción planeada, con quienes lo eligieron en orden Fuego, Agua, Nieve. */
+export interface TargetMark {
+  kind: MarkKind;
   at: Vec;
   by: ElementKind[];
 }
@@ -77,8 +79,6 @@ export interface BoardLayers {
 
   /** Modo actuar: los objetivos que el ninja activo puede elegir desde su casilla planeada, sin el elegido. */
   options: TargetOption[];
-  /** Modo actuar: el objetivo que ya eligió. */
-  chosen: TargetOption | null;
 
   /** Modo carta: dónde se puede colocar y, bajo el ratón, a quién alcanzaría. */
   card: { tiles: Vec[]; area: Vec[]; enemies: Vec[]; allies: Vec[] } | null;
@@ -87,8 +87,8 @@ export interface BoardLayers {
   ghosts: { ninja: ElementKind; at: Vec }[];
   /** El camino hasta su fantasma: solo el del ninja activo. */
   path: { ninja: ElementKind; tiles: Vec[] } | null;
-  /** Un punto por ninja sobre el objetivo de cada acción planeada. */
-  dots: TargetDots[];
+  /** Una marca por objetivo elegido, de cualquier ninja: se ve siempre. */
+  marks: TargetMark[];
   /** Las cartas ya colocadas. */
   cards: PlacedCard[];
   /** El orden real en que actuará cada ninja (R-11, D-32), en la casilla desde la que actúa. */
@@ -115,11 +115,10 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     threat: [],
     reviveSpots: [],
     options: [],
-    chosen: null,
     card: null,
     ghosts: [],
     path: null,
-    dots: [],
+    marks: [],
     cards: [],
     order: [],
     aims: [],
@@ -161,17 +160,17 @@ export function boardLayers(s: BoardState): BoardLayers | null {
         ...info.heal.map((a) => ({ kind: 'heal' as const, at: a.pos, id: a.id })),
         ...info.revive.map((a) => ({ kind: 'revive' as const, at: a.pos, id: a.id })),
       ];
+      // El que ya eligió no es una opción: lleva su marca.
       for (const { id, ...option } of all) {
-        if (picked && picked.type === option.kind && picked.targetId === id) layers.chosen = option;
-        else layers.options.push(option);
+        if (!(picked && picked.type === option.kind && picked.targetId === id)) layers.options.push(option);
       }
     }
   }
 
-  // Planes de todos los ninjas: fantasmas, puntos sobre los objetivos, cartas y orden de resolución.
+  // Planes de todos los ninjas: fantasmas, marcas sobre los objetivos, cartas y orden de resolución.
   const plans = plansArray(s.plans);
   const order = resolutionOrder(m, plans);
-  const dots = new Map<string, TargetDots>();
+  const marks = new Map<string, TargetMark>();
   /** Las miras de todos los planes, con la casilla donde está hoy cada ninja. */
   const planned: (AimLine & { stands: Vec })[] = [];
   for (const plan of plans) {
@@ -196,17 +195,17 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     } else if (a) {
       const target = a.type === 'attack' ? getEnemy(m, a.targetId) : getNinja(m, a.targetId);
       if (target) {
-        const id = key(target.pos);
-        const entry = dots.get(id) ?? { at: target.pos, by: [] };
-        entry.by.push(n.id);
-        dots.set(id, entry);
+        const id = `${a.type}:${key(target.pos)}`;
+        const mark = marks.get(id) ?? { kind: a.type, at: target.pos, by: [] };
+        mark.by.push(n.id);
+        marks.set(id, mark);
         planned.push({ kind: a.type, by: n.id, from, to: target.pos, stands: n.pos });
       }
     }
     const num = order[n.id];
     if (num) layers.order.push({ ninja: n.id, at: from, n: num });
   }
-  layers.dots = [...dots.values()];
+  layers.marks = [...marks.values()];
 
   if (hover && mode !== 'card') {
     // La mira de un plan se ve al pasar el ratón por su objetivo, por quien actúa o por su fantasma.

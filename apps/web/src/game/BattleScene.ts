@@ -50,6 +50,8 @@ const elementColors = (el: ElementKind): number[] => {
   return [hex(c.base), hex(c.light), hex(c.accent), hex(c.dark)];
 };
 const ICE_COLORS = [hex(ICE.white), hex(ICE.light), hex(ICE.base), hex(ICE.glow)];
+/** Marca sobre el objetivo de una acción planeada: radio y grosor del anillo, y radio de cada punto. */
+const MARK = { ring: 18, ringWidth: 4, dot: 5 } as const;
 
 export class BattleScene extends Phaser.Scene {
   private readonly images: Map<string, HTMLImageElement>;
@@ -348,12 +350,50 @@ export class BattleScene extends Phaser.Scene {
     g.strokePoints(pts, true);
   }
 
-  /** Línea de mira de una acción planeada. */
+  /**
+   * Anillo de un ataque planeado sobre su objetivo: un arco del color de cada atacante. Los arcos
+   * empiezan abajo y giran como el reloj, así cada uno queda del lado de su punto.
+   */
+  private ring(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
+    g.lineStyle(MARK.ringWidth + 3, INK, 1);
+    g.strokeCircle(c.x, c.y, MARK.ring);
+    const step = (Math.PI * 2) / colors.length;
+    colors.forEach((color, i) => {
+      g.lineStyle(MARK.ringWidth, color, 1);
+      g.beginPath();
+      g.arc(c.x, c.y, MARK.ring, Math.PI / 2 + i * step, Math.PI / 2 + (i + 1) * step);
+      g.strokePath();
+    });
+  }
+
+  /** Un punto por cada ninja que eligió ese objetivo, encima de su marca. */
+  private dots(g: Phaser.GameObjects.Graphics, c: Pt, colors: number[]): void {
+    const y = c.y - MARK.ring - MARK.dot - 2;
+    colors.forEach((color, i) => {
+      const x = c.x + (i - (colors.length - 1) / 2) * (MARK.dot * 2 + 3);
+      g.fillStyle(color, 1);
+      g.fillCircle(x, y, MARK.dot);
+      g.lineStyle(2, INK, 1);
+      g.strokeCircle(x, y, MARK.dot);
+    });
+  }
+
+  /** Línea de mira de una acción planeada, en el color de quien actúa. */
   private aimLine(g: Phaser.GameObjects.Graphics, aim: AimLine): void {
-    const from = aimPoint(aim.from);
-    const to = aimPoint(aim.to);
-    if (aim.kind === 'attack') g.lineStyle(3, RED, 0.75);
-    else g.lineStyle(3, aim.kind === 'heal' ? MINT : GOLD, 0.85);
+    const a = aimPoint(aim.from);
+    const b = aimPoint(aim.to);
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    // Sale del borde del cuerpo de quien actúa y llega al borde de la marca del objetivo.
+    const start = 12;
+    const end = length - MARK.ring - MARK.ringWidth;
+    if (end <= start) return;
+    const ux = (b.x - a.x) / length;
+    const uy = (b.y - a.y) / length;
+    const from = { x: a.x + ux * start, y: a.y + uy * start };
+    const to = { x: a.x + ux * end, y: a.y + uy * end };
+    g.lineStyle(6, INK, 0.35);
+    g.lineBetween(from.x, from.y, to.x, to.y);
+    g.lineStyle(3, hex(ELEMENT_COLORS[aim.by].base), 1);
     g.lineBetween(from.x, from.y, to.x, to.y);
   }
 
@@ -453,12 +493,14 @@ export class BattleScene extends Phaser.Scene {
     for (const t of layers.options.heal) this.plus(ov, aimPoint(t), 0.55);
     for (const t of layers.options.revive) this.arrowUp(ov, aimPoint(t), 0.65);
 
-    // Objetivos ya elegidos.
+    // Objetivos ya elegidos: la marca de la acción y un punto por cada ninja que la planeó.
     for (const mark of layers.marks) {
       const at = aimPoint(mark.at);
-      if (mark.kind === 'attack') this.reticle(ov, at, 1, true);
+      const colors = mark.by.map(colorOf);
+      if (mark.kind === 'attack') this.ring(ov, at, colors);
       else if (mark.kind === 'heal') this.plus(ov, at, 1, 9);
       else this.arrowUp(ov, at, 1);
+      this.dots(ov, at, colors);
     }
 
     // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.

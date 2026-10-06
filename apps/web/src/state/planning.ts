@@ -217,8 +217,9 @@ export function contextualTip(s: TipState): string | null {
     return TIP_TEXT.move(name);
   }
   if (!info.plan.action && canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
-  // Este ninja ya no tiene nada por decidir: quiénes faltan, o todo listo.
-  const pending = ELEMENTS.filter((id) => hasPending(m, s.plans, id));
+  // Este ninja ya no tiene nada por decidir, aunque siga activo: el foco no salta tras moverse. Quiénes
+  // faltan, o todo listo.
+  const pending = ELEMENTS.filter((id) => id !== info.ninja.id && hasPending(m, s.plans, id));
   if (pending.length > 0) {
     return TIP_TEXT.pending(pending.map((id) => NINJA_TEXT[id].name));
   }

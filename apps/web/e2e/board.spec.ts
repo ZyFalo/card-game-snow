@@ -76,9 +76,8 @@ test('el destino planeado se marca con la silueta del ninja', async ({ page }) =
   await page.mouse.click(to.x, to.y);
   await expect.poll(() => ghosts(page)).toEqual([`ninja-${active}-outline`]);
 
-  // Al empezar no hay a quién atacar ni cartas: tras moverse, el turno pasa solo al siguiente ninja.
-  // Para deshacer ese movimiento hay que volver a su ninja.
-  await page.locator(`[data-ninja-panel="${active}"]`).click();
+  // Al empezar no hay a quién atacar ni cartas, pero el foco no salta tras moverse: sigue en su ninja.
+  expect(await page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState().active)).toBe(active);
   await page.keyboard.press('Escape');
   await expect.poll(() => ghosts(page)).toEqual([]);
 });
@@ -135,33 +134,50 @@ async function startPrepared(page: Page, hand: number[] = []) {
 
 const click = (page: Page, x: number, y: number) => page.mouse.click(tile(x, y).x, tile(x, y).y);
 
-test('la planificación va en dos pasos, moverse y actuar, y luego pasa sola al siguiente ninja', async ({ page }) => {
+test('la planificación va en dos pasos, moverse y actuar, y pasa sola al siguiente ninja al elegir la acción', async ({
+  page,
+}) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await startPrepared(page);
   expect(await planning(page)).toEqual({ active: 'fire', step: 'move', pendingCard: null, plans: {} });
   const toast = page.locator('.toast');
+  const tip = page.locator('.tip-text');
 
   // Paso 1: el tablero solo acepta casillas. Un gólem todavía no es un objetivo.
   await click(page, 4, 2);
   await expect(toast).toHaveText('Primero elige a dónde se mueve Brasa. Para quedarse, haz clic en su casilla.');
   expect((await planning(page)).plans).toEqual({});
 
-  // Una casilla a su alcance: Brasa pasa al paso de actuar, porque desde ahí alcanza a dos gólems.
+  // Una casilla a su alcance: Brasa pasa al paso de actuar, y desde ahí alcanza a dos gólems.
   await click(page, 3, 1);
   expect(await planning(page)).toMatchObject({
     active: 'fire',
     step: 'act',
     plans: { fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } },
   });
-  await expect(page.locator('.tip-text')).toHaveText('Elige qué hace Brasa: un objetivo o una carta.');
+  await expect(tip).toHaveText(
+    'Elige qué hace Brasa: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.',
+  );
 
-  // Paso 2: el tablero solo acepta objetivos. Una casilla vacía ya no mueve.
+  // Paso 2: las casillas siguen valiendo. Otro clic en una de su color cambia el movimiento directamente.
   await click(page, 2, 1);
-  await expect(toast).toHaveText('Ahora elige un objetivo. Para cambiar a dónde se mueve, haz clic en Brasa.');
-  expect((await planning(page)).plans).toEqual({ fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } });
+  expect(await planning(page)).toMatchObject({
+    active: 'fire',
+    step: 'act',
+    plans: { fire: { ninjaId: 'fire', moveTo: { x: 2, y: 1 } } },
+  });
+  // Un clic en la casilla de su fantasma lo cancela y lo devuelve a su lugar.
+  await click(page, 2, 1);
+  expect(await planning(page)).toEqual({ active: 'fire', step: 'act', pendingCard: null, plans: {} });
+  // Una casilla a la que no llega no es de su color ni un objetivo: dice qué se puede hacer.
+  await click(page, 8, 4);
+  await expect(toast).toHaveText(
+    'Ahora elige un objetivo. Para cambiar a dónde se mueve Brasa, haz clic en otra casilla de su color.',
+  );
 
-  // Un gólem a su alcance: queda elegido y le toca al siguiente ninja, que empieza por moverse.
+  // Vuelve junto a los gólems y elige uno: queda elegido y le toca al siguiente ninja, que empieza por moverse.
+  await click(page, 3, 1);
   await click(page, 4, 2);
   expect(await planning(page)).toMatchObject({
     active: 'water',
@@ -170,12 +186,21 @@ test('la planificación va en dos pasos, moverse y actuar, y luego pasa sola al 
   });
   // Con el ratón sobre un gólem, la franja de arriba habla de él: se aparta para leer el paso.
   await page.mouse.move(640, 60);
-  await expect(page.locator('.tip-text')).toHaveText(
-    'Elige a dónde se mueve Marea. Para quedarse, haz clic en su casilla.',
-  );
+  await expect(tip).toHaveText('Elige a dónde se mueve Marea. Para quedarse, haz clic en su casilla.');
 
-  // Marea se queda: su propia casilla. Desde ahí no alcanza a nadie ni tiene cartas, así que pasa a Escarcha.
+  // Marea se queda: su propia casilla. Desde ahí no alcanza a nadie ni tiene cartas, pero el foco no salta:
+  // puede elegir otra casilla. La franja dice cómo seguir, y Tab pasa a Escarcha.
   await click(page, 1, 2);
+  expect(await planning(page)).toMatchObject({ active: 'water', step: 'act' });
+  await page.mouse.move(640, 60);
+  await expect(tip).toHaveText('Tab pasa al siguiente ninja. Falta planear a Escarcha.');
+  await click(page, 2, 2);
+  expect(await planning(page)).toMatchObject({
+    active: 'water',
+    step: 'act',
+    plans: { water: { moveTo: { x: 2, y: 2 } } },
+  });
+  await page.keyboard.press('Tab');
   expect(await planning(page)).toMatchObject({ active: 'snow', step: 'move' });
   expect(errors).toEqual([]);
 });

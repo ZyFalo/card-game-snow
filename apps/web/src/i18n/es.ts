@@ -195,7 +195,8 @@ export const NOTICE = {
   enemyOutOfRange: 'Ese gólem está fuera de alcance desde la casilla planeada.',
   actionLost: 'La acción anterior ya no alcanza desde aquí: elige otra.',
   moveFirst: (name: string) => `Primero elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
-  pickTarget: (name: string) => `Ahora elige un objetivo. Para cambiar a dónde se mueve, haz clic en ${name}.`,
+  pickTarget: (name: string) =>
+    `Ahora elige un objetivo. Para cambiar a dónde se mueve ${name}, haz clic en otra casilla de su color.`,
   tileReserved: (name: string) => `Esa casilla ya la reservó ${name}.`,
   rock: 'Ahí hay una roca.',
   outOfReach: (name: string) => `${name} no llega hasta ahí este turno.`,
@@ -233,7 +234,8 @@ export const TIP_TEXT = {
   reviveHow: (name: string) =>
     `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   move: (name: string) => `Elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
-  act: (name: string) => `Elige qué hace ${name}: un objetivo o una carta.`,
+  act: (name: string) =>
+    `Elige qué hace ${name}: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.`,
   pending: (names: readonly string[]) => `Tab pasa al siguiente ninja. Falta planear a ${names.join(' y ')}.`,
   ready: 'Todo listo. Confirma el turno con Espacio.',
 } as const;

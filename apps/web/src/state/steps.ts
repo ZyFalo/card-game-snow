@@ -15,9 +15,10 @@ import type { AppState, PlanStep } from './store';
 
 /*
  * La planificación de un ninja va en dos pasos (lineamientos de diseño, sección "Tablero"): primero
- * moverse, donde el tablero solo ofrece casillas, y después actuar, donde solo ofrece objetivos. Elegir
- * una carta cambia a un tercer modo, el de colocarla. Este módulo decide qué hace cada clic en cada paso;
- * no toca el estado: devuelve lo que hay que cambiar.
+ * moverse, donde el tablero solo ofrece casillas, y después actuar, donde ofrece los objetivos y deja las
+ * casillas a la vista, para cambiar de destino con otro clic. Elegir una carta cambia a un tercer modo, el
+ * de colocarla, que es exclusivo. Este módulo decide qué hace cada clic en cada paso; no toca el estado:
+ * devuelve lo que hay que cambiar.
  */
 
 /** Sonidos de la planificación. */
@@ -34,11 +35,8 @@ export interface StepOutcome {
   select?: ElementKind;
   /** Se sale del modo carta. */
   cardDone?: boolean;
-  /**
-   * El ninja activo terminó un paso. Con "Pasar al siguiente ninja", tras actuar le toca al que siga; tras
-   * moverse, solo si desde ahí no tiene nada con qué actuar.
-   */
-  finished?: 'move' | 'act';
+  /** El ninja activo eligió su acción: con "Pasar al siguiente ninja", le toca al que siga. */
+  finished?: true;
   notice?: string;
   sound?: StepSound;
 }
@@ -61,7 +59,7 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
   if (s.pendingCard) {
     if (info.cardTiles.some((t) => eq(t, v))) {
       const action = { type: 'card', cardId: s.pendingCard, at: v } as const;
-      return { plan: { ...withoutAction(plan), action }, cardDone: true, finished: 'act', sound: 'place' };
+      return { plan: { ...withoutAction(plan), action }, cardDone: true, finished: true, sound: 'place' };
     }
     if (other && other.hp > 0) return { select: other.id };
     return { notice: NOTICE.cardOutOfRange, sound: 'error' };
@@ -79,52 +77,48 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
     return { notice: text, sound: 'error' };
   };
 
+  /**
+   * El plan tras elegir a dónde va: una casilla, o `null` si se queda en su lugar. La acción que ya tenía se
+   * conserva si desde ahí todavía alcanza; si no, se suelta y lo dice. No cambia de ninja: puede elegir
+   * otra casilla con otro clic.
+   */
+  const moved = (to: Vec | null): StepOutcome => {
+    const next: Plan = to ? { ninjaId: ninja.id, moveTo: to } : { ninjaId: ninja.id };
+    if (plan.action && isActionValid(m, ninja.id, to ?? ninja.pos, plan.action)) next.action = plan.action;
+    const lost = plan.action && !next.action;
+    return { plan: next, step: 'act', sound: 'select', ...(lost ? { notice: NOTICE.actionLost } : {}) };
+  };
+  /** Por qué no vale una casilla a la que no puede ir: la reservó otro ninja o es una roca. */
+  const blocked = (): StepOutcome | null => {
+    const reservedBy = others.find((p) => p.moveTo && eq(p.moveTo, v));
+    if (reservedBy) return { notice: NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name), sound: 'error' };
+    if (isRock(m, v)) return { notice: NOTICE.rock, sound: 'error' };
+    return null;
+  };
+
   if (s.step === 'move') {
-    // Quedarse: su propia casilla. Si había elegido otra, la suelta.
-    if (own) {
-      const next: Plan = { ninjaId: ninja.id };
-      if (plan.action && isActionValid(m, ninja.id, ninja.pos, plan.action)) next.action = plan.action;
-      const lost = plan.action && !next.action;
-      return {
-        plan: next,
-        step: 'act',
-        finished: 'move',
-        sound: 'select',
-        ...(lost ? { notice: NOTICE.actionLost } : {}),
-      };
-    }
-    if (onGhost) return { step: 'act', finished: 'move', sound: 'select' };
-    if (info.moves.has(key(v))) {
-      const next: Plan = { ninjaId: ninja.id, moveTo: v };
-      if (plan.action && isActionValid(m, ninja.id, v, plan.action)) next.action = plan.action;
-      const lost = plan.action && !next.action;
-      return {
-        plan: next,
-        step: 'act',
-        finished: 'move',
-        sound: 'select',
-        ...(lost ? { notice: NOTICE.actionLost } : {}),
-      };
-    }
+    // Quedarse: su propia casilla.
+    if (own) return moved(null);
+    if (info.moves.has(key(v))) return moved(v);
     if (other) {
       if (other.hp > 0) return { select: other.id };
       return cannotRevive(other.id);
     }
     if (enemyAt(m, v)) return { notice: NOTICE.moveFirst(name), sound: 'error' };
-    const reservedBy = others.find((p) => p.moveTo && eq(p.moveTo, v));
-    if (reservedBy) return { notice: NOTICE.tileReserved(NINJA_TEXT[reservedBy.ninjaId].name), sound: 'error' };
-    if (isRock(m, v)) return { notice: NOTICE.rock, sound: 'error' };
-    return { notice: NOTICE.outOfReach(name), sound: 'error' };
+    return blocked() ?? { notice: NOTICE.outOfReach(name), sound: 'error' };
   }
 
-  // Paso de actuar: el tablero solo ofrece objetivos. Su casilla, o su fantasma, vuelve al paso de moverse.
-  if (own || onGhost) return { step: 'move', sound: 'select' };
+  // Paso de actuar: el tablero ofrece los objetivos, y las casillas siguen valiendo. La casilla de su
+  // fantasma, o la suya, cancela el movimiento y lo devuelve a su lugar.
+  if (onGhost) return moved(null);
+  if (own) return plan.moveTo ? moved(null) : NOTHING;
+  if (info.moves.has(key(v))) return moved(v);
   if (other) {
     if (info.heal.some((a) => a.id === other.id)) {
-      return { plan: { ...plan, action: { type: 'heal', targetId: other.id } }, finished: 'act', sound: 'place' };
+      return { plan: { ...plan, action: { type: 'heal', targetId: other.id } }, finished: true, sound: 'place' };
     }
     if (info.revive.some((a) => a.id === other.id)) {
-      return { plan: { ...plan, action: { type: 'revive', targetId: other.id } }, finished: 'act', sound: 'place' };
+      return { plan: { ...plan, action: { type: 'revive', targetId: other.id } }, finished: true, sound: 'place' };
     }
     if (other.hp > 0) return { select: other.id };
     return cannotRevive(other.id);
@@ -132,11 +126,11 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
   const enemy = enemyAt(m, v);
   if (enemy) {
     if (info.attack.some((e) => e.id === enemy.id)) {
-      return { plan: { ...plan, action: { type: 'attack', targetId: enemy.id } }, finished: 'act', sound: 'place' };
+      return { plan: { ...plan, action: { type: 'attack', targetId: enemy.id } }, finished: true, sound: 'place' };
     }
     return { notice: NOTICE.enemyOutOfRange, sound: 'error' };
   }
-  return { notice: NOTICE.pickTarget(name), sound: 'error' };
+  return blocked() ?? { notice: NOTICE.pickTarget(name), sound: 'error' };
 }
 
 /** ¿Hay un paso que deshacer? Sin nada que deshacer, Esc abre la pausa. */

@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.11: aprobada para implementar · 1 de octubre de 2026 · William Andres Peña Vargas
+Versión 1.12: aprobada para implementar · 6 de octubre de 2026 · William Andres Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, y la 1.11 anota que P-20 ya está medida y que falta decidir la curva.
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, y la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8.
 
 ## Resumen y alcance
 
@@ -18,7 +18,7 @@ Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y l
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, y D-67 y D-68, aprobadas con el progreso en el cliente. La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, D-67 y D-68, aprobadas con el progreso en el cliente, D-69 a D-72, que cierran P-20, y D-73, sobre los dispositivos. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -55,7 +55,12 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-65 | Las peticiones que cambian estado solo se aceptan desde el propio juego: deben traer el `Origin` de `APP_URL`. La cookie de sesión es `SameSite=Lax`, pero para `SameSite` todo wpena.dev es el mismo sitio, así que viaja en las peticiones que mande una página de cualquier otro subdominio; el origen sí las distingue, y una página no puede falsificarlo. Sin `Origin` decide `Sec-Fetch-Site`, y sin ninguna de las dos cabeceras la petición pasa, porque no viene de un navegador y no lleva la cookie de nadie. | Aprobada |
 | D-66 | El libro de monedas registra también los gastos. Cada compra de caja deja un movimiento negativo con un identificador de compra que genera el cliente, único por cuenta, y con las cartas que salieron. Si llega un reintento con el mismo identificador, el servidor devuelve el resultado original, guardado en ese movimiento, y no cobra de nuevo: así una respuesta perdida no compra dos cajas. No hace falta una tabla nueva, y el saldo es siempre la suma del libro. | Aprobada |
 | D-67 | Durante el M7, el perfil hace de inicio en línea: muestra el resumen del progreso (camino, monedas, cartas por elemento y cajas abiertas) y su botón primario lleva a la colección y la tienda. Elegir la carta de camino se puede dejar para después: el perfil lo recuerda y, mientras falte, cada vez que la persona entra llega a elegirla. "Jugar" se suma al inicio con el M8, y las estadísticas, con el M9. | Aprobada |
-| D-68 | El cliente conserva el identificador de una compra (D-66) solo si su respuesta se pierde. Entonces no se sabe si el servidor cobró: comprar de nuevo la misma caja, con el mismo elemento y tamaño, es un reintento y lleva el mismo identificador; otra caja es otra compra, con uno nuevo. Con cualquier respuesta definitiva del servidor, sea el éxito o un error como `not_enough_coins`, el identificador se borra. Tras una respuesta perdida, el cliente vuelve a leer el progreso para mostrar el saldo real. Mientras espera la respuesta, los botones de compra quedan deshabilitados. | Aprobada |
+| D-68 | El cliente conserva el identificador de una compra (D-66) solo si su respuesta se pierde. Entonces no se sabe si el servidor cobró: comprar de nuevo la misma caja, con el mismo elemento y tamaño, es un reintento y lleva el mismo identificador; otra caja es otra compra, con uno nuevo. Un error 500 del servidor cuenta como respuesta perdida, porque no dice si se cobró. Con cualquier respuesta definitiva del servidor, sea el éxito o un error como `not_enough_coins`, el identificador se borra. Tras una respuesta perdida, el cliente vuelve a leer el progreso para mostrar el saldo real. También lo vuelve a leer tras un rechazo por monedas insuficientes, para que el saldo en pantalla no quede viejo (esto último llega con el próximo PR del cliente). Mientras espera la respuesta, los botones de compra quedan deshabilitados. | Aprobada |
+| D-69 | Tormenta en línea pide un mínimo de cartas: 5 del elemento del ninja con que la persona entra, tanto en el emparejamiento público como en las salas con código (R-51). La pantalla muestra cuánto falta y sugiere jugar Clásica para conseguir la primera caja. Medido en P-20: con ese mínimo, el peor equipo gana el 79 %; sin él, una sola persona nueva baja a un equipo de colecciones completas del 93 al 73 %, y al 58 % si lleva a Nieve. | Aprobada |
+| D-70 | El emparejamiento junta a cualquiera dentro de la dificultad elegida. Con pocas personas jugando, más filtros solo alargan la espera. El mínimo para Tormenta (R-51) se pide al entrar a la cola. | Tomada |
+| D-71 | El límite de turnos del bonus se queda en 13 en Clásica y 18 en Tormenta (D-12), también en línea. Medido en P-20: en los equipos donde cada persona tiene al menos una caja, del 65,5 al 68,2 % de las partidas de Clásica y del 43,9 al 45,9 % de las de Tormenta superan la ronda 3 dentro del límite, casi lo mismo que con el mazo de referencia (64,1 y 44,7 %). | Aprobada |
+| D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja (99,7 % de victorias en el simulador): es el modo para empezar, y el simulador es un techo para personas reales. | Tomada |
+| D-73 | El juego debe funcionar en computador y en teléfono, por etapas. El combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720. El alcance del teléfono se decide con una investigación, que queda pendiente. | Tomada |
 
 ## Experiencia del jugador
 
@@ -77,12 +82,12 @@ La portada ofrece dos puertas: jugar en el sandbox sin cuenta o entrar al modo e
 **Partida con amigos (sala con código)**
 
 1. Crea una sala y elige la dificultad; recibe un código de 6 caracteres para compartir.
-2. Sus amigos entran con el código y cada quien elige su ninja, sin repetir.
+2. Sus amigos entran con el código y cada quien elige su ninja, sin repetir. Si la sala es de Tormenta, cada persona necesita 5 cartas del elemento de su ninja (R-51).
 3. El anfitrión inicia con 2 o 3 personas; con 2, el bot toma el ninja libre.
 
 **Partida con desconocidos (emparejamiento)**
 
-1. Elige dificultad y su ninja, y entra a la cola.
+1. Elige dificultad y su ninja, y entra a la cola. Tormenta pide 5 cartas del elemento de ese ninja (R-51).
 2. El servidor busca un equipo con ninjas distintos. Si a los 30 s solo hay dos personas, ambas pueden aceptar empezar con un bot. Con una sola persona, la búsqueda sigue hasta que llegue alguien o la cancele.
 3. Ve la pantalla de equipo y empieza la partida.
 
@@ -90,7 +95,7 @@ Al terminar cada partida, cada persona ve sus propios resultados: monedas cobrad
 
 ## Reglas del modo en línea
 
-Las reglas de combate R-01 a R-24 no cambian; estas diez reglas nuevas cubren lo que agrega jugar en equipo.
+Las reglas de combate R-01 a R-24 no cambian; estas once reglas nuevas cubren lo que agrega jugar en equipo. R-43 a R-50 son las de la cuenta y están en la sección siguiente.
 
 - **R-33 Equipo.** De 2 a 3 personas, un ninja cada una. Los tres elementos siempre están en juego: el ninja sin persona lo controla el bot (§8).
 - **R-34 Mazo de cada jugador.** Cada persona juega con su colección del elemento de su ninja (R-26 aplicado por jugador). Su carta de camino solo ayuda si juega ese elemento. El bot usa el mazo de referencia de su elemento (D-47).
@@ -102,6 +107,7 @@ Las reglas de combate R-01 a R-24 no cambian; estas diez reglas nuevas cubren lo
 - **R-40 Recompensas.** Cada persona cobra sus rondas y el bonus (R-29) y gana sus propios logros. El bot no cobra ni suma estadísticas, y una persona cobra una ronda solo si estaba conectada al terminarla (D-48).
 - **R-41 Sin comunicación.** Como en el original, no hay chat ni señales: lo único que cada persona comparte es su plan en curso, que el equipo ve en tiempo real (R-35).
 - **R-42 Estadísticas.** Se registran por persona desde los eventos del servidor: partidas jugadas y ganadas, rondas superadas, bonus ganados, daño hecho (total y por tipo de gólem), gólems derrotados por tipo, cartas lanzadas por elemento, combos, vida curada a compañeros, reanimaciones hechas y caídas sufridas. Son privadas: solo las ve su dueño, en su perfil (P-21).
+- **R-51 Mínimo para Tormenta.** Para entrar a una partida de Tormenta, cada persona necesita 5 cartas del elemento del ninja con que entra, contando las repetidas (D-69). Vale igual en el emparejamiento público y en las salas con código. A quien no las tiene, la pantalla le muestra cuánto le falta (por ejemplo, "3 de 5 cartas de Fuego") y le sugiere jugar Clásica para conseguir su primera caja. El bot no tiene mínimo: juega con el mazo de referencia (D-47). En línea reemplaza a R-31, que solo recomendaba.
 
 ## Cuentas, seguridad y privacidad
 
@@ -224,8 +230,14 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 **M8: Partida en línea**
 
-- [ ] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas. Medido el 1 de octubre de 2026 (`docs/balance-report.md`); falta decidir la curva
+Antes del M8 va una ronda de ajustes de jugabilidad. Después, el M8 empieza por su especificación técnica y por la investigación del teléfono, y no se programa hasta que el dueño de producto revise la especificación.
+
+- [x] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas. Medido el 1 de octubre de 2026 (`docs/balance-report.md`) y decidido el 6 de octubre (D-69 a D-72). Al terminar la ronda de ajustes de jugabilidad hay que volver a correr esas tablas, porque los ajustes pueden mover sus números
+- [ ] Especificación técnica del M8, en un PR de documentación que el dueño de producto revisa antes de programar. Se escribe después de la ronda de ajustes de jugabilidad, porque los ajustes pueden cambiar reglas que ella usa
+- [ ] Investigación del teléfono (D-73): capturas de la portada, las cuentas, la colección y el tablero en 390×844 y 844×390, prueba de los controles táctiles del tablero, y qué se rompe y qué haría falta. Con eso se decide el alcance del teléfono y lo que se suma a los lineamientos de diseño
 - [ ] Salas con código para 2 o 3 personas, con el bot en el ninja libre
+- [ ] Mínimo para Tormenta en las salas (R-51): la pantalla muestra cuánto falta y sugiere jugar Clásica
+- [ ] El cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes (D-68)
 - [ ] La conexión WebSocket comprueba su propio `Origin`, con su prueba: la comprobación de D-65 no revisa las lecturas, y un WebSocket empieza con una (`GET`)
 - [ ] Reloj del servidor de 15 s (D-46) y planificación simultánea con fantasmas compartidos
 - [ ] Cobro por ronda solo para quien estaba conectado (D-31 y D-48) y logros por persona. Si una ronda paga el doble (R-29), lo decide el servidor contando los 9 logros en su propia tabla; nunca lo recibe del cliente
@@ -234,7 +246,7 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 **M9: Emparejamiento y estadísticas**
 
-- [ ] Cola por dificultad y ninja: solo junta personas con ninjas distintos y muestra qué ninjas faltan (D-43)
+- [ ] Cola por dificultad y ninja: solo junta personas con ninjas distintos y muestra qué ninjas faltan (D-43). Dentro de la dificultad elegida junta a cualquiera (D-70), y la cola de Tormenta pide el mismo mínimo que las salas (R-51)
 - [ ] A los 30 s sin tercer jugador, las dos personas pueden aceptar empezar con un bot (D-44)
 - [ ] Estadísticas privadas por persona, en su perfil (R-42)
 - [ ] Aviso de privacidad publicado y pruebas con personas
@@ -242,14 +254,21 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 ## Preguntas abiertas y riesgos
 
-P-19, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso. Solo sigue abierta P-20, la curva de dificultad con equipos de colecciones mezcladas: ya está medida y falta decidirla, antes del M8.
+P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso.
 
 **Preguntas abiertas**
 
 - [x] **P-19 Edad mínima.** Resuelta para v2: sin límite de edad y sin autorización de adultos (D-38). El riesgo legal queda anotado en la sección de cuentas.
-- [ ] **P-20 Curva de dificultad en línea.** Un mismo equipo puede juntar una colección nueva con una completa. Claude Code extiende el simulador con equipos mezclados y lo mide antes del M8; la curva se decide con esos números.
-  - **Medido el 1 de octubre de 2026** (`docs/balance-report.md`, "En línea: equipos de colecciones mezcladas"). En Clásica, cualquier mezcla gana el 96 % o más, y tres personas nuevas, el 83 %. En Tormenta, tres colecciones completas ganan el 93 %, y cada persona nueva en el equipo lo baja: al 73 % con una, al 32 % con dos y al 5 % con tres.
-  - **Falta decidir:** si Tormenta en línea pide un mínimo de cartas por persona, si el emparejamiento junta a cualquiera dentro de la dificultad elegida y si el límite de turnos del bonus se queda en 13 y 18.
+- [x] **P-20 Curva de dificultad en línea.** Un mismo equipo puede juntar una colección nueva con una completa. Resuelta el 6 de octubre de 2026, con la medición del simulador del 1 de octubre (`docs/balance-report.md`, "En línea: equipos de colecciones mezcladas").
+  - **Los números,** con el bot en habilidad 0,6:
+    - En Clásica, tres personas nuevas ganan el 83 %, y con al menos una persona que ya abrió una caja, el equipo gana el 96 % o más.
+    - En Tormenta, tres colecciones completas ganan el 93 %, y cada persona nueva en el equipo lo baja: al 73 % con una, al 32 % con dos y al 5 % con tres. Con una caja cada una (5 cartas), el equipo gana el 79 %.
+    - El límite de turnos del bonus se comporta casi igual que con el mazo de referencia en los equipos donde cada persona tiene al menos una caja.
+  - **Lo decidido:**
+    - Tormenta pide 5 cartas del elemento del ninja (D-69 y R-51).
+    - El emparejamiento junta a cualquiera dentro de la dificultad elegida (D-70).
+    - El límite de turnos del bonus se queda en 13 y 18 (D-71).
+    - Se acepta que Clásica sea fácil desde la primera caja (D-72).
 - [x] **P-21 Visibilidad de las estadísticas.** Resuelta: solo las ve cada jugador. En v2 no hay perfil público ni clasificación.
 - [ ] **P-22 Castigo por abandono.** En v2 no hay castigo. Se decide con datos de uso una vez abierto el emparejamiento.
 - [x] **P-23 Mazo del sandbox.** Resuelta: el bot y el sandbox usan el mismo mazo de referencia (D-47 y D-50).

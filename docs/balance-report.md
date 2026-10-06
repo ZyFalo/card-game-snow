@@ -2,7 +2,7 @@
 
 Fecha: 29 de septiembre de 2026 · Motor: `@ventisca/core`, con D-18 y D-33 · Reemplaza al reporte de M4
 
-El 1 de octubre de 2026 se agregó la sección "En línea: equipos de colecciones mezcladas", que responde a P-20 del PRD de v2. El motor y los valores son los mismos.
+El 1 de octubre de 2026 se agregó la sección "En línea: equipos de colecciones mezcladas", que responde a P-20 del PRD de v2. El motor y los valores son los mismos. El 6 de octubre, el dueño de producto decidió con esos números (D-69 a D-72), y sus respuestas quedaron en las dos secciones de preguntas.
 
 ## Por qué se rehízo
 
@@ -93,8 +93,10 @@ La tabla de economía del §18.3 también coincide. En monedas por partida en Cl
 Este reporte no cambia ningún valor; solo mide.
 
 - ¿Se acepta que Clásica sea trivial tras unas 3 partidas? Las alternativas van desde una variante intermedia como predeterminada hasta una dificultad que escale con la colección.
+  - **Respondida el 6 de octubre de 2026 (D-72):** sí. Es el modo para empezar, y el simulador es un techo para personas reales.
 - ¿El límite de turnos del bonus debería depender de la etapa o de la colección, o se mantiene en 13 / 18?
-- ¿El inventario inicial (R-30, D-24) debería ser más generoso para que los combos aparezcan desde la primera partida?
+  - **Respondida el 6 de octubre de 2026 (D-71):** se mantiene en 13 y 18.
+- ¿El inventario inicial (R-30, D-24) debería ser más generoso para que los combos aparezcan desde la primera partida? Sigue abierta.
 
 ## Pendiente de validar con personas
 
@@ -250,12 +252,20 @@ La condición "contra el reloj" (R-21) pide superar las rondas 1 a 3 en 13 turno
    - Con personas nuevas baja. En Clásica, de 56,6 a 58,2 % con una y de 43,5 a 48,0 % con dos o tres. En Tormenta, de 24,0 a 33,7 % con una y de 16,0 a 25,7 % con dos.
    - Para que tres personas nuevas entren al bonus tanto como en el sandbox harían falta 15 turnos en Clásica (63,9 %). En Tormenta, un equipo con una nueva y dos completas llega al 42,9 % con 20 turnos.
 
-### Preguntas para el dueño de producto
+### Preguntas para el dueño de producto, con sus respuestas
 
-- **¿Tormenta en línea pide un mínimo de cartas por persona?** Hoy R-31 solo recomienda 4 por elemento. Si cada persona tiene al menos una caja de su elemento (5 cartas), el peor equipo gana el 79,3 %. Sin mínimo, una persona nueva baja a un equipo completo del 92,6 al 72,6 %, y al 57,6 % si lleva a Nieve.
-- **¿El emparejamiento junta a cualquiera dentro de la dificultad elegida?** En Clásica los números lo permiten. En Tormenta depende de la respuesta anterior.
+Respondidas el 6 de octubre de 2026. Con ellas se cerró P-20.
+
+- **¿Tormenta en línea pide un mínimo de cartas por persona?** Hasta ahora R-31 solo recomendaba 4 por elemento. Si cada persona tiene al menos una caja de su elemento (5 cartas), el peor equipo gana el 79,3 %. Sin mínimo, una persona nueva baja a un equipo completo del 92,6 al 72,6 %, y al 57,6 % si lleva a Nieve.
+  - **Respuesta (D-69 y R-51 del PRD de v2):** sí. Tormenta pide 5 cartas del elemento del ninja con que se entra, en el emparejamiento y en las salas con código. La pantalla muestra cuánto falta y sugiere jugar Clásica para conseguir la primera caja.
+- **¿El emparejamiento junta a cualquiera dentro de la dificultad elegida?** En Clásica los números lo permiten. En Tormenta dependía de la respuesta anterior.
+  - **Respuesta (D-70):** sí. Con pocas personas jugando, más filtros solo alargan la espera.
 - **¿El límite de turnos del bonus se queda en 13 y 18?** Funciona igual que en el sandbox para los equipos con cartas. A los equipos con personas nuevas les cuesta más, pero esa etapa dura hasta la primera caja.
+  - **Respuesta (D-71):** sí, se queda en 13 y 18.
 - **¿Se acepta que Clásica en línea sea trivial desde la primera caja?** Es la misma pregunta de la sección anterior, ahora con tres personas: 99,7 %.
+  - **Respuesta (D-72):** sí. Es el modo para empezar, y el simulador es un techo para personas reales.
+
+**Tras la ronda de ajustes de jugabilidad** que viene antes del M8 hay que volver a correr estas tablas (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`), porque los ajustes pueden mover sus números.
 
 ## Anexo: mazo fijo de v1
 

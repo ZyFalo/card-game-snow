@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y progreso en el servidor, todavía sin multijugador. Es el primer hito del modo en línea, que se describe en `docs/PRD-v2.md`; el siguiente es el M8. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
+Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Lo siguiente es una ronda de ajustes de jugabilidad y, después, el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
 
 ## Qué hay
 
@@ -125,23 +125,46 @@ Estado al 1 de octubre de 2026: **v0.10, con el hito M7 completo**: cuentas y pr
 - `pnpm sim -- --matches 2000 --skill 1 [--storm]` mide el balance con el bot, sin render. Con `--team fire=new,water=full,snow=bot` arma un equipo en línea asiento por asiento, y con `--mixed` reproduce las tablas de equipos de colecciones mezcladas del reporte de balance (P-20).
 - `pnpm pacing` mide cuánto dura la animación de cada turno sobre partidas del bot.
 
-## Pendiente, según los PRD
+## Lo que sigue
 
-- **M7 (PRD de v2):** su lista está completa: el despliegue, las cuentas y el progreso, en el servidor y en el cliente.
-- **M8:** quita "Próximamente" de "Juega en línea con amigos".
-  - **Inicio en línea:** el perfil hace de inicio durante el M7 (D-67). Con las partidas, se le suma "Jugar".
-  - **Monedas:** al existir las partidas, la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`).
-  - **Origen del WebSocket:** `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno. Necesita su propia comprobación de `Origin`, con su prueba (D-65).
-  - **Doble de monedas:** hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 lo calcula el servidor desde su tabla de logros, al resolver la partida; nunca llega del cliente.
+El M7 y P-20 están cerrados. Va en este orden:
+
+1. **Ronda de ajustes de jugabilidad,** antes del M8. Los ajustes los pasa el dueño de producto. Para esa ronda:
+   - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;
+   - si afecta el balance, va con una simulación antes y otra después;
+   - al terminar, se vuelven a correr las tablas de P-20 (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y se actualiza `docs/balance-report.md`, porque los ajustes pueden mover sus números.
+2. **M8: partida en línea.** No se programa hasta que el dueño de producto revise su especificación técnica.
+   - **Especificación técnica,** en un PR de documentación. Se escribe después de la ronda de jugabilidad, porque los ajustes pueden cambiar reglas que ella usa. Debe cubrir:
+     - **Protocolo:** los mensajes y sus esquemas, la frecuencia de los fantasmas de los compañeros, el reloj y los plazos en el servidor, y el ciclo de vida de una sala.
+     - **Desconexiones:** qué plan juega el bot si alguien se desconecta a mitad de la planificación; cómo vuelve una persona a una partida en curso; y qué pasa con las partidas cuando Railway redespliega (aviso a los clientes, reconexión automática y restauración desde la foto de cada turno, D-49).
+     - **Emparejamiento y salas:** el ninja de cada persona (D-43), la espera de 30 s con el bot (D-44), el mínimo de 5 cartas para Tormenta (R-51) y las salas con código.
+     - **Recompensas:** el pago por ronda con el libro de monedas (D-48), los logros calculados por el servidor desde su propia tabla, incluido el doble de monedas, y las estadísticas (R-42).
+     - **Seguridad:** la comprobación de `Origin` en la conexión WebSocket, con su prueba; sesión obligatoria en esa conexión; límites de mensajes por segundo y de tamaño por conexión; y la validación de cada plan en el servidor con `packages/core`.
+     - **Pruebas:** con dos y tres clientes, e2e con varios navegadores a la vez y un plan para una partida de prueba con personas reales.
+   - **Investigación del teléfono** (D-73), en ese PR o en uno aparte: capturar la portada, las cuentas, la colección y el tablero en 390×844 (vertical) y 844×390 (horizontal), probar los controles táctiles del tablero, y decir qué se rompe y qué haría falta. Con eso se decide el alcance del teléfono y lo que hay que sumar a los lineamientos de diseño.
+   - **Dispositivos (D-73):** el combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720.
+3. **M9: emparejamiento y estadísticas.**
+
+## Pendientes anotados
+
+Para que no se pierdan. Los seis primeros están también en su hito del PRD de v2.
+
+- **Releer el progreso tras un rechazo por monedas insuficientes** (D-68). Hoy el cliente solo lo relee tras una respuesta perdida, así que tras ese rechazo el saldo en pantalla queda viejo. Va en el próximo PR del cliente.
+- **Comprobación de `Origin` en la conexión WebSocket** (M8). `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno: necesita su propia comprobación, con su prueba (D-65).
+- **Logros calculados por el servidor** (M8). Hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 el servidor los calcula desde su propia tabla al resolver la partida, incluido el doble de monedas; nunca llegan del cliente.
+- **Mínimo para Tormenta** (R-51): en las salas con código (M8) y en la cola (M9).
+- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes del próximo cambio del aviso, porque el aviso lo promete en "Cambios".
+- **Investigación del teléfono** (D-73), antes de programar el M8.
+- **Con el M8:**
+  - "Juega en línea con amigos" deja de decir "Próximamente" en los beneficios de la cuenta (`BENEFITS` en `ui/Account.tsx`);
+  - la pista de las monedas de la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`);
+  - el perfil, que hace de inicio en línea (D-67), suma "Jugar".
 - **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen en presente que la cuenta guarda el progreso, y en futuro que "pronto podrás jugar en línea" (`loginIntro` e `invite` en `i18n/es.ts`). Esa mitad vuelve al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
-- **Después del M7:** el M8 (partida en línea) y el M9 (emparejamiento).
-  - **El M8 no empieza todavía.** Faltan dos decisiones del dueño de producto: la curva de dificultad en línea (P-20) y qué hacer con el móvil.
-  - **P-20 ya está medida:** `docs/balance-report.md`, sección "En línea: equipos de colecciones mezcladas". Ahí están también las preguntas por decidir: un mínimo de cartas para Tormenta, a quién junta el emparejamiento y el límite de turnos del bonus.
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.
 
 ## Cómo se trabaja
 
 - Toda interfaz sigue `docs/lineamientos-de-diseno.md` (D-63) y se compara con una captura a 1280×720 junto a "Tu equipo".
-- Cada paso del M7 es un PR pequeño, con sus pruebas y la CI en verde. El dueño de producto lo revisa antes de fusionarlo, con merge commit y sin squash.
+- Cada paso es un PR pequeño, con sus pruebas y la CI en verde. El dueño de producto lo revisa antes de fusionarlo, con merge commit y sin squash.
 - Nunca se suben secretos al repositorio: cada variable se documenta en `.env.example`.

@@ -5,8 +5,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.13 |
-| Última actualización | 1 de octubre de 2026 |
+| Versión | 0.10.14 |
+| Última actualización | 6 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
 | Contexto | Proyecto de clase: recrear con IA el juego favorito de la infancia |
@@ -874,14 +874,14 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
   - registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-50 del PRD de v2);
   - progreso en la cuenta (R-25 a R-32 resueltos en el servidor);
   - sandbox con el mazo fijo (D-50) y `GameHost` asíncrono.
-- [ ] **M8: Partida en línea:**
-  - medir P-20 antes de programar las partidas;
-  - salas con código para 2 o 3 personas, con el bot en el ninja libre;
+- [ ] **M8: Partida en línea.** Antes va una ronda de ajustes de jugabilidad; después, el M8 empieza por su especificación técnica y por la investigación del teléfono (D-73):
+  - P-20, medida y decidida (D-69 a D-72);
+  - salas con código para 2 o 3 personas, con el bot en el ninja libre, y el mínimo de 5 cartas para Tormenta (R-51 del PRD de v2);
   - reloj del servidor de 15 s (D-46) y fantasmas compartidos;
   - cobro por ronda solo para quien estaba conectado (D-31, D-48);
   - desconexión, reconexión y recuperación tras un reinicio.
 - [ ] **M9: Emparejamiento y estadísticas:**
-  - cola por dificultad y ninja (D-43);
+  - cola por dificultad y ninja (D-43), que junta a cualquiera dentro de la dificultad (D-70);
   - empezar con un bot a los 30 s si ambas personas aceptan (D-44);
   - estadísticas privadas por persona (R-42);
   - aviso de privacidad y pruebas con personas.
@@ -900,7 +900,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | ID | Pregunta | Estado |
 |---|---|---|
 | P-19 | Edad mínima | ✅ Resuelta para v2: sin límite de edad ni autorización de adultos (D-38). El riesgo legal queda anotado en el PRD de v2 |
-| P-20 | Curva de dificultad en línea con equipos de colecciones mezcladas | ❓ Abierta: ya se midió en el simulador (`docs/balance-report.md`) y falta decidir la curva con esos números, antes del M8 |
+| P-20 | Curva de dificultad en línea con equipos de colecciones mezcladas | ✅ Resuelta con la medición del simulador (`docs/balance-report.md`): Tormenta pide 5 cartas del elemento del ninja (D-69), el emparejamiento junta a cualquiera dentro de la dificultad (D-70), el límite del bonus se queda en 13 y 18 (D-71) y se acepta que Clásica sea fácil desde la primera caja (D-72) |
 | P-21 | Visibilidad de las estadísticas | ✅ Resuelta: privadas, solo las ve cada jugador (D-39) |
 | P-22 | Castigo por abandono | ❓ Abierta: sin castigo en v2 (R-39). Se decide con datos de uso una vez abierto el emparejamiento |
 | P-23 | Mazo del sandbox | ✅ Resuelta: el mazo de referencia, igual que el bot (D-47, D-50) |
@@ -997,7 +997,12 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
-| D-68 | El cliente conserva el identificador de una compra solo si su respuesta se pierde: entonces comprar de nuevo la misma caja es un reintento, y otra caja es otra compra. Una respuesta definitiva lo borra, y tras una perdida el cliente vuelve a leer el progreso. Mientras espera, los botones de compra quedan deshabilitados (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
+| D-73 | El juego debe funcionar en computador y en teléfono, por etapas: el combate en línea del M8 se diseña para computador, y sus pantallas nuevas se construyen adaptables, con diseño fluido (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
+| D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja: es el modo para empezar, y el simulador es un techo para personas reales (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
+| D-71 | El límite de turnos del bonus se queda en 13 y 18, también en línea (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
+| D-70 | El emparejamiento junta a cualquiera dentro de la dificultad elegida: con pocas personas jugando, más filtros solo alargan la espera (`docs/PRD-v2.md`) | ✅ | 2026-10-06 |
+| D-69 | Tormenta en línea pide 5 cartas del elemento del ninja con que se entra, en el emparejamiento y en las salas con código; la pantalla muestra cuánto falta y sugiere jugar Clásica (R-51 de `docs/PRD-v2.md`) | ✅ | 2026-10-06 |
+| D-68 | El cliente conserva el identificador de una compra solo si su respuesta se pierde, y un error 500 cuenta como respuesta perdida: entonces comprar de nuevo la misma caja es un reintento, y otra caja es otra compra. Una respuesta definitiva lo borra. Tras una respuesta perdida o un rechazo por monedas insuficientes, el cliente vuelve a leer el progreso. Mientras espera, los botones de compra quedan deshabilitados (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-67 | Durante el M7, el perfil hace de inicio en línea: muestra el resumen del progreso y lleva a la colección y la tienda. Elegir la carta de camino se puede dejar para después (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-66 | El libro de monedas registra también las compras, con un identificador del cliente único por cuenta: un reintento devuelve el resultado original y no cobra de nuevo (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
 | D-65 | Las peticiones que cambian estado solo se aceptan desde el origen del juego: la cookie `SameSite=Lax` no distingue los subdominios de wpena.dev (`docs/PRD-v2.md`) | ✅ | 2026-10-01 |
@@ -1047,6 +1052,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.14 | 2026-10-06 | P-20, resuelta con la medición del simulador: Tormenta en línea pide 5 cartas del elemento del ninja (D-69 y R-51 del PRD de v2), el emparejamiento junta a cualquiera dentro de la dificultad elegida (D-70), el límite del bonus se queda en 13 y 18 (D-71) y se acepta que Clásica sea fácil desde la primera caja (D-72). D-68 precisa que un error 500 cuenta como respuesta perdida y que el cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes. D-73: el juego debe funcionar en computador y en teléfono, por etapas. Con el M7 y P-20 se cierra esta fase: sigue una ronda de ajustes de jugabilidad y, después, el M8, que empieza por su especificación técnica y la investigación del teléfono |
 | 0.10.13 | 2026-10-01 | P-20, medida: el simulador arma la partida asiento por asiento (`pnpm sim -- --team` y `--mixed`), como en línea, donde cada persona juega con su colección y el bot con el mazo de referencia (R-34, D-47). El reporte de balance suma la sección de equipos de colecciones mezcladas y el límite de turnos del bonus con cada equipo. No cambia ningún valor; la curva de dificultad en línea queda por decidir |
 | 0.10.12 | 2026-10-01 | Progreso en el cliente (M7, paso 9): al verificar la cuenta se elige la carta de camino (R-30); el perfil muestra el resumen del progreso y lleva a la colección, con las 20 cartas de cada elemento y las que faltan como siluetas (R-25), y a la tienda de cajas (R-28), con el revelado de las cartas. El cliente muestra lo que responde el servidor y nunca calcula el progreso. D-67: durante el M7, el perfil hace de inicio en línea. D-68: el cliente conserva el identificador de una compra solo si su respuesta se pierde, vuelve a leer el progreso para mostrar el saldo real y deshabilita los botones mientras espera. Hasta el M8 nadie puede ganar monedas, y la tienda lo dice con "Próximamente". La introducción de "Entrar" y la invitación de los resultados ya dicen en presente que la cuenta guarda el progreso. Las piezas nuevas quedan en la sección 10 de `docs/lineamientos-de-diseno.md`. Las e2e guardan una captura y la traza de cada prueba que falla. Con esto se completa la lista del M7 |
 | 0.10.11 | 2026-10-01 | Progreso en el servidor (M7, paso 8): la carta de camino con su inventario inicial (R-30), el libro de monedas que no paga dos veces la misma ronda (R-29, D-31) y las cajas sorteadas en el servidor con el motor, sin poder gastar de más con compras simultáneas (R-27, R-28). El libro registra también las compras, y un reintento con el mismo identificador devuelve el resultado original sin cobrar de nuevo (D-66). Tablas `profiles`, `collection` y `coin_ledger`, que se borran con la cuenta (D-56). D-65: las peticiones que cambian estado solo se aceptan desde el origen del juego. `pnpm check:prod` reintenta la lectura del commit de `main` |
@@ -1105,7 +1111,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **R-28 Cajas.** Cajas de 1, 2 o 3 cartas (D-22). 📌 La caja es de un elemento a elección y cada carta se sortea por separado entre las 20 del banco, así que puede salir repetida. 📌 Precios: 100, 180 y 250 monedas.
 - **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros.
 - **R-30 Inicio.** Inventario inicial: 1 carta de 9 por elemento (la categoría más baja) (D-24). Al entrar por primera vez, el jugador elige además su **carta de camino** (D-25). 📌 Se elige entre tres cartas de 12, una por elemento, del banco (cuentan dentro de las 20). La elección es permanente y define el título ("Camino del Fuego"), el color y emblema del perfil y, en v2, el ninja que controla por defecto.
-- **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea.
+- **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea. En línea la reemplaza R-51 del PRD de v2: Tormenta pide 5 cartas del elemento del ninja con que se entra (D-69).
 - **R-32 Persistencia.** Colección, monedas y camino se guardan en el navegador hasta que existan cuentas (v2). Borrar los datos del navegador reinicia el progreso.
 
 **Descartado:** cartas con efectos distintos (D-19) y cartas de práctica para completar la reserva (la propuesta no convenció).

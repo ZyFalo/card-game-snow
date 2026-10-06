@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Lo siguiente es una ronda de ajustes de jugabilidad y, después, el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
+Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con su primer paso hecho; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code.
 
 ## Qué hay
 
@@ -24,6 +24,10 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
   - El cliente conserva ese identificador solo si la respuesta se pierde (D-68): comprar de nuevo la misma caja no cobra dos veces. Entonces vuelve a leer el progreso, para mostrar el saldo real, y esa caja se puede reintentar aunque el saldo ya no alcance. Cualquier respuesta definitiva, sea la caja o un rechazo, borra el identificador.
   - En el código (`purchaseLost` en `state/progress.ts`), una respuesta perdida es que no llegó ninguna o que el servidor falló con un 500, porque un 500 tampoco dice si cobró.
   - **Hoy nadie puede ganar monedas:** se ganarán en las partidas en línea (M8). La tienda lo dice en futuro y con "Próximamente". Las e2e le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e; el servidor no tiene ninguna ruta que regale monedas.
+- **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
+  - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
+  - Lo que el tablero muestra al planificar son capas: casillas de movimiento, fantasmas, marcas de objetivo, líneas de mira. `state/board.ts` decide cuál se ve y cuándo, con sus pruebas, y la escena solo dibuja.
+  - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
 - **Servidor (`apps/server`):**
@@ -129,10 +133,19 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
 
 El M7 y P-20 están cerrados. Va en este orden:
 
-1. **Ronda de ajustes de jugabilidad,** antes del M8. Los ajustes los pasa el dueño de producto. Para esa ronda:
+1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en cinco PRs pequeños, cada uno con capturas de antes y después a 1280×720 junto a "Tu equipo":
+   1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
+   2. **Foco y pasos.** Solo el ninja activo muestra sus opciones, y los otros quedan en silueta y punto. La planificación va en dos pasos: moverse (solo casillas) y actuar (solo anillos: rojos sobre enemigos, blancos sobre aliados y verde el elegido); luego pasa solo al siguiente ninja. Elegir una carta cambia el tablero a modo carta, con casillas rojas.
+   3. **La reanimación vuelve a la regla del original** y reemplaza a D-18: quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. Cambia R-09 y R-11, el motor, el bot y la interfaz, y lleva su decisión, sus pruebas y la medición del balance antes y después (el sandbox y las tablas de P-20).
+   4. **Información a pedido.** En el modo normal trae solo dos cosas: el resumen del plan de cada ninja en los paneles, sin números ("Moverse → atacar a Témpano"), y, al pasar sobre un enemigo, su nombre y un consejo corto sobre cómo ataca, sin pintar casillas. La vida que perderá el objetivo y el alcance de los enemigos pasan a ser ayudas apagadas por defecto, en el grupo "Ayudas" de la pantalla de equipo: "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos". Existen solo en las partidas locales; en línea no están disponibles, y con el M8 las partidas en línea las ignoran y no las muestran. Lleva su decisión.
+   5. **Consejos en el momento.** Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno.
+
+   Para toda la ronda:
    - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;
    - si afecta el balance, va con una simulación antes y otra después;
-   - al terminar, se vuelven a correr las tablas de P-20 (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y se actualiza `docs/balance-report.md`, porque los ajustes pueden mover sus números.
+   - la sección "Tablero" de los lineamientos crece con cada paso: qué capas existen, sus colores, cuándo se ve cada una y la regla de un solo modo a la vez;
+   - al terminar, se vuelven a correr las tablas de P-20 (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y se actualiza `docs/balance-report.md`, porque los ajustes pueden mover sus números;
+   - al terminar, se propone una prueba corta con personas: tres tareas como "haz que Marea ataque a Témpano", "cura a Brasa" y "usa una carta", midiendo errores y dudas.
 2. **M8: partida en línea.** No se programa hasta que el dueño de producto revise su especificación técnica.
    - **Especificación técnica,** en un PR de documentación. Se escribe después de la ronda de jugabilidad, porque los ajustes pueden cambiar reglas que ella usa. Debe cubrir:
      - **Protocolo:** los mensajes y sus esquemas, la frecuencia de los fantasmas de los compañeros, el reloj y los plazos en el servidor, y el ciclo de vida de una sala.

@@ -21,6 +21,33 @@ const ghosts = (page: Page) =>
       .map((o) => o.texture?.key),
   );
 
+test('la mano muestra solo las cartas que hay, sin casillas vacías', async ({ page }) => {
+  await startMatch(page);
+  const hand = page.locator('.hand');
+  await expect(hand).toBeVisible();
+  // Al empezar nadie tiene cartas: la mano queda con su título y nada más.
+  await expect(hand.locator('.card')).toHaveCount(0);
+  const title = await hand.locator('.hand-head').boundingBox();
+
+  // Con dos cartas en la mano del ninja activo se ven esas dos.
+  await page.evaluate(() => {
+    type Ninja = { id: string; hand: { id: string; element: string; value: number }[] };
+    const store = (window as unknown as TestWindow).__ventisca as unknown as {
+      getState(): { active: string; view: { ninjas: Ninja[] } };
+      setState(patch: object): void;
+    };
+    const { active, view } = store.getState();
+    const cards = [9, 11].map((value, i) => ({ id: `${active}-${i + 1}`, element: active, value }));
+    store.setState({
+      view: { ...view, ninjas: view.ninjas.map((n) => (n.id === active ? { ...n, hand: cards } : n)) },
+    });
+  });
+  await expect(hand.locator('.card')).toHaveCount(2);
+  await expect(hand.getByRole('button', { name: /^Carta de/ })).toHaveCount(2);
+  // El título no se mueve al llegar las cartas: la mano guarda su alto.
+  expect(await hand.locator('.hand-head').boundingBox()).toEqual(title);
+});
+
 test('el destino planeado se marca con la silueta del ninja', async ({ page }) => {
   await startMatch(page);
   expect(await ghosts(page)).toEqual([]);

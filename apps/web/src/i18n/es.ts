@@ -45,7 +45,6 @@ export const ES = {
   seconds: 's',
   hand: (name: string) => `Cartas de ${name}`,
   deck: (n: number) => `Mazo ${n}`,
-  emptySlot: 'Vacío',
   round: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r} de 3`),
   roundBanner: (r: number | 'bonus') => (r === 'bonus' ? 'Ronda bonus' : `Ronda ${r}`),
   bonusLocked: 'Bonus',

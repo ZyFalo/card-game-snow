@@ -58,6 +58,24 @@ describe('LocalHost: GameHost asíncrono', () => {
     if (replay) expect(runReplay(replay).hashes.slice(1)).toEqual(turnResults().map((m) => m.hash));
   });
 
+  it('load: el turno siguiente se resuelve sobre el tablero cargado', async () => {
+    const host = new LocalHost();
+    const got = listen(host);
+    expect(() => host.load(createMatch(opts).state)).toThrow('No hay partida en curso.');
+    await host.start(opts);
+    // Un tablero preparado: Brasa cayó junto a Marea, que la revive (R-09).
+    const board = createMatch(opts).state;
+    const fire = board.ninjas.find((n) => n.id === 'fire') as MatchState['ninjas'][number];
+    const water = board.ninjas.find((n) => n.id === 'water') as MatchState['ninjas'][number];
+    Object.assign(fire, { hp: 0, everKo: true, pos: { x: water.pos.x + 1, y: water.pos.y } });
+    host.load(board);
+    const plans = [{ ninjaId: 'water' as const, action: { type: 'revive' as const, targetId: 'fire' } }];
+    await host.submit(plans);
+    expect(got[1]).toEqual({ type: 'turnResult', ...resolveTurn(board, plans) });
+    // Brasa se levanta al final de ese turno, sobre el tablero cargado.
+    expect(got[1]?.state.ninjas.find((n) => n.id === 'fire')?.hp).toBe(1);
+  });
+
   it('submit sin partida se rechaza', async () => {
     await expect(new LocalHost().submit([])).rejects.toThrow('No hay partida en curso.');
   });

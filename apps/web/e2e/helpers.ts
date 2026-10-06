@@ -11,7 +11,7 @@ export interface TestState {
   pendingCard: string | null;
   boosting: boolean;
   plans: Record<string, unknown>;
-  match: { turn: number; ninjas: { id: string; pos: { x: number; y: number } }[] };
+  match: { turn: number; ninjas: { id: string; hp: number; pos: { x: number; y: number } }[] };
 }
 
 export type TestWindow = {

@@ -152,6 +152,18 @@ export function beginPlanning(): void {
   });
 }
 
+/**
+ * Solo para las pruebas e2e y las capturas (main.tsx la expone en desarrollo): deja la partida en curso
+ * en un tablero preparado, en el anfitrión, en el estado y en la escena, y empieza a planificar.
+ */
+export function loadBoard(state: MatchState): void {
+  if (!(host instanceof LocalHost)) return;
+  host.load(state);
+  store.setState({ match: state, view: state, hover: null, notice: null });
+  bridge.scene?.setupMatch(state);
+  beginPlanning();
+}
+
 /** Fin de la planificación: sin planes, selección ni reloj. */
 function closePlanning(): void {
   host.stopTimer();

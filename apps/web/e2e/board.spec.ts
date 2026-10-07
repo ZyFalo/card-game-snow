@@ -575,6 +575,7 @@ interface Mini {
   w: number;
   h: number;
   depth: number;
+  alpha: number;
 }
 type MiniWindow = {
   __ventiscaScene: {
@@ -587,6 +588,7 @@ type MiniWindow = {
         displayWidth: number;
         displayHeight: number;
         depth: number;
+        alpha: number;
         texture?: { key: string };
       }[];
     };
@@ -604,6 +606,7 @@ const minis = (page: Page): Promise<Mini[]> =>
         w: o.displayWidth,
         h: o.displayHeight,
         depth: o.depth,
+        alpha: o.alpha,
       }))
       .sort((a, b) => a.x - b.x),
   );
@@ -611,20 +614,23 @@ const minis = (page: Page): Promise<Mini[]> =>
 test('las cartas colocadas dejan su miniatura: cada elemento en su lugar, sin taparse ni moverse', async ({ page }) => {
   await startPrepared(page);
   // Los tres ninjas con una carta en la mano, y las van colocando en la misma casilla, que está vacía.
-  const place = (who: string[]) =>
-    page.evaluate((who) => {
-      type Ninja = { id: string; hand: unknown[] };
-      const store = (window as unknown as TestWindow).__ventisca as unknown as {
-        getState(): { match: { ninjas: Ninja[] } };
-        setState(patch: object): void;
-      };
-      const m = structuredClone(store.getState().match);
-      for (const n of m.ninjas) n.hand = [{ id: `${n.id}-1`, element: n.id, value: 10 }];
-      const plans = Object.fromEntries(
-        who.map((id) => [id, { ninjaId: id, action: { type: 'card', cardId: `${id}-1`, at: { x: 2, y: 2 } } }]),
-      );
-      store.setState({ match: m, view: m, plans, active: 'fire', pendingCard: null });
-    }, who);
+  const place = (who: string[], at = { x: 2, y: 2 }) =>
+    page.evaluate(
+      ({ who, at }) => {
+        type Ninja = { id: string; hand: unknown[] };
+        const store = (window as unknown as TestWindow).__ventisca as unknown as {
+          getState(): { match: { ninjas: Ninja[] } };
+          setState(patch: object): void;
+        };
+        const m = structuredClone(store.getState().match);
+        for (const n of m.ninjas) n.hand = [{ id: `${n.id}-1`, element: n.id, value: 10 }];
+        const plans = Object.fromEntries(
+          who.map((id) => [id, { ninjaId: id, action: { type: 'card', cardId: `${id}-1`, at } }]),
+        );
+        store.setState({ match: m, view: m, plans, active: 'fire', pendingCard: null });
+      },
+      { who, at },
+    );
   await page.mouse.move(640, 60);
 
   await place(['water']);
@@ -654,10 +660,26 @@ test('las cartas colocadas dejan su miniatura: cada elemento en su lugar, sin ta
     expect(m.y + m.h).toBeLessThanOrEqual(270 + 42);
   }
 
-  // En el suelo, bajo las unidades; con el ratón sobre su casilla pasan al frente.
-  expect(three.every((m) => m.depth < 0)).toBe(true);
+  // Van siempre al frente, por encima de las unidades, y enteras. En una casilla vacía el ratón no las cambia.
+  const whole = async () => (await minis(page)).every((m) => m.depth > 1000 && m.alpha === 1);
+  expect(await whole()).toBe(true);
+  const hover = () =>
+    page.evaluate(() => {
+      const store = (window as unknown as TestWindow).__ventisca as unknown as { getState(): { hover: unknown } };
+      return store.getState().hover;
+    });
   await page.mouse.move(tile(2, 2).x, tile(2, 2).y);
-  await expect.poll(async () => (await minis(page)).every((m) => m.depth > 1000)).toBe(true);
+  await expect.poll(hover).toEqual({ x: 2, y: 2 });
+  expect(await whole()).toBe(true);
+
+  // Sobre la casilla de Témpano siguen al frente. Con el ratón sobre él se vuelven semitransparentes, para
+  // verlo completo, y al apartarlo vuelven a verse enteras.
   await page.mouse.move(640, 60);
-  await expect.poll(async () => (await minis(page)).every((m) => m.depth < 0)).toBe(true);
+  await place(['fire', 'water', 'snow'], { x: 4, y: 2 });
+  await expect.poll(async () => (await minis(page)).map((m) => m.x)).toEqual([597, 627, 657]);
+  expect(await whole()).toBe(true);
+  await page.mouse.move(tile(4, 2).x, tile(4, 2).y);
+  await expect.poll(async () => (await minis(page)).every((m) => m.depth > 1000 && m.alpha < 0.5)).toBe(true);
+  await page.mouse.move(640, 60);
+  await expect.poll(whole).toBe(true);
 });

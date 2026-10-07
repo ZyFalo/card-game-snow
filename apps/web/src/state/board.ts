@@ -81,8 +81,11 @@ export interface PlacedCards {
    * cartas, o con el ratón sobre la casilla; si no es `null`, y del área queda solo el contorno.
    */
   full: { color: ElementKind; tint: Vec[] } | null;
-  /** Con el ratón sobre la casilla, las miniaturas pasan al frente de la unidad que esté en ella. */
-  raised: boolean;
+  /**
+   * Las miniaturas van siempre al frente. Con el ratón sobre la unidad que está en esa casilla se vuelven
+   * semitransparentes, para verla completa.
+   */
+  faded: boolean;
 }
 
 /** Línea de mira de una acción planeada: de la casilla desde la que actúa el ninja a su objetivo. */
@@ -255,7 +258,7 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     if (a?.type === 'card') {
       const value = n.hand.find((c) => c.id === a.cardId)?.value ?? null;
       if (value !== null) played += 1;
-      const group = placed.get(key(a.at)) ?? { at: a.at, cards: [], area: area3x3(a.at), full: null, raised: false };
+      const group = placed.get(key(a.at)) ?? { at: a.at, cards: [], area: area3x3(a.at), full: null, faded: false };
       group.cards.push({ ninja: n.id, value });
       placed.set(key(a.at), group);
     } else if (a) {
@@ -275,8 +278,8 @@ export function boardLayers(s: BoardState): BoardLayers | null {
   layers.combo = played >= 2;
 
   for (const group of placed.values()) {
+    const over = hover !== null && eq(hover, group.at);
     if (mode !== 'card') {
-      const over = hover !== null && eq(hover, group.at);
       const owner = group.cards.find((c) => c.ninja === s.active);
       // El área completa, para el ninja activo dueño de una de las cartas, o con el ratón sobre la casilla.
       if (owner || over) {
@@ -284,8 +287,9 @@ export function boardLayers(s: BoardState): BoardLayers | null {
         const tint = group.area.filter((t) => !options.has(key(t)) && !reached.has(key(t)));
         if (color) group.full = { color, tint };
       }
-      group.raised = over;
     }
+    // Con el ratón sobre la unidad de esa casilla, un ninja o un gólem, las miniaturas la dejan ver.
+    group.faded = over && (!!ninjaAt(m, group.at) || !!enemyAt(m, group.at));
     layers.cards.push(group);
   }
 

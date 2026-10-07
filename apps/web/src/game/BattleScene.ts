@@ -59,10 +59,10 @@ const ICE_COLORS = [hex(ICE.white), hex(ICE.light), hex(ICE.base), hex(ICE.glow)
  */
 const MARK = { ring: 18, ringWidth: 4, dot: 5 } as const;
 /**
- * Profundidad de las miniaturas de las cartas colocadas. Van en el suelo, sobre las casillas y bajo las
- * unidades, para no tapar a la que esté en su casilla; con el ratón encima pasan al frente de todo.
+ * Las miniaturas de las cartas colocadas van siempre al frente, por encima de las unidades y de las demás
+ * marcas. Con el ratón sobre la unidad de su casilla se vuelven semitransparentes, para verla completa.
  */
-const MINI_DEPTH = { floor: -4, raised: 1650 } as const;
+const MINI_LAYER = { depth: 1650, faded: 0.35 } as const;
 
 export class BattleScene extends Phaser.Scene {
   private readonly images: Map<string, HTMLImageElement>;
@@ -481,18 +481,20 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(2, only ? hex(ELEMENT_COLORS[only.ninja].dark) : INK, 0.5);
       hl.strokeRoundedRect(box.x, box.y, box.w, box.h, 10);
     }
-    const depth = group.raised ? MINI_DEPTH.raised : MINI_DEPTH.floor;
+    const { depth } = MINI_LAYER;
+    const alpha = group.faded ? MINI_LAYER.faded : 1;
     for (const card of group.cards) {
       const r = miniRect(group.at, card.ninja);
       const img = this.add
         .image(r.x, r.y, `placed-${card.ninja}`)
         .setOrigin(0, 0)
         .setDisplaySize(r.w, r.h)
-        .setDepth(depth);
+        .setDepth(depth)
+        .setAlpha(alpha);
       this.labels.push(img);
       if (combo) {
         // El combo se anuncia: un borde dorado alrededor de cada carta que lo forma.
-        const ring = this.add.graphics().setDepth(depth);
+        const ring = this.add.graphics().setDepth(depth).setAlpha(alpha);
         ring.lineStyle(MINI.ring, GOLD, 1);
         ring.strokeRoundedRect(r.x - MINI.ring / 2, r.y - MINI.ring / 2, r.w + MINI.ring, r.h + MINI.ring, 4.5);
         this.labels.push(ring);
@@ -507,7 +509,8 @@ export class BattleScene extends Phaser.Scene {
           resolution: 3,
         })
         .setOrigin(0, 0.5)
-        .setDepth(depth + 0.5);
+        .setDepth(depth + 0.5)
+        .setAlpha(alpha);
       this.labels.push(value);
     }
   }

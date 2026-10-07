@@ -475,7 +475,7 @@ describe('Capas del tablero al planificar', () => {
     it('una carta deja en su casilla su miniatura, con su valor, y el contorno de su área', () => {
       const l = layers({ match: withCards(), plans: { fire: card('fire', 3, 2) }, active: 'water' });
       expect(l.cards).toHaveLength(1);
-      expect(l.cards[0]).toMatchObject({ at, cards: [{ ninja: 'fire', value: 9 }], full: null, raised: false });
+      expect(l.cards[0]).toMatchObject({ at, cards: [{ ninja: 'fire', value: 9 }], full: null, faded: false });
       // El contorno rodea las 9 casillas del área. No rellena ninguna.
       expect(keys(l.cards[0]?.area ?? [])).toEqual(['2,1', '2,2', '2,3', '3,1', '3,2', '3,3', '4,1', '4,2', '4,3']);
       expect(l.combo).toBe(false);
@@ -486,14 +486,35 @@ describe('Capas del tablero al planificar', () => {
       const m = withCards();
       expect(layers({ match: m, plans, active: 'water' }).cards[0]?.full).toBeNull();
       expect(layers({ match: m, plans, active: 'water', hover: { x: 4, y: 2 } }).cards[0]?.full).toBeNull();
-      // Con el ratón encima, la miniatura además pasa al frente.
       const over = layers({ match: m, plans, active: 'water', hover: at }).cards[0];
       expect(over?.full?.color).toBe('fire');
-      expect(over?.raised).toBe(true);
       // Con su dueño activo, sin el ratón.
       const own = layers({ match: m, plans, active: 'fire' }).cards[0];
       expect(own?.full?.color).toBe('fire');
-      expect(own?.raised).toBe(false);
+    });
+
+    it('con el ratón sobre una unidad, las miniaturas de su casilla se vuelven semitransparentes', () => {
+      const m = withCards();
+      // Carámbano está en (5,1): la carta de Brasa cae sobre su casilla.
+      const golem = { x: 5, y: 1 };
+      const onGolem = { fire: card('fire', 5, 1) };
+      expect(layers({ match: m, plans: onGolem, active: 'water', hover: golem }).cards[0]?.faded).toBe(true);
+      // Sin el ratón encima, o con el ratón en otra casilla, se ven enteras.
+      expect(layers({ match: m, plans: onGolem, active: 'water' }).cards[0]?.faded).toBe(false);
+      expect(layers({ match: m, plans: onGolem, active: 'water', hover: { x: 4, y: 1 } }).cards[0]?.faded).toBe(false);
+      // También con una carta en la mano: sigue habiendo una unidad que ver.
+      const placing = { match: m, plans: onGolem, active: 'water' as const, pendingCard: 'water-1' };
+      expect(layers({ ...placing, hover: golem }).cards[0]?.faded).toBe(true);
+      // Sobre un ninja, en pie o caído, igual: Brasa está en (1,1).
+      const onNinja = { water: card('water', 1, 1) };
+      const brasa = { x: 1, y: 1 };
+      expect(layers({ match: m, plans: onNinja, active: 'snow', hover: brasa }).cards[0]?.faded).toBe(true);
+      ninja(m, 'fire').hp = 0;
+      expect(layers({ match: m, plans: onNinja, active: 'snow', hover: brasa }).cards[0]?.faded).toBe(true);
+      // En una casilla vacía no hay a quién dejar ver: siguen enteras, con el área completa.
+      const empty = layers({ match: m, plans: { water: card('water', 3, 2) }, active: 'snow', hover: at }).cards[0];
+      expect(empty?.faded).toBe(false);
+      expect(empty?.full?.color).toBe('water');
     });
 
     it('dos y tres cartas en la misma casilla: un solo grupo y un solo contorno, en orden Fuego, Agua, Nieve', () => {
@@ -588,7 +609,7 @@ describe('Capas del tablero al planificar', () => {
       };
       const l = layers({ ...placing, hover: at });
       expect(l.mode).toBe('card');
-      expect(l.cards[0]).toMatchObject({ cards: [{ ninja: 'fire', value: 9 }], full: null, raised: false });
+      expect(l.cards[0]).toMatchObject({ cards: [{ ninja: 'fire', value: 9 }], full: null, faded: false });
     });
   });
 

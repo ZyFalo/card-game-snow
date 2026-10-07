@@ -226,7 +226,7 @@ Su camino no se dibuja, y su línea de mira aparece solo con el ratón. Lo del n
 Una carta colocada deja una miniatura: una carta pequeña, como las de la mano, con la franja del color de su elemento, su valor en la esquina y su símbolo (llama, ola o copo). Reemplaza al número en un círculo, que se confundía con los números de orden.
 
 - **Un lugar fijo por elemento,** en el orden de los paneles: Fuego a la izquierda, Agua al centro y Nieve a la derecha. Con tres cartas en la misma casilla se ven las tres, sin taparse y sin moverse al sumarse otra.
-- **En la franja de arriba de su casilla, y en el suelo:** la unidad que esté en esa casilla queda delante y la miniatura no la tapa. Con el ratón sobre la casilla, las miniaturas pasan al frente.
+- **En la franja de arriba de su casilla, y siempre al frente,** como en el original: por encima de la unidad que esté en esa casilla. Detrás, la de Agua, que va al centro, quedaba oculta justo en el caso más común, que es una carta sobre un gólem. Con el ratón sobre esa unidad, las miniaturas se vuelven semitransparentes, para verla completa.
 - **El área, a pedido.** La carta de un ninja que no está activo deja solo un contorno fino y tenue de su área de 3×3, sin relleno ni borde grueso: del color de su elemento o, si varias cartas comparten la casilla, uno solo, de tinta. El área completa, con relleno y borde grueso, se ve cuando el ninja dueño de la carta está activo o con el ratón sobre la miniatura.
 - **El combo se anuncia.** Si dos o más ninjas tienen carta en el turno, sus miniaturas llevan un borde de `--gold`, estén en la misma casilla o en distintas (R-18).
 
@@ -267,7 +267,7 @@ La casilla mide 100×84 px. Dentro van la figura, su barra de vida y sus estados
 - **Los íconos de estado** van arriba a la derecha, uno bajo el otro. Una unidad tiene dos como mucho: escudo y potencia, o aturdido y quemado.
 - **El número de orden** (D-32) va arriba a la izquierda de la casilla desde la que actúa el ninja.
 - **La marca de un objetivo** va sobre el cuerpo de la unidad, con sus puntos encima, y cabe en la casilla.
-- **Las miniaturas de las cartas colocadas** van en la franja de arriba, en el suelo de la casilla: la unidad queda delante.
+- **Las miniaturas de las cartas colocadas** van en la franja de arriba, al frente de la unidad. Con el ratón sobre ella se vuelven semitransparentes.
 
 Los efectos del combate (proyectiles, impactos y números de daño) sí pueden salirse: duran un instante. `game/layout.test.ts` mide lo que dibuja cada figura y falla si deja de caber.
 
@@ -286,12 +286,12 @@ De abajo hacia arriba:
 | Camino | La línea del ninja a su fantasma, por la línea de los pies | El de su elemento | Solo para el ninja activo |
 | Fantasma | La silueta sin relleno del ninja, en la casilla a la que planea moverse | El de su elemento | Para cada ninja que planea moverse |
 | Área completa de una carta | El relleno de sus casillas, salvo las que ya llevan otro tinte, y un borde grueso | El del elemento del ninja activo, si una de las cartas es suya; si no, el de la primera | Con el dueño de una de las cartas activo, o con el ratón sobre la miniatura. Nunca con una carta en la mano |
-| Miniatura de una carta colocada | Una carta pequeña con su valor y el símbolo de su elemento, en su lugar fijo. Con combo, un borde `--gold` | El del elemento | Para cada carta ya colocada. Va bajo las unidades; con el ratón sobre su casilla, al frente de todo |
 | Línea de mira | De la casilla desde la que actúa un ninja al objetivo de su acción planeada | El del elemento de quien actúa | Solo con el ratón: sobre el objetivo, sobre quien actúa o sobre su fantasma |
 | Objetivo elegido | Atacar: un anillo con un arco del color de cada atacante. Curar: la cruz. Revivir: la flecha. Encima, un punto por cada ninja que lo eligió | El anillo y los puntos, del elemento de cada ninja | Para cada acción planeada, en cualquier modo. Las del ninja activo van encima de las demás |
 | Objetivos posibles | Una mira tenue sobre cada gólem al alcance, una cruz sobre el aliado que se puede curar y una flecha sobre el caído que se puede revivir | `--danger`, `--snow` y `--gold` | Para el ninja activo, salvo con una carta en la mano. Van encima de las marcas de los demás ninjas |
 | Casilla bajo el ratón | Un borde | `--ink` | Con el ratón sobre el tablero |
 | Número de orden | El orden real en que actuará cada ninja (D-32) | El de su elemento | Para cada ninja con una acción planeada |
+| Miniatura de una carta colocada | Una carta pequeña con su valor y el símbolo de su elemento, en su lugar fijo. Con combo, un borde `--gold` | El del elemento | Para cada carta ya colocada. Va al frente de todo; con el ratón sobre la unidad de su casilla, semitransparente |
 
 - **Tinta alrededor:** el anillo, los puntos y la línea de mira llevan borde de tinta, para leerse sobre cualquier figura.
 - **Un borde no tiñe:** las casillas vecinas de un caído se marcan solo con su borde. Así, una casilla a la que además puede ir el ninja activo conserva su color.

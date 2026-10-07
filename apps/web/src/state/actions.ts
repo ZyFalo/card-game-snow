@@ -16,7 +16,7 @@ import { LocalHost } from '../host/LocalHost';
 import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import { firstFallTip, nextPending, nextPlannable, plansArray, stepFor, turnClockMs, withoutAction } from './planning';
+import { firstFallTip, nextPending, nextPlannable, plansArray, turnClockMs, withoutAction } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
@@ -93,7 +93,6 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
     view: beforeIntro(state),
     plans: {},
     active: null,
-    step: 'move',
     pendingCard: null,
     hover: null,
     reviveTip: null,
@@ -135,7 +134,6 @@ export function beginPlanning(): void {
     resolveStep: null,
     plans: {},
     active: nextPlannable(match, {}, null, 1),
-    step: 'move',
     pendingCard: null,
     reviveTip,
     reviveTipSeen: reviveTipSeen || reviveTip !== null,
@@ -164,7 +162,6 @@ function closePlanning(): void {
     plans: {},
     pendingCard: null,
     active: null,
-    step: 'move',
     hover: null,
     reviveTip: null,
     timer: { deadline: null, remaining: null, total: null },
@@ -225,7 +222,6 @@ export function quitToMenu(): void {
     overlay: null,
     plans: {},
     active: null,
-    step: 'move',
   });
 }
 
@@ -250,8 +246,8 @@ export function replayJson(): string {
 /* ---------- Planificación (§9.3) ---------- */
 
 /*
- * Cada ninja se planifica en dos pasos: moverse y actuar (state/steps.ts decide qué hace cada clic). Aquí
- * solo se aplica el resultado al estado, con su sonido y su aviso.
+ * Qué hace cada clic al planificar lo decide state/steps.ts. Aquí solo se aplica el resultado al estado,
+ * con su sonido y su aviso.
  */
 
 /** Sin movimiento ni acción no hay plan: se quita, para que Esc vuelva a abrir la pausa. */
@@ -274,8 +270,7 @@ export function selectNinja(id: ElementKind): void {
   if (!canPlan() || !st.match) return;
   const n = getNinja(st.match, id);
   if (!n || n.hp <= 0 || st.active === id) return;
-  // Si ya eligió casilla o acción, se retoma en el paso de actuar; si no, empieza por moverse.
-  store.setState({ active: id, pendingCard: null, step: stepFor(st.plans[id]) });
+  store.setState({ active: id, pendingCard: null });
   audio.play('select');
 }
 
@@ -294,7 +289,7 @@ function afterStep(): void {
   const st = store.getState();
   if (!st.settings.autoAdvance || !st.match || !st.active) return;
   const next = nextPending(st.match, st.plans, st.active);
-  if (next) store.setState({ active: next, pendingCard: null, step: stepFor(st.plans[next]) });
+  if (next) store.setState({ active: next, pendingCard: null });
 }
 
 function apply(o: StepOutcome): void {
@@ -305,7 +300,6 @@ function apply(o: StepOutcome): void {
   }
   if (o.plan && active) setPlan(active, o.plan);
   if (o.cardDone) store.setState({ pendingCard: null });
-  if (o.step) store.setState({ step: o.step });
   if (o.notice) notify(o.notice);
   if (o.sound) audio.play(o.sound);
   if (o.finished) afterStep();
@@ -351,7 +345,7 @@ export function suggest(): void {
   const plan = suggestPlan(st.match, st.active, plansArray(st.plans));
   if (!plan) return;
   setPlan(st.active, plan);
-  store.setState({ pendingCard: null, step: 'act' });
+  store.setState({ pendingCard: null });
   audio.play('place');
   afterStep();
 }

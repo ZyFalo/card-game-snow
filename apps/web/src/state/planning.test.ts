@@ -1,4 +1,11 @@
-import { createMatch, type Difficulty, difficultyConfig, type ElementKind, type MatchState } from '@ventisca/core';
+import {
+  createMatch,
+  type Difficulty,
+  difficultyConfig,
+  type ElementKind,
+  type MatchState,
+  type Plan,
+} from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import { bonusProgress, contextualTip, firstFallTip, reviverOf, turnClockMs } from './planning';
 
@@ -57,14 +64,18 @@ describe('Revivir en la planificación (R-09)', () => {
     match: match(['water']),
     plans: {},
     active: 'fire',
-    step: 'move',
     pendingCard: null,
     hover: null,
     reviveTip: null,
     ...patch,
   });
   const HOW = 'Muévete junto a Marea para revivirlo. Se levanta al final del turno: protege a quien lo revive.';
-  const MOVE = 'Elige a dónde se mueve Brasa. Para quedarse, haz clic en su casilla.';
+  const PLAN = 'Elige a dónde se mueve Brasa, o un objetivo desde donde está.';
+  /** Brasa da un paso al frente desde donde empieza la partida. */
+  const step = (m: MatchState): Plan => {
+    const at = m.ninjas[0]?.pos ?? { x: 0, y: 0 };
+    return { ninjaId: 'fire', moveTo: { x: at.x + 1, y: at.y } };
+  };
 
   it('R-09: el consejo nombra al primer caído, y sale una sola vez por partida', () => {
     expect(firstFallTip(match(), false)).toBeNull();
@@ -73,30 +84,41 @@ describe('Revivir en la planificación (R-09)', () => {
     expect(firstFallTip(match(['water']), true)).toBeNull();
   });
 
-  it('R-09: la primera vez que cae un ninja, el paso de moverse dice cómo revivirlo', () => {
-    expect(contextualTip(planning({ reviveTip: 'water' }))).toBe(HOW);
-    // Sin ese consejo pendiente, el paso de moverse dice lo de siempre.
-    expect(contextualTip(planning({}))).toBe(MOVE);
-    // En el paso de actuar y con una carta en la mano, cada modo dice lo suyo.
-    expect(contextualTip(planning({ reviveTip: 'water', step: 'act' }))).not.toBe(HOW);
-    expect(contextualTip(planning({ reviveTip: 'water', pendingCard: 'fire-1' }))).not.toBe(HOW);
-    // Si ese ninja ya está en pie, el consejo no tiene a quién nombrar.
-    expect(contextualTip(planning({ reviveTip: 'water', match: match() }))).toBe(MOVE);
+  it('al activar un ninja, el consejo ofrece moverse o elegir un objetivo desde donde está', () => {
+    expect(contextualTip(planning({ match: match() }))).toBe(PLAN);
+    expect(contextualTip(planning({ match: match(), active: 'snow' }))).toBe(
+      'Elige a dónde se mueve Escarcha, o un objetivo desde donde está.',
+    );
   });
 
-  it('en el paso de actuar, sin nada a su alcance, la franja dice quién falta sin contar al ninja activo', () => {
-    // Al empezar nadie alcanza a un gólem ni tiene cartas. Brasa se queda en su lugar: sigue activa,
-    // porque el foco no salta tras moverse, pero ya no le queda nada por decidir.
-    const stayed = planning({ match: match(), step: 'act' });
-    expect(contextualTip(stayed)).toBe('Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.');
-    // Si además se movió, lo mismo.
-    const fire = (stayed.match as MatchState).ninjas[0]?.pos ?? { x: 0, y: 0 };
-    const moved = planning({
-      match: match(),
-      step: 'act',
-      plans: { fire: { ninjaId: 'fire', moveTo: { x: fire.x + 1, y: fire.y } } },
-    });
-    expect(contextualTip(moved)).toBe('Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.');
+  it('R-09: la primera vez que cae un ninja, el consejo de ese momento dice cómo revivirlo', () => {
+    expect(contextualTip(planning({ reviveTip: 'water' }))).toBe(HOW);
+    // Sin ese consejo pendiente, dice lo de siempre.
+    expect(contextualTip(planning({}))).toBe(PLAN);
+    // Cuando ya eligió casilla, o con una carta en la mano, cada momento dice lo suyo.
+    const m = match(['water']);
+    expect(contextualTip(planning({ match: m, reviveTip: 'water', plans: { fire: step(m) } }))).not.toBe(HOW);
+    expect(contextualTip(planning({ reviveTip: 'water', pendingCard: 'fire-1' }))).not.toBe(HOW);
+    // Si ese ninja ya está en pie, el consejo no tiene a quién nombrar.
+    expect(contextualTip(planning({ reviveTip: 'water', match: match() }))).toBe(PLAN);
+  });
+
+  it('después de moverse, el consejo dice que elija qué hace y que puede cambiar de casilla', () => {
+    const m = match();
+    // Con una carta en la mano, Brasa tiene qué hacer desde cualquier casilla.
+    (m.ninjas[0] as MatchState['ninjas'][number]).hand = [{ id: 'fire-1', element: 'fire', value: 10 }];
+    expect(contextualTip(planning({ match: m, plans: { fire: step(m) } }))).toBe(
+      'Elige qué hace Brasa: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.',
+    );
+  });
+
+  it('si se movió a donde no alcanza a nadie, la franja dice quién falta sin contar al ninja activo', () => {
+    // Al empezar nadie alcanza a un gólem ni tiene cartas. Brasa se mueve: sigue activa, porque el foco no
+    // salta tras moverse, pero ya no le queda nada por decidir.
+    const m = match();
+    expect(contextualTip(planning({ match: m, plans: { fire: step(m) } }))).toBe(
+      'Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.',
+    );
   });
 
   it('R-09: quién revive a un caído sale de los planes', () => {

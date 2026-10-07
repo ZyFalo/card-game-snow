@@ -91,9 +91,6 @@ export const initialProgress = (): ProgressState => ({
 /** intro: aparición de la ronda; planning: el jugador planifica; resolving: se anima el turno. */
 export type Phase = 'idle' | 'intro' | 'planning' | 'resolving' | 'ended';
 
-/** Los dos pasos de planificar a un ninja: primero moverse, después actuar (state/steps.ts). */
-export type PlanStep = 'move' | 'act';
-
 export type Overlay =
   /** `turn`: el turno que se planificará al terminar el cartel (R-21). */
   | { kind: 'round'; round: Round; condition: BonusCondition; turnLimit: number; turn: number; key: number; ms: number }
@@ -141,8 +138,6 @@ export interface AppState {
   view: MatchState | null;
   plans: Partial<Record<ElementKind, Plan>>;
   active: ElementKind | null;
-  /** El paso en que está el ninja activo. */
-  step: PlanStep;
   pendingCard: string | null;
   hover: Vec | null;
   /** R-09: el ninja que nombra el consejo de cómo revivir, la primera vez que alguien cae en la partida. */
@@ -179,7 +174,6 @@ export const initialState = (): AppState => ({
   view: null,
   plans: {},
   active: null,
-  step: 'move',
   pendingCard: null,
   hover: null,
   reviveTip: null,

@@ -20,7 +20,7 @@ import {
   type Vec,
 } from '@ventisca/core';
 import { BONUS_PROGRESS, ENEMY_TEXT, ES, NINJA_TEXT, type Pace, PLAN_TEXT, TIP_TEXT } from '../i18n/es';
-import type { AppState, PlanStep } from './store';
+import type { AppState } from './store';
 
 /** R-04: el reloj da 10 s por ninja en pie que controla el jugador, según el ritmo; Relajado no tiene reloj. */
 export function turnClockMs(pace: Pace, living: number): number | null {
@@ -91,10 +91,7 @@ export function nextPlannable(
 export const withoutAction = (plan: Plan): Plan =>
   plan.moveTo ? { ninjaId: plan.ninjaId, moveTo: plan.moveTo } : { ninjaId: plan.ninjaId };
 
-/** El paso en que queda un ninja al activarlo: si ya eligió casilla o acción, actuar; si no, moverse. */
-export const stepFor = (plan: Plan | undefined): PlanStep => (plan?.moveTo || plan?.action ? 'act' : 'move');
-
-/** ¿Tiene ese ninja algo que hacer en el paso de actuar: un objetivo a su alcance o una carta en la mano? */
+/** ¿Tiene ese ninja con qué actuar desde su casilla planeada: un objetivo a su alcance o una carta en la mano? */
 export function canAct(m: MatchState, plans: AppState['plans'], id: ElementKind): boolean {
   const n = getNinja(m, id);
   if (!n || n.hp <= 0) return false;
@@ -184,7 +181,7 @@ export function firstFallTip(m: MatchState, seen: boolean): ElementKind | null {
 
 type TipState = Pick<
   AppState,
-  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'step' | 'pendingCard' | 'hover' | 'reviveTip'
+  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover' | 'reviveTip'
 >;
 
 /** Consejo contextual para la barra superior (§9.5). */
@@ -209,14 +206,16 @@ export function contextualTip(s: TipState): string | null {
   if (!info) return TIP_TEXT.confirm;
   const name = NINJA_TEXT[info.ninja.id].name;
   if (s.pendingCard) return TIP_TEXT.placeCard(name);
-  // Cada paso dice lo suyo: primero moverse, después actuar.
-  if (s.step === 'move') {
-    // La primera vez que cae un ninja, el paso de moverse explica cómo se le revive (R-09).
-    const fallen = s.reviveTip ? getNinja(m, s.reviveTip) : undefined;
-    if (fallen && fallen.hp <= 0) return TIP_TEXT.reviveHow(NINJA_TEXT[fallen.id].name);
-    return TIP_TEXT.move(name);
+  if (!info.plan.action) {
+    if (!info.plan.moveTo) {
+      // La primera vez que cae un ninja, el consejo de ese momento explica cómo se le revive (R-09).
+      const fallen = s.reviveTip ? getNinja(m, s.reviveTip) : undefined;
+      if (fallen && fallen.hp <= 0) return TIP_TEXT.reviveHow(NINJA_TEXT[fallen.id].name);
+      return TIP_TEXT.plan(name);
+    }
+    // Ya eligió casilla: le falta qué hacer, si desde ahí tiene con qué.
+    if (canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
   }
-  if (!info.plan.action && canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
   // Este ninja ya no tiene nada por decidir, aunque siga activo: el foco no salta tras moverse. Quiénes
   // faltan, o todo listo.
   const pending = ELEMENTS.filter((id) => id !== info.ninja.id && hasPending(m, s.plans, id));

@@ -120,7 +120,6 @@ export class BattleScene extends Phaser.Scene {
         s.phase !== prev.phase ||
         s.plans !== prev.plans ||
         s.active !== prev.active ||
-        s.step !== prev.step ||
         s.pendingCard !== prev.pendingCard ||
         s.hover !== prev.hover ||
         s.match !== prev.match ||
@@ -431,9 +430,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. Al
-   * moverse, casillas; al actuar, los objetivos posibles, con las casillas más tenues; y con una carta,
-   * solo las casillas rojas. Las marcas de los objetivos elegidos se ven siempre.
+   * Dibuja las capas del tablero (state/board.ts): aquí no se decide qué se muestra, solo cómo. Para el
+   * ninja activo, sus casillas y sus objetivos posibles a la vez; con una carta en la mano, solo las
+   * casillas rojas. Las marcas de los objetivos elegidos se ven siempre.
    */
   redrawPlanning(): void {
     const hl = this.hl;
@@ -447,7 +446,7 @@ export class BattleScene extends Phaser.Scene {
     if (!layers) return;
     const colorOf = (el: ElementKind) => hex(ELEMENT_COLORS[el].base);
 
-    // Modo moverse: el alcance del gólem que está bajo el ratón.
+    // El alcance del gólem que está bajo el ratón.
     for (const t of layers.threat) {
       const r = tileRect(t);
       hl.fillStyle(RED, 0.1);
@@ -462,9 +461,9 @@ export class BattleScene extends Phaser.Scene {
       hl.lineStyle(4, hex(c.base), 1);
       hl.strokeEllipse(fp.x, fp.y + 1, 64, 18);
 
-      // Las casillas a las que puede ir, en el color suave del ninja activo. La suya es quedarse. En el
-      // paso de actuar siguen a la vista, más tenues: otro clic cambia de destino.
-      const dim = layers.mode === 'act' ? 0.5 : 1;
+      // Las casillas a las que puede ir, en el color suave del ninja activo. La suya es quedarse. Cuando
+      // ya eligió una siguen a la vista, más tenues: otro clic cambia de destino.
+      const dim = layers.moved ? 0.5 : 1;
       for (const t of layers.moves) {
         this.tile(hl, t, hex(c.soft), dim, hex(c.base), 0.4 * dim);
         const tc = tileCenter(t);
@@ -472,8 +471,8 @@ export class BattleScene extends Phaser.Scene {
         hl.fillCircle(tc.x, tc.y + 8, 4.5);
       }
       if (layers.stay) this.tile(hl, layers.stay, hex(c.soft), dim, hex(c.base), 0.4 * dim);
-      // Modo moverse, con el ratón sobre un caído: las casillas desde las que se le revive (R-09). Solo un
-      // borde blanco, el color de lo que se hace por un aliado: así no se mezcla con el de las casillas.
+      // Con el ratón sobre un caído: las casillas desde las que se le revive (R-09). Solo un borde
+      // blanco, el color de lo que se hace por un aliado: así no se mezcla con el de las casillas.
       for (const t of layers.reviveSpots) this.outline(hl, t, WHITE);
 
       // Modo carta: casillas rojas donde se puede colocar; bajo el ratón, el área y a quién alcanza.
@@ -528,7 +527,7 @@ export class BattleScene extends Phaser.Scene {
     // Las líneas de mira van debajo de las marcas: solo las que pide el ratón.
     for (const aim of layers.aims) this.aimLine(ov, aim);
 
-    // Modo actuar: los objetivos que el ninja activo todavía puede elegir, en tenue.
+    // Los objetivos que el ninja activo todavía puede elegir, en tenue.
     for (const option of layers.options) {
       const at = aimPoint(option.at);
       if (option.kind === 'attack') this.reticle(ov, at, 0.5, false);

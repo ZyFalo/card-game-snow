@@ -6,8 +6,6 @@ export interface TestState {
   phase: string;
   screen: string;
   active: string | null;
-  /** El paso del ninja activo: moverse o actuar. */
-  step: string;
   pendingCard: string | null;
   boosting: boolean;
   plans: Record<string, unknown>;

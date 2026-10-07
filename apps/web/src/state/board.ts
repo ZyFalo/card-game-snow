@@ -21,19 +21,22 @@ import type { AppState } from './store';
  * Capas del tablero durante la planificación (lineamientos de diseño, sección "Tablero"). Este módulo
  * decide qué se muestra y cuándo; la escena solo lo dibuja.
  *
- * El ninja activo tiene tres modos: moverse (solo casillas), actuar (sus objetivos, con las casillas a la
- * vista para cambiar de destino) o colocar una carta, que es exclusivo (solo las casillas donde cabe). Los
- * planes del equipo quedan en silueta y marca: el fantasma de cada ninja y una marca sobre cada objetivo
- * elegido, con quienes lo eligieron.
+ * Al ninja activo el tablero le ofrece a la vez sus casillas y los objetivos que alcanza desde donde va a
+ * estar: su casilla planeada o, si no se mueve, la suya. Colocar una carta es el único modo aparte: solo
+ * las casillas donde cabe. Los planes del equipo quedan en silueta y marca: el fantasma de cada ninja y
+ * una marca sobre cada objetivo elegido, con quienes lo eligieron.
  */
 
 /** Las acciones que apuntan a una unidad. Una carta apunta a una casilla y se dibuja como un área. */
 export type MarkKind = Exclude<Action['type'], 'card'>;
 
-/** Lo que el tablero le ofrece al ninja activo: `null` si no hay ninja activo. */
-export type BoardMode = 'move' | 'act' | 'card';
+/**
+ * Lo que el tablero le ofrece al ninja activo: planificar (casillas y objetivos a la vez) o colocar la
+ * carta que tiene en la mano. `null` si no hay ninja activo.
+ */
+export type BoardMode = 'plan' | 'card';
 
-/** Un objetivo que el ninja activo puede elegir en el paso de actuar. */
+/** Un objetivo que el ninja activo puede elegir. */
 export interface TargetOption {
   kind: MarkKind;
   at: Vec;
@@ -68,16 +71,18 @@ export interface BoardLayers {
   /** El ninja que se está planificando, en la casilla donde está. */
   active: { ninja: ElementKind; at: Vec } | null;
 
-  /** Las casillas a las que puede ir el ninja activo. En el modo actuar siguen a la vista, más tenues. */
+  /** Las casillas a las que puede ir el ninja activo. */
   moves: Vec[];
   /** Su propia casilla: quedarse, o volver a su lugar si ya eligió otra. */
   stay: Vec | null;
-  /** Modo moverse: las casillas que puede golpear el gólem que está bajo el ratón. */
+  /** El ninja activo ya eligió casilla: las demás siguen a la vista, más tenues, para cambiar de destino. */
+  moved: boolean;
+  /** Las casillas que puede golpear el gólem que está bajo el ratón. */
   threat: Vec[];
-  /** Modo moverse: las casillas vecinas al caído que está bajo el ratón, desde las que se le revive (R-09). */
+  /** Las casillas vecinas al caído que está bajo el ratón, desde las que se le revive (R-09). */
   reviveSpots: Vec[];
 
-  /** Modo actuar: los objetivos que el ninja activo puede elegir desde su casilla planeada, sin el elegido. */
+  /** Los objetivos que el ninja activo puede elegir desde donde va a estar, sin el que ya eligió. */
   options: TargetOption[];
 
   /** Modo carta: dónde se puede colocar y, bajo el ratón, a quién alcanzaría. */
@@ -98,7 +103,7 @@ export interface BoardLayers {
   hover: Vec | null;
 }
 
-type BoardState = Pick<AppState, 'phase' | 'screen' | 'match' | 'plans' | 'active' | 'step' | 'pendingCard' | 'hover'>;
+type BoardState = Pick<AppState, 'phase' | 'screen' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover'>;
 
 /** Lo que muestra el tablero mientras se planifica; `null` fuera de la planificación. */
 export function boardLayers(s: BoardState): BoardLayers | null {
@@ -106,12 +111,13 @@ export function boardLayers(s: BoardState): BoardLayers | null {
   if (s.phase !== 'planning' || !m || s.screen !== 'battle') return null;
   const { hover } = s;
   const info = activeInfo(s);
-  const mode: BoardMode | null = !info ? null : s.pendingCard ? 'card' : s.step;
+  const mode: BoardMode | null = !info ? null : s.pendingCard ? 'card' : 'plan';
   const layers: BoardLayers = {
     mode,
     active: null,
     moves: [],
     stay: null,
+    moved: false,
     threat: [],
     reviveSpots: [],
     options: [],
@@ -137,11 +143,10 @@ export function boardLayers(s: BoardState): BoardLayers | null {
         allies: info.ninja.id === 'snow' ? area.filter((t) => ninjaAt(m, t)) : [],
       };
     } else {
-      // Las casillas valen en los dos pasos: en el de actuar, otro clic cambia de destino.
+      // Las casillas valen siempre: tras moverse, otro clic cambia de destino.
       layers.moves = [...info.moves.values()].map((path) => path[path.length - 1] as Vec);
       layers.stay = info.ninja.pos;
-    }
-    if (mode === 'move') {
+      layers.moved = !!info.plan.moveTo;
       const enemy = hover ? enemyAt(m, hover) : undefined;
       if (enemy) layers.threat = threatTiles(m, enemy);
       // Un caído se revive desde cualquiera de sus 8 casillas vecinas: al pasar el ratón por él, se ven.
@@ -153,7 +158,8 @@ export function boardLayers(s: BoardState): BoardLayers | null {
           layers.reviveSpots = neighbors8(fallen.pos).filter((t) => !isRock(m, t) && !enemyAt(m, t));
         }
       }
-    } else if (mode === 'act') {
+      // Los objetivos, a la vez que las casillas: los que alcanza desde su casilla planeada o, si no se
+      // mueve, desde la suya.
       const picked = info.plan.action;
       const all: (TargetOption & { id: string })[] = [
         ...info.attack.map((e) => ({ kind: 'attack' as const, at: e.pos, id: e.id })),

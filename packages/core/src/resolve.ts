@@ -45,12 +45,7 @@ export function resolveTurn(prev: MatchState, rawPlans: readonly Plan[]): TurnRe
   if (prev.status !== 'playing') throw new Error('La partida ya terminó.');
   const s = structuredClone(prev);
   const ctx: Ctx = { s, rng: rngFrom(s.rng), ev: [{ t: 'turnStart', turn: s.turn + 1 }], reviving: [] };
-  const plans = sanitizePlans(s, rawPlans);
-  const planOf = (id: ElementKind): Plan | undefined => plans.find((p) => p.ninjaId === id);
-
-  applyMoves(ctx, plans);
-  applyBasicActions(ctx, planOf);
-  applyCards(ctx, planOf);
+  ninjaPhase(ctx, rawPlans);
   applyEnemyPhase(ctx);
   clearStuns(ctx);
   completeRevives(ctx);
@@ -62,6 +57,37 @@ export function resolveTurn(prev: MatchState, rawPlans: readonly Plan[]): TurnRe
 
   s.rng = ctx.rng.state();
   return { state: s, events: ctx.ev, hash: hashState(s) };
+}
+
+/** Pasos 1 a 3 de R-11, lo que hacen los ninjas: moverse, las acciones básicas y las cartas. */
+function ninjaPhase(ctx: Ctx, rawPlans: readonly Plan[]): void {
+  const plans = sanitizePlans(ctx.s, rawPlans);
+  const planOf = (id: ElementKind): Plan | undefined => plans.find((p) => p.ninjaId === id);
+  applyMoves(ctx, plans);
+  applyBasicActions(ctx, planOf);
+  applyCards(ctx, planOf);
+}
+
+/**
+ * La vida que los planes le quitarían a cada gólem antes de que actúen los gólems: lo que hacen los
+ * ninjas en los pasos 1 a 3 de R-11, con su Potencia y sus combos. Lo que viene después no cuenta: ni la
+ * fase enemiga ni las quemaduras. Es una consulta: no cambia el estado ni gasta su azar.
+ *
+ * La usa la ayuda de ver el daño antes de confirmar (D-78). Corre la misma fase que `resolveTurn`, así
+ * que no puede decir otra cosa.
+ */
+export function plannedDamage(prev: MatchState, rawPlans: readonly Plan[]): Record<string, number> {
+  const s = structuredClone(prev);
+  const ctx: Ctx = { s, rng: rngFrom(s.rng), ev: [], reviving: [] };
+  ninjaPhase(ctx, rawPlans);
+
+  const lost: Record<string, number> = {};
+  for (const e of prev.enemies) {
+    // Un gólem derrotado ya no está en el estado: perdió toda la vida que le quedaba.
+    const hp = getEnemy(s, e.id)?.hp ?? 0;
+    if (hp < e.hp) lost[e.id] = e.hp - hp;
+  }
+  return lost;
 }
 
 /* ---------- Paso 1: movimientos simultáneos (R-05) ---------- */

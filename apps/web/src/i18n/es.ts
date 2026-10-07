@@ -195,7 +195,8 @@ export const NOTICE = {
   enemyOutOfRange: 'Ese gólem está fuera de alcance desde la casilla planeada.',
   actionLost: 'La acción anterior ya no alcanza desde aquí: elige otra.',
   moveFirst: (name: string) => `Primero elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
-  pickTarget: (name: string) => `Ahora elige un objetivo. Para cambiar a dónde se mueve, haz clic en ${name}.`,
+  pickTarget: (name: string) =>
+    `Ahora elige un objetivo. Para cambiar a dónde se mueve ${name}, haz clic en otra casilla de su color.`,
   tileReserved: (name: string) => `Esa casilla ya la reservó ${name}.`,
   rock: 'Ahí hay una roca.',
   outOfReach: (name: string) => `${name} no llega hasta ahí este turno.`,
@@ -233,7 +234,8 @@ export const TIP_TEXT = {
   reviveHow: (name: string) =>
     `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   move: (name: string) => `Elige a dónde se mueve ${name}. Para quedarse, haz clic en su casilla.`,
-  act: (name: string) => `Elige qué hace ${name}: un objetivo o una carta.`,
+  act: (name: string) =>
+    `Elige qué hace ${name}: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.`,
   pending: (names: readonly string[]) => `Tab pasa al siguiente ninja. Falta planear a ${names.join(' y ')}.`,
   ready: 'Todo listo. Confirma el turno con Espacio.',
 } as const;
@@ -318,7 +320,7 @@ export const HELP = {
   turnTitle: 'Cada turno',
   turn: [
     'Planea a cada ninja en dos pasos. Primero, a dónde se mueve: las casillas de su color. Para quedarse, haz clic en su casilla.',
-    'Después, qué hace: un anillo rojo marca a cada gólem que puede atacar, y uno blanco, al aliado que puede curar (Escarcha) o revivir. También puedes elegir una carta y la casilla en el centro de su área. El anillo se pone verde al elegirlo.',
+    'Después, qué hace: un anillo rojo marca a cada gólem que puede atacar, y uno blanco, al aliado que puede curar (Escarcha) o revivir. También puedes elegir una carta y la casilla en el centro de su área. El anillo se pone verde al elegirlo. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.',
     `Confirma el turno. Se resuelve en orden: ${ORDER_NAMES}; después actúan los gólems, que siempre atacan si pueden.`,
     'El reloj da 10 s por cada ninja en pie en ritmo Normal (5 s en Experto; sin reloj en Relajado). Si se acaba, se juega lo que hayas planeado.',
   ],

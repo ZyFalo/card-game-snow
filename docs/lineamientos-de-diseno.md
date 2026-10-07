@@ -26,8 +26,7 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | `--el`, `--el-lo`, `--el-soft`, `--el-ink` | Dentro de `.el-fire`, `.el-water` y `.el-snow`, los colores de ese elemento. `--el-ink` es el del texto que va sobre `--el`: papel sobre fuego y agua, y tinta sobre nieve |
 | `--ice` | Sombra del nombre del juego y detalles de hielo |
 | `--gold` | Monedas, progreso y recompensas |
-| `--danger` | Errores y acciones irreversibles. En el tablero, lo de los gólems: su alcance, el anillo de atacarlos y las casillas de una carta |
-| `--ok` | En el tablero, lo ya elegido: el anillo del objetivo que tiene el ninja activo |
+| `--danger` | Errores y acciones irreversibles. En el tablero, lo de los gólems: su alcance, la mira de atacarlos y las casillas de una carta |
 | `--font-display`, `--font-ui` | Títulos y números grandes; todo lo demás |
 
 **Escala de texto** (a 1280×720):
@@ -179,28 +178,40 @@ Llegaron con las pantallas del progreso de la cuenta: elegir el camino, la colec
 
 El tablero es la escena de Phaser (`apps/web/src/game/`). Mientras se planifica muestra capas, y cada capa dice una sola cosa. Qué capa se ve y cuándo lo decide `state/board.ts`, y qué hace cada clic, `state/steps.ts`; los dos tienen sus pruebas, y la escena solo dibuja. Los colores salen de `art/palette.ts`, que repite los tokens de la sección 2.
 
-Esta sección crece con la ronda de claridad del tablero (D-74). Hoy describe sus dos primeros pasos, el orden visual y el foco y los pasos, y cómo se ve la reanimación (D-77).
+Esta sección crece con la ronda de claridad del tablero (D-74). Hoy describe sus dos primeros pasos, el orden visual y el foco y los pasos, con el ajuste que les siguió, y cómo se ve la reanimación (D-77).
 
-### Un solo modo a la vez
+### Los dos pasos, y la carta
 
-El tablero le ofrece al ninja activo una sola cosa por vez. Nunca mezcla casillas con anillos.
+Cada ninja se planifica en dos pasos. Solo la carta es un modo exclusivo.
 
 | Modo | Cuándo | Qué ofrece el tablero | Qué acepta un clic |
 | --- | --- | --- | --- |
 | **Moverse** | Al activar un ninja que todavía no eligió casilla | Solo casillas: a dónde puede ir y, entre ellas, la suya, que es quedarse | Una de esas casillas. Un gólem todavía no es un objetivo |
-| **Actuar** | Después de elegir casilla o de quedarse | Solo anillos, sobre lo que alcanza desde su casilla planeada: rojo sobre un gólem, blanco sobre un aliado y verde sobre el que ya eligió | Un anillo. Su propia casilla, o su fantasma, vuelve a moverse |
+| **Actuar** | Después de elegir casilla o de quedarse | Los objetivos que alcanza desde su casilla planeada y, más tenues, las casillas de su color | Un objetivo. Otra casilla de su color cambia el movimiento directamente; la de su fantasma, o la suya, lo cancela y lo devuelve a su lugar |
 | **Carta** | Al elegir una carta de la mano, en cualquiera de los dos pasos | Solo casillas rojas: dónde cabe la carta. Bajo el ratón, su área de 3×3 | Una casilla roja. Esc devuelve la carta a la mano |
 
-- **Luego pasa solo al siguiente ninja.** Al elegir el objetivo o colocar la carta, le toca al siguiente ninja que tenga algo por decidir. Tras moverse también, si desde esa casilla no alcanza a nadie ni tiene cartas. Se apaga con "Pasar al siguiente ninja".
+- **Las casillas no se apagan después de moverse.** Como en el original, quien juega cambia de destino con otro clic, sin volver atrás.
+- **Pasa solo al siguiente ninja al elegir la acción:** el objetivo o la casilla de la carta. Tras moverse el foco no salta, aunque desde ahí no alcance a nadie; se pasa con Tab. Se apaga con "Pasar al siguiente ninja".
 - **Deshacer va hacia atrás, paso a paso:** la carta en la mano, la acción, la casilla.
-- **El color dice qué es, y la forma también:** rojo es un gólem, blanco es un aliado y verde es lo elegido. El anillo blanco lleva además una cruz si es curar y una flecha si es revivir, y el elegido es más grueso y lleva el punto de su ninja. Nada depende solo del color.
+- **La forma dice qué acción es:** atacar es una mira o un anillo, curar es una cruz y revivir es una flecha. **El color dice quién actúa:** el anillo de un ataque elegido lleva un arco del color de cada ninja que lo eligió. Nada depende solo del color.
 
-### Los demás quedan en silueta y punto
+### Los objetivos: posibles y elegidos
+
+| | Atacar | Curar | Revivir |
+| --- | --- | --- | --- |
+| **Posible,** para el ninja activo en el paso de actuar | Una mira tenue, en `--danger` | Una cruz tenue, en `--snow` | Una flecha tenue, en `--gold` |
+| **Elegido,** de cualquier ninja y en cualquier modo | Un anillo con un arco del color de cada ninja que lo eligió | La cruz, sólida | La flecha, sólida |
+
+- **Encima de cada objetivo elegido va un punto por cada ninja que lo eligió,** en orden Fuego, Agua, Nieve.
+- **El anillo muestra de un vistazo quién ataca a quién** y cómo se concentra el equipo: con un atacante es de un color; con dos, mitad y mitad; con tres, en tercios.
+- **La marca de un objetivo elegido se ve siempre,** también la de los ninjas que no están activos: es la marca compacta del plan del equipo.
+
+### Los planes del equipo: silueta y marca
 
 Un ninja que no está activo deja en el tablero solo esto:
 
 - **Su silueta,** en la casilla a la que planea moverse.
-- **Un punto** de su color en lo alto de su objetivo. Si dos o tres ninjas eligieron el mismo, hay un punto por cada uno.
+- **La marca de su objetivo,** con su punto.
 - **El valor de su carta,** en la casilla donde la colocó. Su área se ve al pasar el ratón por esa casilla.
 - **Su número de orden** (D-32), en la casilla desde la que actúa.
 
@@ -214,7 +225,7 @@ La casilla mide 100×84 px. Dentro van la figura, su barra de vida y sus estados
 - **La barra de vida** va al pie, bajo la figura, con su número a la derecha, en 13 px. Usa el color del elemento del ninja, `ICE.deep` en los gólems y `--danger` cuando queda el 30 % o menos.
 - **Los íconos de estado** van arriba a la derecha, uno bajo el otro. Una unidad tiene dos como mucho: escudo y potencia, o aturdido y quemado.
 - **El número de orden** (D-32) va arriba a la izquierda de la casilla desde la que actúa el ninja.
-- **El anillo de un objetivo** rodea a la figura sin taparla, y también cabe en la casilla.
+- **La marca de un objetivo** va sobre el cuerpo de la unidad, con sus puntos encima, y cabe en la casilla.
 
 Los efectos del combate (proyectiles, impactos y números de daño) sí pueden salirse: duran un instante. `game/layout.test.ts` mide lo que dibuja cada figura y falla si deja de caber.
 
@@ -226,19 +237,19 @@ De abajo hacia arriba:
 | --- | --- | --- | --- |
 | Alcance de un gólem | Las casillas que puede golpear en su turno | `--danger`, con relleno tenue y borde | En el modo moverse, con el ratón sobre ese gólem |
 | Ninja activo | Un aro en el suelo, bajo sus pies | El de su elemento | Mientras se planifica a ese ninja |
-| Casillas de movimiento | A dónde puede moverse el ninja activo, y su propia casilla | El color suave de su elemento (`--fire-soft`, `--water-soft` o `--snow-soft`), con el borde y el punto en el color del elemento | En el modo moverse |
+| Casillas de movimiento | A dónde puede moverse el ninja activo, y su propia casilla | El color suave de su elemento (`--fire-soft`, `--water-soft` o `--snow-soft`), con el borde y el punto en el color del elemento | En el modo moverse. En el modo actuar siguen a la vista, a la mitad de su intensidad |
 | Casillas vecinas de un caído | Desde dónde se le puede revivir: sus 8 casillas vecinas, menos las rocas y las que ocupa un gólem | Borde `--paper-hi` con tinta alrededor, sin relleno | En el modo moverse, con el ratón sobre ese caído, salvo que ya lo esté reviviendo otro ninja |
 | Casillas de la carta | Dónde cabe la carta elegida; bajo el ratón, el área de 3×3, una diana sobre cada gólem que alcanzaría y, con la carta de Nieve, una cruz sobre cada ninja | `--danger`; las cruces, en `--snow` | En el modo carta |
 | Camino | La línea del ninja a su fantasma, por la línea de los pies | El de su elemento | Solo para el ninja activo |
 | Fantasma | La silueta sin relleno del ninja, en la casilla a la que planea moverse | El de su elemento | Para cada ninja que planea moverse |
 | Carta colocada | El valor de la carta, en su casilla. El área de 3×3, con su borde, solo para el ninja activo o con el ratón sobre esa casilla | El del elemento | Para cada carta ya colocada |
 | Línea de mira | De la casilla desde la que actúa un ninja al objetivo de su acción planeada | El del elemento de quien actúa | Solo con el ratón: sobre el objetivo, sobre quien actúa o sobre su fantasma |
-| Anillos | Un anillo sobre cada objetivo posible del ninja activo, y otro, más grueso, sobre el elegido | `--danger` sobre un gólem, `--paper-hi` sobre un aliado y `--ok` sobre el elegido | En el modo actuar |
-| Puntos | Un punto por ninja, en lo alto del objetivo de su acción | El del elemento de cada ninja | Para cada acción planeada, en cualquier modo |
+| Objetivos posibles | Una mira tenue sobre cada gólem al alcance, una cruz sobre el aliado que se puede curar y una flecha sobre el caído que se puede revivir | `--danger`, `--snow` y `--gold` | En el modo actuar, para el ninja activo |
+| Objetivo elegido | Atacar: un anillo con un arco del color de cada atacante. Curar: la cruz. Revivir: la flecha. Encima, un punto por cada ninja que lo eligió | El anillo y los puntos, del elemento de cada ninja | Para cada acción planeada, en cualquier modo |
 | Casilla bajo el ratón | Un borde | `--ink` | Con el ratón sobre el tablero |
 | Número de orden | El orden real en que actuará cada ninja (D-32) | El de su elemento | Para cada ninja con una acción planeada |
 
-- **Tinta alrededor:** los anillos, los puntos y la línea de mira llevan borde de tinta, para leerse sobre cualquier figura.
+- **Tinta alrededor:** el anillo, los puntos y la línea de mira llevan borde de tinta, para leerse sobre cualquier figura.
 - **Un borde no tiñe:** las casillas vecinas de un caído se marcan solo con su borde. Así, una casilla a la que además puede ir el ninja activo conserva su color.
 - **El panel de cada ninja repite su plan con palabras** ("Atacar a Témpano").
 
@@ -246,7 +257,7 @@ De abajo hacia arriba:
 
 Revivir se completa al final del turno (R-09), así que el tablero muestra la reanimación mientras dura:
 
-- **Al planificar:** con el ratón sobre un caído se ven sus casillas vecinas, y el anillo blanco con la flecha aparece sobre él solo cuando el ninja activo planeó una de ellas. Si otro ninja ya planeó revivirlo, no hay anillo: queda el punto de ese ninja, y un clic lo dice ("Marea ya va a revivir a Brasa.").
+- **Al planificar:** con el ratón sobre un caído se ven sus casillas vecinas, y la flecha tenue aparece sobre él solo cuando el ninja activo planeó una de ellas. Si otro ninja ya planeó revivirlo, no se ofrece: queda la marca de ese ninja, la flecha sólida con su punto, y un clic lo dice ("Marea ya va a revivir a Brasa.").
 - **Durante la fase de los gólems:** quien revive mantiene su pose de reanimar, inclinado sobre su aliado, y el caído lleva un anillo `--gold` que gira.
 - **Al terminar:** si se completa, el aliado se levanta con su haz de luz y el aviso dice "Brasa vuelve con 1 de vida". Si quien revivía cae, el anillo se apaga y el aviso dice "Reanimación interrumpida".
 - **La primera vez que cae un ninja en la partida,** el consejo del paso de moverse explica cómo revivirlo.

@@ -4,8 +4,8 @@ import { boardLayers } from './board';
 import type { AppState } from './store';
 
 /*
- * Lineamientos de diseño, sección "Tablero": qué muestra el tablero mientras se planifica, y cuándo. Un
- * solo modo a la vez para el ninja activo, y los demás en silueta y punto.
+ * Lineamientos de diseño, sección "Tablero": qué muestra el tablero mientras se planifica, y cuándo. El
+ * ninja activo ve sus casillas y sus objetivos, y los planes del equipo quedan en silueta y marca.
  */
 
 const HP: Record<EnemyKind, number> = { sniper: 30, artillery: 45, colossus: 60 };
@@ -81,13 +81,12 @@ describe('Capas del tablero al planificar', () => {
       const keys = l.moves.map((t) => `${t.x},${t.y}`).sort();
       expect(keys).toEqual(['0,1', '0,2', '0,3', '1,0', '1,4', '2,1', '2,2', '2,3', '3,2'].sort());
       expect(l.stay).toEqual({ x: 1, y: 2 });
-      // Ningún anillo: los objetivos son del paso de actuar.
+      // Ningún objetivo todavía: son del paso de actuar.
       expect(l.options).toEqual([]);
-      expect(l.chosen).toBeNull();
       expect(l.card).toBeNull();
     });
 
-    it('actuar: solo anillos, sobre lo que el ninja activo alcanza desde su casilla planeada', () => {
+    it('actuar: los objetivos que alcanza desde su casilla planeada, y sus casillas siguen ahí', () => {
       // Escarcha, desde (4,3), alcanza a los tres gólems; nadie está herido.
       const l = layers({ plans: { snow: { ninjaId: 'snow', moveTo: { x: 4, y: 3 } } }, active: 'snow', step: 'act' });
       expect(l.mode).toBe('act');
@@ -96,19 +95,21 @@ describe('Capas del tablero al planificar', () => {
         { kind: 'attack', at: { x: 4, y: 2 } },
         { kind: 'attack', at: { x: 5, y: 3 } },
       ]);
-      expect(l.chosen).toBeNull();
-      // Ninguna casilla de movimiento.
-      expect(l.moves).toEqual([]);
-      expect(l.stay).toBeNull();
+      // Las casillas de movimiento no se apagan: son las mismas del paso de moverse, con la del fantasma
+      // entre ellas, y su propia casilla.
+      const moving = layers({ active: 'snow', step: 'move' });
+      expect(l.moves).toEqual(moving.moves);
+      expect(l.moves).toContainEqual({ x: 4, y: 3 });
+      expect(l.stay).toEqual({ x: 1, y: 3 });
     });
 
-    it('actuar: el objetivo elegido se aparta de los posibles', () => {
+    it('actuar: el objetivo elegido deja de ser una opción y pasa a ser una marca', () => {
       const l = layers({ plans: PLANS, active: 'snow', step: 'act' });
-      expect(l.chosen).toEqual({ kind: 'attack', at: { x: 5, y: 1 } });
       expect(l.options).toEqual([
         { kind: 'attack', at: { x: 4, y: 2 } },
         { kind: 'attack', at: { x: 5, y: 3 } },
       ]);
+      expect(l.marks).toContainEqual({ kind: 'attack', at: { x: 5, y: 1 }, by: ['snow'] });
     });
 
     it('actuar: curar y revivir son objetivos sobre aliados, cada uno con su tipo', () => {
@@ -132,7 +133,7 @@ describe('Capas del tablero al planificar', () => {
       });
       expect(revive.options.filter((o) => o.kind !== 'attack')).toEqual([{ kind: 'revive', at: { x: 3, y: 2 } }]);
       // Si Escarcha ya planeó revivirla, Marea no puede elegirla: un caído solo tiene un reanimador (R-09).
-      // Sobre Brasa queda el punto de Escarcha.
+      // Sobre Brasa queda la marca de Escarcha.
       const taken = layers({
         match: m,
         plans: {
@@ -143,7 +144,7 @@ describe('Capas del tablero al planificar', () => {
         step: 'act',
       });
       expect(taken.options.filter((o) => o.kind === 'revive')).toEqual([]);
-      expect(taken.dots).toEqual([{ at: { x: 3, y: 2 }, by: ['snow'] }]);
+      expect(taken.marks).toEqual([{ kind: 'revive', at: { x: 3, y: 2 }, by: ['snow'] }]);
     });
 
     it('moverse: con el ratón sobre un caído se ven sus casillas vecinas, desde las que se le revive (R-09)', () => {
@@ -183,9 +184,10 @@ describe('Capas del tablero al planificar', () => {
         hover: { x: 4, y: 2 },
       });
       expect(l.mode).toBe('card');
+      // Las cartas son un modo exclusivo: ni casillas de movimiento ni objetivos.
       expect(l.moves).toEqual([]);
+      expect(l.stay).toBeNull();
       expect(l.options).toEqual([]);
-      expect(l.chosen).toBeNull();
       expect(l.aims).toEqual([]);
       expect(l.card?.tiles.length).toBeGreaterThan(0);
       // Bajo el ratón, el área de 3×3 con los gólems que alcanzaría: los tres.
@@ -205,7 +207,7 @@ describe('Capas del tablero al planificar', () => {
     });
   });
 
-  describe('Los demás ninjas quedan en silueta y punto', () => {
+  describe('Los planes del equipo quedan en silueta y marca', () => {
     it('cada ninja que planea moverse deja su fantasma en el destino', () => {
       expect(layers({ plans: PLANS, active: 'snow' }).ghosts).toEqual([
         { ninja: 'fire', at: { x: 3, y: 1 } },
@@ -235,31 +237,71 @@ describe('Capas del tablero al planificar', () => {
       expect(layers({ plans: others, active: 'snow' }).path).toBeNull();
     });
 
-    it('cada acción planeada deja un punto por ninja sobre su objetivo, en cualquier modo', () => {
-      const dots = [
-        { at: { x: 4, y: 2 }, by: ['fire', 'water'] },
-        { at: { x: 5, y: 1 }, by: ['snow'] },
+    it('cada objetivo elegido lleva una marca con quienes lo eligieron, en orden Fuego, Agua, Nieve', () => {
+      // Brasa y Marea van contra Témpano, y Escarcha contra Carámbano.
+      const marks = [
+        { kind: 'attack', at: { x: 4, y: 2 }, by: ['fire', 'water'] },
+        { kind: 'attack', at: { x: 5, y: 1 }, by: ['snow'] },
       ];
-      expect(layers({ plans: PLANS, active: 'snow', step: 'move' }).dots).toEqual(dots);
-      expect(layers({ plans: PLANS, active: 'snow', step: 'act' }).dots).toEqual(dots);
+      // Se ve siempre: en los dos pasos, con una carta en la mano y sin ningún ninja activo.
+      expect(layers({ plans: PLANS, active: 'snow', step: 'move' }).marks).toEqual(marks);
+      expect(layers({ plans: PLANS, active: 'snow', step: 'act' }).marks).toEqual(marks);
+      expect(layers({ plans: PLANS, active: null }).marks).toEqual(marks);
+      const m = match();
+      ninja(m, 'fire').hand = [{ id: 'fire-1', element: 'fire', value: 10 }];
+      const { fire: _fire, ...others } = PLANS;
+      expect(layers({ match: m, plans: others, active: 'fire', pendingCard: 'fire-1' }).marks).toEqual([
+        { kind: 'attack', at: { x: 4, y: 2 }, by: ['water'] },
+        { kind: 'attack', at: { x: 5, y: 1 }, by: ['snow'] },
+      ]);
     });
 
-    it('los objetivos de los demás no llevan anillo: los anillos son del ninja activo', () => {
-      // Brasa está en el paso de actuar; Témpano es objetivo de Marea, pero el anillo es por Brasa.
+    it('un gólem elegido por uno, dos y tres ninjas: la marca suma a cada uno', () => {
+      const all: Record<ElementKind, Plan> = {
+        ...PLANS,
+        // Escarcha, desde (1,3), no alcanza a Témpano: se acerca.
+        snow: { ninjaId: 'snow', moveTo: { x: 3, y: 3 }, action: { type: 'attack', targetId: 'e2' } },
+      };
+      const at = { x: 4, y: 2 };
+      expect(layers({ plans: { fire: all.fire }, active: 'water' }).marks).toEqual([
+        { kind: 'attack', at, by: ['fire'] },
+      ]);
+      expect(layers({ plans: { water: all.water, fire: all.fire }, active: 'snow' }).marks).toEqual([
+        { kind: 'attack', at, by: ['fire', 'water'] },
+      ]);
+      expect(layers({ plans: all, active: 'snow', step: 'act' }).marks).toEqual([
+        { kind: 'attack', at, by: ['fire', 'water', 'snow'] },
+      ]);
+    });
+
+    it('curar y revivir elegidos llevan su propia marca, con quien lo eligió', () => {
+      const m = match();
+      Object.assign(ninja(m, 'fire'), { hp: 0, pos: { x: 3, y: 2 } });
+      Object.assign(ninja(m, 'water'), { hp: 22, pos: { x: 2, y: 1 } });
+      const plans = {
+        water: { ninjaId: 'water', moveTo: { x: 3, y: 1 }, action: { type: 'revive', targetId: 'fire' } },
+        snow: { ninjaId: 'snow', moveTo: { x: 1, y: 2 }, action: { type: 'heal', targetId: 'water' } },
+      } satisfies Partial<Record<ElementKind, Plan>>;
+      expect(layers({ match: m, plans, active: 'snow', step: 'act' }).marks).toEqual([
+        { kind: 'revive', at: { x: 3, y: 2 }, by: ['water'] },
+        { kind: 'heal', at: { x: 2, y: 1 }, by: ['snow'] },
+      ]);
+    });
+
+    it('los objetivos posibles son solo del ninja activo, y solo en el paso de actuar', () => {
+      // Brasa está en el paso de actuar: Témpano, que ya eligió Marea, sigue siendo una opción para ella.
       const { fire: _fire, ...others } = PLANS;
       const l = layers({
         plans: { ...others, fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } } },
         active: 'fire',
         step: 'act',
       });
-      expect(l.chosen).toBeNull();
       expect(l.options).toEqual([
         { kind: 'attack', at: { x: 5, y: 1 } },
         { kind: 'attack', at: { x: 4, y: 2 } },
       ]);
-      // En el paso de moverse no hay ningún anillo, aunque los tres tengan objetivo.
+      // En el paso de moverse no hay objetivos posibles, aunque los tres tengan uno elegido.
       expect(layers({ plans: PLANS, active: 'fire', step: 'move' }).options).toEqual([]);
-      expect(layers({ plans: PLANS, active: 'fire', step: 'move' }).chosen).toBeNull();
     });
 
     it('la carta de otro ninja queda en su casilla; su área se ve solo con el ratón encima', () => {

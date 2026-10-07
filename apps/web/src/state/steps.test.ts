@@ -49,32 +49,22 @@ const state = (patch: Partial<StepState> = {}): StepState => ({
 const MOVED: Plan = { ninjaId: 'fire', moveTo: { x: 3, y: 1 } };
 
 describe('Paso 1, moverse: el tablero solo acepta casillas', () => {
-  it('una casilla a su alcance es el destino, y pasa al paso de actuar', () => {
+  it('una casilla a su alcance es el destino, y pasa al paso de actuar sin cambiar de ninja', () => {
     expect(clickOutcome(state(), { x: 3, y: 1 })).toEqual({
       plan: { ninjaId: 'fire', moveTo: { x: 3, y: 1 } },
       step: 'act',
-      finished: 'move',
+      sound: 'select',
+    });
+    // Tampoco cambia de ninja si desde ahí no alcanza a nadie: el foco no salta tras moverse.
+    expect(clickOutcome(state(), { x: 2, y: 1 })).toEqual({
+      plan: { ninjaId: 'fire', moveTo: { x: 2, y: 1 } },
+      step: 'act',
       sound: 'select',
     });
   });
 
   it('su propia casilla es quedarse: pasa al paso de actuar sin moverse', () => {
-    expect(clickOutcome(state(), { x: 1, y: 1 })).toEqual({
-      plan: { ninjaId: 'fire' },
-      step: 'act',
-      finished: 'move',
-      sound: 'select',
-    });
-    // Si ya había elegido otra casilla, quedarse la suelta.
-    expect(clickOutcome(state({ plans: { fire: MOVED } }), { x: 1, y: 1 }).plan).toEqual({ ninjaId: 'fire' });
-  });
-
-  it('la casilla de su fantasma confirma el destino que ya tenía', () => {
-    expect(clickOutcome(state({ plans: { fire: MOVED } }), { x: 3, y: 1 })).toEqual({
-      step: 'act',
-      finished: 'move',
-      sound: 'select',
-    });
+    expect(clickOutcome(state(), { x: 1, y: 1 })).toEqual({ plan: { ninjaId: 'fire' }, step: 'act', sound: 'select' });
   });
 
   it('un gólem todavía no es un objetivo: primero hay que moverse o quedarse', () => {
@@ -103,27 +93,15 @@ describe('Paso 1, moverse: el tablero solo acepta casillas', () => {
     const reserved = state({ plans: { water: { ninjaId: 'water', moveTo: { x: 2, y: 1 } } } });
     expect(clickOutcome(reserved, { x: 2, y: 1 }).notice).toBe(NOTICE.tileReserved('Marea'));
   });
-
-  it('cambiar de casilla conserva la acción si todavía alcanza, y si no, la suelta y lo dice', () => {
-    const attack: Plan = { ...MOVED, action: { type: 'attack', targetId: 'e2' } };
-    // Desde (2,1) Témpano queda a 3 casillas: Brasa alcanza 2.
-    const lost = clickOutcome(state({ plans: { fire: attack } }), { x: 2, y: 1 });
-    expect(lost.plan).toEqual({ ninjaId: 'fire', moveTo: { x: 2, y: 1 } });
-    expect(lost.notice).toBe(NOTICE.actionLost);
-    // Desde (2,2) sigue alcanzándolo.
-    const kept = clickOutcome(state({ plans: { fire: attack } }), { x: 2, y: 2 });
-    expect(kept.plan).toEqual({ ninjaId: 'fire', moveTo: { x: 2, y: 2 }, action: { type: 'attack', targetId: 'e2' } });
-    expect(kept.notice).toBeUndefined();
-  });
 });
 
-describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
+describe('Paso 2, actuar: objetivos, y las casillas de su color siguen valiendo', () => {
   const acting = (patch: Partial<StepState> = {}) => state({ plans: { fire: MOVED }, step: 'act', ...patch });
 
   it('un gólem a su alcance es el objetivo, y el ninja termina', () => {
     expect(clickOutcome(acting(), { x: 4, y: 2 })).toEqual({
       plan: { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'attack', targetId: 'e2' } },
-      finished: 'act',
+      finished: true,
       sound: 'place',
     });
   });
@@ -132,15 +110,50 @@ describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
     expect(clickOutcome(acting(), { x: 5, y: 3 })).toEqual({ notice: NOTICE.enemyOutOfRange, sound: 'error' });
   });
 
-  it('una casilla vacía no es un objetivo, aunque Brasa llegue hasta ella: dice cómo volver a moverse', () => {
-    // (2,1) está a un paso de Brasa: en el paso de moverse sería un destino.
-    expect(clickOutcome(state(), { x: 2, y: 1 }).plan).toEqual({ ninjaId: 'fire', moveTo: { x: 2, y: 1 } });
-    expect(clickOutcome(acting(), { x: 2, y: 1 })).toEqual({ notice: NOTICE.pickTarget('Brasa'), sound: 'error' });
+  it('otro clic en una casilla de su color cambia el movimiento directamente, sin terminar', () => {
+    expect(clickOutcome(acting(), { x: 2, y: 1 })).toEqual({
+      plan: { ninjaId: 'fire', moveTo: { x: 2, y: 1 } },
+      step: 'act',
+      sound: 'select',
+    });
   });
 
-  it('su casilla, o la de su fantasma, vuelve al paso de moverse sin tocar el plan', () => {
-    expect(clickOutcome(acting(), { x: 1, y: 1 })).toEqual({ step: 'move', sound: 'select' });
-    expect(clickOutcome(acting(), { x: 3, y: 1 })).toEqual({ step: 'move', sound: 'select' });
+  it('cambiar de casilla conserva la acción si todavía alcanza, y si no, la suelta y lo dice', () => {
+    const attack: Plan = { ...MOVED, action: { type: 'attack', targetId: 'e2' } };
+    // Desde (2,1) Témpano queda a 3 casillas: Brasa alcanza 2.
+    const lost = clickOutcome(acting({ plans: { fire: attack } }), { x: 2, y: 1 });
+    expect(lost.plan).toEqual({ ninjaId: 'fire', moveTo: { x: 2, y: 1 } });
+    expect(lost.notice).toBe(NOTICE.actionLost);
+    // Desde (2,2) sigue alcanzándolo.
+    const kept = clickOutcome(acting({ plans: { fire: attack } }), { x: 2, y: 2 });
+    expect(kept.plan).toEqual({ ninjaId: 'fire', moveTo: { x: 2, y: 2 }, action: { type: 'attack', targetId: 'e2' } });
+    expect(kept.notice).toBeUndefined();
+    expect(kept.finished).toBeUndefined();
+  });
+
+  it('un clic en la casilla de su fantasma cancela el movimiento y lo devuelve a su lugar', () => {
+    expect(clickOutcome(acting(), { x: 3, y: 1 })).toEqual({ plan: { ninjaId: 'fire' }, step: 'act', sound: 'select' });
+    // Su propia casilla hace lo mismo: es volver a donde estaba.
+    expect(clickOutcome(acting(), { x: 1, y: 1 })).toEqual({ plan: { ninjaId: 'fire' }, step: 'act', sound: 'select' });
+    // La acción que ya no alcanza desde su lugar se suelta, y lo dice; la que sí alcanza, se queda.
+    const attack: Plan = { ...MOVED, action: { type: 'attack', targetId: 'e2' } };
+    const lost = clickOutcome(acting({ plans: { fire: attack } }), { x: 3, y: 1 });
+    expect(lost).toEqual({ plan: { ninjaId: 'fire' }, step: 'act', sound: 'select', notice: NOTICE.actionLost });
+    const near = match();
+    ninja(near, 'fire').pos = { x: 2, y: 2 };
+    const kept = clickOutcome(acting({ match: near, plans: { fire: attack } }), { x: 3, y: 1 });
+    expect(kept.plan).toEqual({ ninjaId: 'fire', action: { type: 'attack', targetId: 'e2' } });
+  });
+
+  it('si no se había movido, un clic en su casilla no hace nada', () => {
+    expect(clickOutcome(acting({ plans: { fire: { ninjaId: 'fire' } } }), { x: 1, y: 1 })).toEqual({});
+  });
+
+  it('una casilla que no es de su color ni un objetivo dice qué se puede hacer, o por qué no vale', () => {
+    expect(clickOutcome(acting(), { x: 8, y: 4 })).toEqual({ notice: NOTICE.pickTarget('Brasa'), sound: 'error' });
+    expect(clickOutcome(acting(), { x: 2, y: 0 }).notice).toBe(NOTICE.rock);
+    const reserved = acting({ plans: { fire: MOVED, water: { ninjaId: 'water', moveTo: { x: 2, y: 1 } } } });
+    expect(clickOutcome(reserved, { x: 2, y: 1 }).notice).toBe(NOTICE.tileReserved('Marea'));
   });
 
   it('Escarcha cura al aliado herido que alcanza; a uno sano, lo activa', () => {
@@ -149,7 +162,7 @@ describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
     const snow = (patch: Partial<StepState> = {}) => state({ match: m, active: 'snow', step: 'act', ...patch });
     expect(clickOutcome(snow(), { x: 1, y: 2 })).toEqual({
       plan: { ninjaId: 'snow', action: { type: 'heal', targetId: 'water' } },
-      finished: 'act',
+      finished: true,
       sound: 'place',
     });
     expect(clickOutcome(snow(), { x: 1, y: 1 })).toEqual({ select: 'fire' });
@@ -162,7 +175,7 @@ describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
     // Marea se levanta al final del turno, después de los gólems.
     expect(clickOutcome(acting({ match: m }), { x: 3, y: 2 })).toEqual({
       plan: { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'revive', targetId: 'water' } },
-      finished: 'act',
+      finished: true,
       sound: 'place',
     });
     // Desde su casilla de salida no llega.
@@ -179,12 +192,12 @@ describe('Paso 2, actuar: el tablero solo acepta objetivos', () => {
     const second = state({ match: m, plans: { fire, snow: moved }, active: 'snow', step: 'act' });
     const taken = { notice: NOTICE.reviveTaken('Brasa', 'Marea'), sound: 'error' };
     expect(clickOutcome(second, { x: 3, y: 2 })).toEqual(taken);
-    expect(clickOutcome({ ...second, step: 'move' }, { x: 3, y: 2 })).toEqual(taken);
+    expect(clickOutcome({ ...second, plans: { fire }, step: 'move' }, { x: 3, y: 2 })).toEqual(taken);
     // Sin el plan de Brasa, Escarcha sí puede.
     const free = state({ match: m, plans: { snow: moved }, active: 'snow', step: 'act' });
     expect(clickOutcome(free, { x: 3, y: 2 }).plan?.action).toEqual({ type: 'revive', targetId: 'water' });
     // A Brasa su propio plan no la estorba: si cambia de casilla y sigue al lado, conserva la acción.
-    const again = state({ match: m, plans: { fire }, active: 'fire', step: 'move' });
+    const again = state({ match: m, plans: { fire }, active: 'fire', step: 'act' });
     expect(clickOutcome(again, { x: 2, y: 1 }).plan).toEqual({
       ninjaId: 'fire',
       moveTo: { x: 2, y: 1 },
@@ -205,7 +218,7 @@ describe('Modo carta: el tablero solo acepta dónde colocarla', () => {
       expect(clickOutcome(withCard({ step }), { x: 3, y: 1 })).toEqual({
         plan: { ninjaId: 'fire', action: { type: 'card', cardId: 'fire-1', at: { x: 3, y: 1 } } },
         cardDone: true,
-        finished: 'act',
+        finished: true,
         sound: 'place',
       });
     }

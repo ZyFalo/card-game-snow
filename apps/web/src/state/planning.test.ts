@@ -84,6 +84,21 @@ describe('Revivir en la planificación (R-09)', () => {
     expect(contextualTip(planning({ reviveTip: 'water', match: match() }))).toBe(MOVE);
   });
 
+  it('en el paso de actuar, sin nada a su alcance, la franja dice quién falta sin contar al ninja activo', () => {
+    // Al empezar nadie alcanza a un gólem ni tiene cartas. Brasa se queda en su lugar: sigue activa,
+    // porque el foco no salta tras moverse, pero ya no le queda nada por decidir.
+    const stayed = planning({ match: match(), step: 'act' });
+    expect(contextualTip(stayed)).toBe('Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.');
+    // Si además se movió, lo mismo.
+    const fire = (stayed.match as MatchState).ninjas[0]?.pos ?? { x: 0, y: 0 };
+    const moved = planning({
+      match: match(),
+      step: 'act',
+      plans: { fire: { ninjaId: 'fire', moveTo: { x: fire.x + 1, y: fire.y } } },
+    });
+    expect(contextualTip(moved)).toBe('Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.');
+  });
+
   it('R-09: quién revive a un caído sale de los planes', () => {
     const revive = { type: 'revive', targetId: 'water' } as const;
     expect(reviverOf({}, 'water')).toBeNull();

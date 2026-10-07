@@ -16,16 +16,7 @@ import { LocalHost } from '../host/LocalHost';
 import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import {
-  canAct,
-  firstFallTip,
-  nextPending,
-  nextPlannable,
-  plansArray,
-  stepFor,
-  turnClockMs,
-  withoutAction,
-} from './planning';
+import { firstFallTip, nextPending, nextPlannable, plansArray, stepFor, turnClockMs, withoutAction } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
@@ -296,13 +287,12 @@ export function cycleNinja(dir: 1 | -1): void {
 }
 
 /**
- * El ninja activo terminó un paso. Con "Pasar al siguiente ninja", tras actuar le toca al siguiente que
- * tenga algo por decidir; tras moverse, solo si desde esa casilla no tiene con qué actuar.
+ * El ninja activo eligió su acción. Con "Pasar al siguiente ninja", le toca al siguiente que tenga algo por
+ * decidir. Tras moverse no: puede cambiar de casilla con otro clic, y se pasa de ninja con Tab.
  */
-function afterStep(finished: 'move' | 'act'): void {
+function afterStep(): void {
   const st = store.getState();
   if (!st.settings.autoAdvance || !st.match || !st.active) return;
-  if (finished === 'move' && canAct(st.match, st.plans, st.active)) return;
   const next = nextPending(st.match, st.plans, st.active);
   if (next) store.setState({ active: next, pendingCard: null, step: stepFor(st.plans[next]) });
 }
@@ -318,7 +308,7 @@ function apply(o: StepOutcome): void {
   if (o.step) store.setState({ step: o.step });
   if (o.notice) notify(o.notice);
   if (o.sound) audio.play(o.sound);
-  if (o.finished) afterStep(o.finished);
+  if (o.finished) afterStep();
 }
 
 export function clickTile(v: Vec): void {
@@ -363,7 +353,7 @@ export function suggest(): void {
   setPlan(st.active, plan);
   store.setState({ pendingCard: null, step: 'act' });
   audio.play('place');
-  afterStep('act');
+  afterStep();
 }
 
 export function setHover(v: Vec | null): void {

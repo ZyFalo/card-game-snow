@@ -13,6 +13,10 @@ export interface Settings {
   reducedMotion: boolean;
   /** Animaciones rápidas: todo el turno a FAST_FACTOR (fase 3). */
   fastAnimations: boolean;
+  /** Ayuda "Ver el daño antes de confirmar" (D-78): solo en las partidas locales. */
+  aidDamage: boolean;
+  /** Ayuda "Ver el alcance de los enemigos" (D-78): solo en las partidas locales. */
+  aidReach: boolean;
 }
 
 const prefersReducedMotion = (): boolean => {
@@ -32,6 +36,8 @@ export const DEFAULT_SETTINGS: Settings = {
   music: true,
   reducedMotion: false,
   fastAnimations: false,
+  aidDamage: false,
+  aidReach: false,
 };
 
 const KEY_SETTINGS = 'ventisca:settings:v1';
@@ -46,7 +52,16 @@ export function loadSettings(): Settings {
   }
 }
 
-const BOOLEAN_SETTINGS = ['tips', 'autoAdvance', 'sfx', 'music', 'reducedMotion', 'fastAnimations'] as const;
+const BOOLEAN_SETTINGS = [
+  'tips',
+  'autoAdvance',
+  'sfx',
+  'music',
+  'reducedMotion',
+  'fastAnimations',
+  'aidDamage',
+  'aidReach',
+] as const;
 
 /** Ajustes leídos del almacenamiento: cada campo inválido o ausente vuelve a su valor de `base`. */
 function sanitizeSettings(raw: unknown, base: Settings): Settings {

@@ -11,26 +11,25 @@ import {
 } from '@ventisca/core';
 import { NINJA_TEXT, NOTICE } from '../i18n/es';
 import { activeInfo, plansArray, reviverOf, withoutAction } from './planning';
-import type { AppState, PlanStep } from './store';
+import type { AppState } from './store';
 
 /*
- * La planificación de un ninja va en dos pasos (lineamientos de diseño, sección "Tablero"): primero
- * moverse, donde el tablero solo ofrece casillas, y después actuar, donde ofrece los objetivos y deja las
- * casillas a la vista, para cambiar de destino con otro clic. Elegir una carta cambia a un tercer modo, el
- * de colocarla, que es exclusivo. Este módulo decide qué hace cada clic en cada paso; no toca el estado:
- * devuelve lo que hay que cambiar.
+ * Al planificar a un ninja (lineamientos de diseño, sección "Tablero"), el tablero le ofrece a la vez sus
+ * casillas y los objetivos que alcanza: un clic en una casilla lo mueve, y un clic en un objetivo elige su
+ * acción, se haya movido o no. Como en el original, no hay un paso de moverse. Elegir una carta cambia al
+ * modo de colocarla, que es el único modo aparte. Este módulo decide qué hace cada clic; no toca el
+ * estado: devuelve lo que hay que cambiar.
  */
 
 /** Sonidos de la planificación. */
 export type StepSound = 'select' | 'place' | 'error';
 
-export type StepState = Pick<AppState, 'match' | 'plans' | 'active' | 'pendingCard' | 'step'>;
+export type StepState = Pick<AppState, 'match' | 'plans' | 'active' | 'pendingCard'>;
 
 /** Lo que cambia tras un clic o un deshacer. Lo que no aparece, se queda como estaba. */
 export interface StepOutcome {
   /** El plan nuevo del ninja activo. */
   plan?: Plan;
-  step?: PlanStep;
   /** Se activa otro ninja. */
   select?: ElementKind;
   /** Se sale del modo carta. */
@@ -43,7 +42,7 @@ export interface StepOutcome {
 
 const NOTHING: StepOutcome = {};
 
-/** Qué hace un clic en una casilla, según el paso en que está el ninja activo. */
+/** Qué hace un clic en una casilla para el ninja activo. */
 export function clickOutcome(s: StepState, v: Vec): StepOutcome {
   const m = s.match;
   if (!m) return NOTHING;
@@ -78,15 +77,15 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
   };
 
   /**
-   * El plan tras elegir a dónde va: una casilla, o `null` si se queda en su lugar. La acción que ya tenía se
-   * conserva si desde ahí todavía alcanza; si no, se suelta y lo dice. No cambia de ninja: puede elegir
+   * El plan tras elegir a dónde va: una casilla, o `null` si vuelve a su lugar. La acción que ya tenía se
+   * conserva si desde ahí todavía alcanza; si no, se quita y lo dice. No cambia de ninja: puede elegir
    * otra casilla con otro clic.
    */
   const moved = (to: Vec | null): StepOutcome => {
     const next: Plan = to ? { ninjaId: ninja.id, moveTo: to } : { ninjaId: ninja.id };
     if (plan.action && isActionValid(m, ninja.id, to ?? ninja.pos, plan.action)) next.action = plan.action;
     const lost = plan.action && !next.action;
-    return { plan: next, step: 'act', sound: 'select', ...(lost ? { notice: NOTICE.actionLost } : {}) };
+    return { plan: next, sound: 'select', ...(lost ? { notice: NOTICE.actionLost } : {}) };
   };
   /** Por qué no vale una casilla a la que no puede ir: la reservó otro ninja o es una roca. */
   const blocked = (): StepOutcome | null => {
@@ -96,23 +95,12 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
     return null;
   };
 
-  if (s.step === 'move') {
-    // Quedarse: su propia casilla.
-    if (own) return moved(null);
-    if (info.moves.has(key(v))) return moved(v);
-    if (other) {
-      if (other.hp > 0) return { select: other.id };
-      return cannotRevive(other.id);
-    }
-    if (enemyAt(m, v)) return { notice: NOTICE.moveFirst(name), sound: 'error' };
-    return blocked() ?? { notice: NOTICE.outOfReach(name), sound: 'error' };
-  }
-
-  // Paso de actuar: el tablero ofrece los objetivos, y las casillas siguen valiendo. La casilla de su
-  // fantasma, o la suya, cancela el movimiento y lo devuelve a su lugar.
+  // Las casillas y los objetivos valen a la vez. La casilla de su fantasma, o la suya, cancela el
+  // movimiento y lo devuelve a su lugar; si no se había movido, su casilla lo deja quieto.
   if (onGhost) return moved(null);
   if (own) return plan.moveTo ? moved(null) : NOTHING;
   if (info.moves.has(key(v))) return moved(v);
+  // Un objetivo se elige desde donde va a estar: su casilla planeada o, si no se mueve, la suya.
   if (other) {
     if (info.heal.some((a) => a.id === other.id)) {
       return { plan: { ...plan, action: { type: 'heal', targetId: other.id } }, finished: true, sound: 'place' };
@@ -130,22 +118,21 @@ export function clickOutcome(s: StepState, v: Vec): StepOutcome {
     }
     return { notice: NOTICE.enemyOutOfRange, sound: 'error' };
   }
-  return blocked() ?? { notice: NOTICE.pickTarget(name), sound: 'error' };
+  return blocked() ?? { notice: NOTICE.outOfReach(name), sound: 'error' };
 }
 
-/** ¿Hay un paso que deshacer? Sin nada que deshacer, Esc abre la pausa. */
-export function canUndo(s: Pick<StepState, 'plans' | 'active' | 'pendingCard' | 'step'>): boolean {
+/** ¿Hay algo que deshacer? Sin nada que deshacer, Esc abre la pausa. */
+export function canUndo(s: Pick<StepState, 'plans' | 'active' | 'pendingCard'>): boolean {
   if (!s.active) return false;
-  return !!s.pendingCard || !!s.plans[s.active] || s.step === 'act';
+  return !!s.pendingCard || !!s.plans[s.active];
 }
 
-/** Deshace el último paso del ninja activo: la carta en la mano, la acción, o la casilla elegida. */
-export function undoOutcome(s: Pick<StepState, 'plans' | 'active' | 'pendingCard' | 'step'>): StepOutcome {
+/** Deshace lo último del ninja activo, de a una cosa: la carta en la mano, la acción, la casilla elegida. */
+export function undoOutcome(s: Pick<StepState, 'plans' | 'active' | 'pendingCard'>): StepOutcome {
   if (!s.active) return NOTHING;
   if (s.pendingCard) return { cardDone: true };
   const plan = s.plans[s.active];
   if (plan?.action) return { plan: withoutAction(plan), sound: 'select' };
-  // Sin acción, lo último fue elegir casilla, o quedarse: vuelve al paso de moverse, sin casilla.
-  if (plan?.moveTo || s.step === 'act') return { plan: { ninjaId: s.active }, step: 'move', sound: 'select' };
+  if (plan?.moveTo) return { plan: { ninjaId: s.active }, sound: 'select' };
   return NOTHING;
 }

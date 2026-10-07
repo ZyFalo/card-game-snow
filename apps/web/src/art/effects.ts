@@ -431,6 +431,57 @@ export function miniCardSvg(el: ElementKind, scale = 2): string {
   return svgDoc(36, 48, o, scale);
 }
 
+/** El símbolo de un elemento, el mismo de las cartas de la mano: llama, ola o copo. En una caja de 32×32. */
+function elementGlyph(el: ElementKind): string {
+  if (el === 'fire') {
+    const flame: Pt[] = [
+      [16, 2],
+      [26, 15],
+      [25, 25],
+      [16, 30],
+      [7, 25],
+      [6, 15],
+      [11, 19],
+    ];
+    const heart: Pt[] = [
+      [16, 13],
+      [21, 21],
+      [16, 27],
+      [11, 21],
+    ];
+    return poly(flame, ELEMENT_COLORS.fire.base, { sw: 2.6 }) + face(heart, ELEMENT_COLORS.fire.accent);
+  }
+  if (el === 'water') {
+    const c = ELEMENT_COLORS.water;
+    return (
+      `<path d="M2 22 Q8 10 16 12 Q24 14 22 6 Q30 10 30 22 Q23 27 16 23 Q9 27 2 22 Z" fill="${c.light}" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>` +
+      `<path d="M6 22 Q12 18 16 20" fill="none" stroke="${c.accentLight}" stroke-width="2.2" stroke-linecap="round"/>`
+    );
+  }
+  const c = ELEMENT_COLORS.snow;
+  let o = '';
+  for (const turn of [0, 60, 120]) {
+    const arm = `transform="rotate(${turn} 16 16)"`;
+    o += line([16, 3], [16, 29], 5, INK, arm) + line([16, 3], [16, 29], 2.2, c.light, arm);
+  }
+  return o + circle(16, 16, 4, c.base, INK, 2.2);
+}
+
+/**
+ * Carta colocada en el tablero: una carta pequeña como las de la mano, con la franja del color de su
+ * elemento y su símbolo. El valor lo escribe la escena sobre la franja. Mide lo que dice `MINI` en
+ * `game/layout.ts`: 26×33, con una franja de 14.
+ */
+export function placedCardSvg(el: ElementKind, scale = 3): string {
+  const c = ELEMENT_COLORS[el];
+  const paper = '<rect x="1" y="1" width="24" height="31" rx="3.5" fill="#F6F9FB"/>';
+  const band = `<path d="M2 16 V4.5 Q2 2 4.5 2 H21.5 Q24 2 24 4.5 V16 Z" fill="${c.base}"/>`;
+  const fold = line([2, 16], [24, 16], 1.6);
+  const frame = `<rect x="1" y="1" width="24" height="31" rx="3.5" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  const glyph = `<g transform="translate(7 17.6) scale(0.375)">${elementGlyph(el)}</g>`;
+  return svgDoc(26, 33, paper + band + fold + glyph + frame, scale);
+}
+
 /* ---------- Efectos de la fase 2 (blancos: se tiñen en Phaser) ---------- */
 
 /** Estallido de impacto: estrella de papel de 8 puntas. */

@@ -1,4 +1,4 @@
-import { GRID_H, GRID_W, type Vec } from '@ventisca/core';
+import { ELEMENTS, type ElementKind, GRID_H, GRID_W, type Vec } from '@ventisca/core';
 
 /*
  * Coordenadas lógicas del escenario: 1280×720. El canvas de Phaser se crea a
@@ -59,3 +59,18 @@ export const UNIT_HUD = {
   hpText: { x: 29, y: 7.5, size: 13 },
   icon: { x: 38, y: -55, size: 16, step: 18 },
 } as const;
+
+/**
+ * Miniatura de una carta colocada: una carta pequeña, como las de la mano, en la franja de arriba de su
+ * casilla. Cada elemento tiene su lugar fijo, en el orden de los paneles: Fuego a la izquierda, Agua al
+ * centro y Nieve a la derecha. Así las tres caben sin taparse y ninguna se mueve al sumarse otra.
+ * `band` es el alto de su franja de color, donde va el valor; `ring`, el grosor del borde dorado del combo.
+ */
+export const MINI = { w: 26, h: 33, top: 4, gap: 4, band: 14, value: 13, ring: 2 } as const;
+
+/** El lugar de la miniatura de ese elemento en su casilla. */
+export function miniRect(v: Vec, el: ElementKind): { x: number; y: number; w: number; h: number } {
+  const slot = ELEMENTS.indexOf(el) - 1;
+  const cx = BOARD_X + v.x * TW + TW / 2 + slot * (MINI.w + MINI.gap);
+  return { x: cx - MINI.w / 2, y: BOARD_Y + v.y * TH + MINI.top, w: MINI.w, h: MINI.h };
+}

@@ -10,6 +10,8 @@ import {
   isActionValid,
   key,
   moveOptions,
+  type Plan,
+  plannedDamage,
   resolutionOrder,
   resolveTurn,
   reviveTargets,
@@ -690,5 +692,85 @@ describe('Reglas técnicas', () => {
     const before = JSON.stringify(state);
     resolveTurn(state, []);
     expect(JSON.stringify(state)).toBe(before);
+  });
+});
+
+describe('El daño planeado (D-78)', () => {
+  it('D-78: suma los ataques básicos de cada ninja sobre su objetivo, desde la casilla que planeó', () => {
+    const s = blank();
+    const e = addEnemy(s, 'colossus', 3, 1);
+    const other = addEnemy(s, 'sniper', 8, 4);
+    place(s, 'fire', 1, 1);
+    place(s, 'water', 2, 2);
+    const plans: Plan[] = [
+      { ninjaId: 'fire', action: { type: 'attack', targetId: e.id } },
+      { ninjaId: 'water', moveTo: { x: 3, y: 2 }, action: { type: 'attack', targetId: e.id } },
+      { ninjaId: 'snow', moveTo: { x: 2, y: 3 }, action: { type: 'attack', targetId: e.id } },
+    ];
+    // 8 de Brasa, 10 de Marea y 6 de Escarcha. Al gólem que nadie eligió no le pasa nada.
+    expect(plannedDamage(s, plans)).toEqual({ [e.id]: 24 });
+    expect(plannedDamage(s, plans)[other.id]).toBeUndefined();
+    // Lo mismo que le quita el turno de verdad antes de que actúen los gólems.
+    const hit = resolveTurn(s, plans).events.filter((x) => x.t === 'damage' && x.targetId === e.id);
+    expect(hit.map((x) => (x.t === 'damage' ? x.amount : 0))).toEqual([8, 10, 6]);
+  });
+
+  it('D-78: cuenta la Potencia (R-07), el doble de la carta de Agua (R-17) y a todos los gólems del área', () => {
+    const s = blank();
+    const a = addEnemy(s, 'colossus', 3, 1);
+    const b = addEnemy(s, 'colossus', 4, 2);
+    place(s, 'water', 2, 2);
+    place(s, 'snow', 5, 4, { boost: true });
+    ninja(s, 'water').hand = [{ id: 'w', element: 'water', value: 10 }];
+    expect(
+      plannedDamage(s, [
+        { ninjaId: 'water', action: { type: 'card', cardId: 'w', at: { x: 3, y: 2 } } },
+        { ninjaId: 'snow', action: { type: 'attack', targetId: b.id } },
+      ]),
+    ).toEqual({ [a.id]: 20, [b.id]: 29 });
+  });
+
+  it('D-78: un gólem no pierde más vida de la que le queda, y el ataque a uno que ya cayó no cuenta (R-06)', () => {
+    const s = blank();
+    const e = addEnemy(s, 'sniper', 3, 1, { hp: 12 });
+    place(s, 'fire', 1, 1);
+    place(s, 'water', 3, 2);
+    place(s, 'snow', 2, 3);
+    const plans: Plan[] = [
+      { ninjaId: 'fire', action: { type: 'attack', targetId: e.id } },
+      { ninjaId: 'water', action: { type: 'attack', targetId: e.id } },
+      { ninjaId: 'snow', action: { type: 'attack', targetId: e.id } },
+    ];
+    expect(plannedDamage(s, plans)).toEqual({ [e.id]: 12 });
+  });
+
+  it('D-78: no cuenta lo que viene después de los ninjas, ni la fase enemiga ni las quemaduras', () => {
+    const s = blank();
+    const burning = addEnemy(s, 'colossus', 6, 0, { burnTicks: 2 });
+    const e = addEnemy(s, 'colossus', 3, 1);
+    place(s, 'fire', 1, 1);
+    place(s, 'water', 1, 3);
+    ninja(s, 'fire').hand = [{ id: 'f', element: 'fire', value: 8 }];
+    ninja(s, 'water').hand = [{ id: 'w', element: 'water', value: 8 }];
+    const plans: Plan[] = [
+      { ninjaId: 'fire', action: { type: 'card', cardId: 'f', at: { x: 3, y: 1 } } },
+      { ninjaId: 'water', action: { type: 'card', cardId: 'w', at: { x: 0, y: 4 } } },
+    ];
+    // Hay combo: la carta de Brasa además quema, pero la quemadura llega al final del turno.
+    expect(plannedDamage(s, plans)).toEqual({ [e.id]: 8 });
+    expect(plannedDamage(s, [])[burning.id]).toBeUndefined();
+    const end = resolveTurn(s, plans).state.enemies.find((x) => x.id === e.id);
+    expect(end?.hp).toBe(60 - 8 - 3);
+  });
+
+  it('D-78: es una consulta: no cambia el estado, y sin planes de daño devuelve vacío', () => {
+    const s = blank();
+    const e = addEnemy(s, 'colossus', 3, 1);
+    place(s, 'fire', 1, 1, { boost: true });
+    const before = structuredClone(s);
+    expect(plannedDamage(s, [{ ninjaId: 'fire', action: { type: 'attack', targetId: e.id } }])).toEqual({ [e.id]: 12 });
+    expect(s).toEqual(before);
+    expect(plannedDamage(s, [])).toEqual({});
+    expect(plannedDamage(s, [{ ninjaId: 'fire', moveTo: { x: 2, y: 1 } }])).toEqual({});
   });
 });

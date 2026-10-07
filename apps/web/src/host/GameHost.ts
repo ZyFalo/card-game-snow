@@ -28,6 +28,11 @@ export type HostMessage =
 export type HostListener = (msg: HostMessage) => void;
 
 export interface GameHost {
+  /**
+   * La partida corre entera en este navegador: el sandbox y un jugador. Las ayudas opcionales existen
+   * solo ahí (D-78); en línea no, para que todas las personas jueguen con la misma información.
+   */
+  readonly local: boolean;
   /** Escucha los mensajes del host. Devuelve la función para dejar de escucharlos. */
   subscribe(listener: HostListener): () => void;
   /** Pide una partida nueva. Su estado inicial llega como mensaje `matchStart`. */

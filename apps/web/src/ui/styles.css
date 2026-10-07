@@ -793,14 +793,25 @@ button {
   color: var(--ink-2);
 }
 
+/* El ritmo y la dificultad, a lo ancho; debajo, las ayudas en su fila, a la izquierda de las acciones. */
 .team-options {
   position: absolute;
   left: 56px;
   right: 56px;
   top: 466px;
   display: grid;
-  grid-template-columns: 1.25fr 0.9fr 0.85fr;
-  gap: 28px;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--gap-3) 28px;
+}
+
+.team-aids {
+  grid-column: 1 / -1;
+}
+
+.aid-list {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  column-gap: var(--gap-4);
 }
 
 .opt-title {
@@ -1242,13 +1253,13 @@ button {
 .np-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  min-height: 22px;
   margin-top: 9px;
 }
 
+/* El resumen del plan ("Moverse → atacar a Carámbano") ocupa el ancho del panel. */
 .plan-pill {
-  max-width: 150px;
+  max-width: 100%;
   overflow: hidden;
   padding: 3px 9px;
   font: 700 12px / 1.3 var(--font-ui);
@@ -1269,6 +1280,9 @@ button {
 }
 
 .np-status {
+  position: absolute;
+  top: 41px;
+  right: 10px;
   display: flex;
   gap: 3px;
 }

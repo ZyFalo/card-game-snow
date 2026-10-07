@@ -3,6 +3,7 @@ import type { GameHost, HostListener, HostMessage, MatchStart } from './GameHost
 
 /** Host del sandbox: el motor corre en el navegador. */
 export class LocalHost implements GameHost {
+  readonly local = true;
   private state: MatchState | null = null;
   private decks: MatchStart['decks'];
   private turns: Plan[][] = [];

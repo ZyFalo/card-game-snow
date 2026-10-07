@@ -34,6 +34,9 @@ export const ES = {
   music: 'Música',
   reducedMotion: 'Animaciones reducidas',
   fastAnimations: 'Animaciones rápidas',
+  /** Ayudas opcionales (D-78): solo en las partidas locales, y apagadas por defecto. */
+  aidDamage: 'Ver el daño antes de confirmar',
+  aidReach: 'Ver el alcance de los enemigos',
   accelerate: 'Mantén para acelerar',
   accelerating: 'Acelerando…',
   settings: 'Ajustes',

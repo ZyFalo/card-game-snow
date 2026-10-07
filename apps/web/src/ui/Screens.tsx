@@ -181,19 +181,32 @@ export function TeamScreen() {
             }))}
           />
         </div>
-        <div>
+        <div className="team-aids">
           <h3 className="opt-title">{SCREEN_TEXT.aids}</h3>
-          <Toggle label={ES.tipsMode} checked={settings.tips} onChange={(tips) => updateSettings({ tips })} />
-          <Toggle
-            label={ES.autoAdvance}
-            checked={settings.autoAdvance}
-            onChange={(autoAdvance) => updateSettings({ autoAdvance })}
-          />
-          <Toggle
-            label={ES.fastAnimations}
-            checked={settings.fastAnimations}
-            onChange={(fastAnimations) => updateSettings({ fastAnimations })}
-          />
+          <div className="aid-list">
+            <Toggle label={ES.tipsMode} checked={settings.tips} onChange={(tips) => updateSettings({ tips })} />
+            <Toggle
+              label={ES.autoAdvance}
+              checked={settings.autoAdvance}
+              onChange={(autoAdvance) => updateSettings({ autoAdvance })}
+            />
+            <Toggle
+              label={ES.fastAnimations}
+              checked={settings.fastAnimations}
+              onChange={(fastAnimations) => updateSettings({ fastAnimations })}
+            />
+            {/* D-78: solo en las partidas locales, que son las que empiezan desde esta pantalla. */}
+            <Toggle
+              label={ES.aidDamage}
+              checked={settings.aidDamage}
+              onChange={(aidDamage) => updateSettings({ aidDamage })}
+            />
+            <Toggle
+              label={ES.aidReach}
+              checked={settings.aidReach}
+              onChange={(aidReach) => updateSettings({ aidReach })}
+            />
+          </div>
         </div>
       </div>
       <div className="team-actions">

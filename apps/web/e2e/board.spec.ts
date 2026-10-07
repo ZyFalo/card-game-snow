@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { HUD_BAND_Y } from '../src/art/scenery';
-import { startMatch, type TestWindow } from './helpers';
+import { clippedElements, startMatch, type TestWindow } from './helpers';
 
 /* El tablero durante la planificación (lineamientos de diseño, sección "Tablero"). */
 
@@ -500,6 +500,41 @@ test('con el ratón sobre un gólem, la franja dice su nombre y cómo ataca', as
   await expect(tip).toHaveText('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
   await page.mouse.move(640, 60);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
+});
+
+test('D-78: las ayudas de daño y de alcance están en "Tu equipo", apagadas, y se guardan', async ({ page }) => {
+  await page.goto('/?speed=0.3');
+  await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
+  const damage = page.getByRole('checkbox', { name: 'Ver el daño antes de confirmar' });
+  const reach = page.getByRole('checkbox', { name: 'Ver el alcance de los enemigos' });
+  await expect(damage).not.toBeChecked();
+  await expect(reach).not.toBeChecked();
+
+  // Las cinco ayudas caben a 1280×720, sin texto cortado y sin pisar las acciones.
+  await settled(page.locator('.team-screen'));
+  expect(await clippedElements(page)).toEqual([]);
+  const actions = await page.locator('.team-actions').boundingBox();
+  if (!actions) throw new Error('faltan las acciones');
+  const toggles = page.locator('.aid-list .toggle');
+  await expect(toggles).toHaveCount(5);
+  for (const toggle of await toggles.all()) {
+    const box = await toggle.boundingBox();
+    if (!box) throw new Error('falta una ayuda');
+    expect(box.y + box.height).toBeLessThanOrEqual(720);
+    // Las que quedan a la altura de las acciones terminan antes de que ellas empiecen.
+    if (box.y + box.height > actions.y) expect(box.x + box.width).toBeLessThanOrEqual(actions.x);
+  }
+
+  // Encendidas, quedan guardadas como los demás ajustes.
+  await damage.check({ force: true });
+  await reach.check({ force: true });
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ventisca:settings:v1') ?? '{}'));
+  expect(saved).toMatchObject({ aidDamage: true, aidReach: true });
+  await page.reload();
+  await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: 'Ver el daño antes de confirmar' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Ver el alcance de los enemigos' })).toBeChecked();
 });
 
 type LossWindow = { __ventiscaScene: { units: Map<string, { loss: number }> } };

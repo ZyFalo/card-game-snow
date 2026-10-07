@@ -793,14 +793,25 @@ button {
   color: var(--ink-2);
 }
 
+/* El ritmo y la dificultad, a lo ancho; debajo, las ayudas en su fila, a la izquierda de las acciones. */
 .team-options {
   position: absolute;
   left: 56px;
   right: 56px;
   top: 466px;
   display: grid;
-  grid-template-columns: 1.25fr 0.9fr 0.85fr;
-  gap: 28px;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--gap-3) 28px;
+}
+
+.team-aids {
+  grid-column: 1 / -1;
+}
+
+.aid-list {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  column-gap: var(--gap-4);
 }
 
 .opt-title {

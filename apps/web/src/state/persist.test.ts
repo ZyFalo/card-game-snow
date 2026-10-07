@@ -33,6 +33,17 @@ describe('Ajustes guardados', () => {
     expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, pace: 'expert', difficulty: 'storm' });
   });
 
+  it('D-78: las ayudas de daño y de alcance vienen apagadas, y encendidas se conservan', () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ aidDamage: false, aidReach: false });
+    storeSettings({});
+    expect(loadSettings()).toMatchObject({ aidDamage: false, aidReach: false });
+    storeSettings({ aidDamage: true, aidReach: true });
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, aidDamage: true, aidReach: true });
+    // Como los demás ajustes: lo que no es sí o no vuelve a su valor predeterminado.
+    storeSettings({ aidDamage: 'sí', aidReach: 1 });
+    expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
+  });
+
   it('un ritmo que solo existe como propiedad heredada no es válido (dejaría el reloj en NaN)', () => {
     for (const pace of ['toString', 'constructor']) {
       storeSettings({ pace, difficulty: pace });

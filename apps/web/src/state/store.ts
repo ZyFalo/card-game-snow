@@ -129,6 +129,8 @@ export interface Results {
 export interface AppState {
   screen: Screen;
   settings: Settings;
+  /** La partida corre en este navegador (`GameHost.local`): ahí valen las ayudas opcionales (D-78). */
+  local: boolean;
   helpOpen: boolean;
   paused: boolean;
   phase: Phase;
@@ -167,6 +169,7 @@ export interface AppState {
 export const initialState = (): AppState => ({
   screen: 'title',
   settings: loadSettings(),
+  local: true,
   helpOpen: false,
   paused: false,
   phase: 'idle',

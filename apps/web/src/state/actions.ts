@@ -63,6 +63,7 @@ function applyToView(e: GameEvent): void {
 function attachHost(next: GameHost): void {
   host.close();
   host = next;
+  store.setState({ local: next.local });
   let shown = Promise.resolve();
   next.subscribe((msg) => {
     shown = shown.then(() => (host === next ? show(msg) : undefined)).catch(reportError);

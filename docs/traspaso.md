@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con sus dos primeros pasos hechos; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
+Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. Está en curso la ronda de claridad del tablero (D-74), con cuatro de sus cinco pasos hechos; después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
 ## Qué hay
 
@@ -30,8 +30,10 @@ Estado al 6 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 traj
   - El aviso de privacidad dice que hoy el juego es gratuito: no vende nada ni muestra publicidad. Si eso cambia algún día, el aviso cambia antes.
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
-  - Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y los objetivos que alcanza desde donde va a estar: un clic en un objetivo lo elige sin moverse, y un clic en una casilla lo mueve y recalcula los objetivos. No hay un paso de moverse, y solo colocar una carta es un modo aparte (casillas rojas). Los planes del equipo quedan en silueta y marca: un ataque elegido lleva un anillo con un arco del color de cada ninja que lo eligió.
-  - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic en cada paso. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
+  - Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y los objetivos que alcanza desde donde va a estar: un clic en un objetivo lo elige sin moverse, y un clic en una casilla lo mueve y recalcula los objetivos. No hay un paso de moverse, y solo colocar una carta es un modo aparte (casillas rojas). Los planes del equipo quedan en silueta y marca: un ataque elegido lleva un anillo con un arco del color de cada ninja que lo eligió, y una carta colocada, su miniatura, con un lugar fijo por elemento y un borde dorado cuando hay combo.
+  - El tablero muestra lo que se puede hacer, no el resultado. Lo demás es a pedido: el panel de cada ninja resume su plan sin números, la franja de arriba nombra al gólem que está bajo el ratón, y la vida que perdería un gólem y su alcance son ayudas opcionales, apagadas por defecto y solo en las partidas locales (D-78; `state/aids.ts`).
+  - Ningún tinte se mezcla con otro: cada casilla lleva un solo relleno.
+  - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
@@ -143,18 +145,8 @@ El M7 y P-20 están cerrados. Va en este orden:
    1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
    2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, y elegir una carta cambia el tablero a modo carta. Ajustado después dos veces, como en el original. Primero: tras moverse, las casillas siguen a la vista y otro clic cambia el destino; el foco no salta tras moverse; y los objetivos elegidos llevan la marca del equipo, con un arco por atacante. Después se quitó el paso de moverse: al activar un ninja se ven a la vez sus casillas y sus objetivos, y un clic en un objetivo lo elige sin moverse.
    3. **La reanimación vuelve a la regla del original.** Hecho (D-77, que reemplaza a D-18): quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. La medición del balance de antes y después está en `docs/balance-report.md`.
-   4. **Información a pedido.** Pendiente. Lleva su decisión, con el siguiente número libre.
-      - **El resumen del plan** de cada ninja en los paneles, sin números ("Moverse → atacar a Témpano").
-      - **Al pasar sobre un gólem,** su nombre y un consejo corto sobre cómo ataca, sin pintar casillas.
-      - **Las ayudas de daño y de alcance:** "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos", en el grupo "Ayudas" de la pantalla de equipo. Apagadas por defecto y solo en las partidas locales (sandbox y un jugador). En línea no están disponibles: con el M8, las partidas en línea las ignoran y no las muestran.
-      - **Las cartas colocadas de los ninjas que no están activos** se reducen a su miniatura y a un contorno fino y tenue de su área, sin relleno ni borde grueso. El área completa se ve solo con su dueño activo, o al pasar el ratón sobre la miniatura.
-      - **La miniatura** es una carta pequeña, igual a las de la mano, con el símbolo de su elemento (llama, ola o copo) en su color y su valor pequeño en una esquina. Reemplaza al número en círculo, que se confunde con los números de orden.
-      - **Un lugar fijo por elemento** dentro de la casilla: Fuego a la izquierda, Agua al centro y Nieve a la derecha, el mismo orden de los paneles. Va en la franja superior de la casilla, sin tapar a la unidad que esté en ella. Con tres cartas en la misma casilla se ven las tres, sin superponerse y sin moverse al sumarse otra.
-      - **Un solo contorno** para el área cuando varias cartas comparten casilla. Al pasar el ratón sobre cualquiera de ellas se ve el área completa.
-      - **El combo se anuncia:** si dos o más ninjas tienen carta en el mismo turno, sus miniaturas llevan un borde dorado, estén en la misma casilla o en distintas.
-      - **Las capas:** las casillas y las marcas del ninja activo quedan siempre por encima de las de los demás, y ningún tinte se mezcla con otro. Si una casilla es opción del ninja activo, se ve solo su color.
-      - **Pruebas y capturas:** una, dos y tres cartas en la misma casilla, y dos cartas en casillas distintas con combo; la prueba de que ninguna miniatura tapa a otra; y, de antes y después, la escena de la carta de 11 de Escarcha con Brasa activo en el paso de moverse. La regla va a la sección "Tablero" de los lineamientos.
-   5. **Consejos en el momento.** Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno. El consejo de la primera caída (R-09), que hoy sale una vez por partida, se suma a esa lógica: deja de mostrarse al aprenderlo.
+   4. **Información a pedido.** Hecho (D-74 y D-78): el panel de cada ninja resume su plan sin números; con el ratón sobre un gólem, la franja dice su nombre y cómo ataca, sin pintar casillas; las cartas colocadas quedan en miniatura, con un lugar fijo por elemento, un solo contorno para el área compartida y un borde dorado cuando hay combo; ningún tinte se mezcla con otro; y "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos" son ayudas opcionales de las partidas locales, apagadas por defecto.
+   5. **Consejos en el momento.** Pendiente. Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno. El consejo de la primera caída (R-09), que hoy sale una vez por partida, se suma a esa lógica: deja de mostrarse al aprenderlo.
 
    Para toda la ronda:
    - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;
@@ -189,7 +181,8 @@ Para que no se pierdan. Los seis primeros están también en su hito del PRD de 
 - **Con el M8:**
   - "Juega en línea con amigos" deja de decir "Próximamente" en los beneficios de la cuenta (`BENEFITS` en `ui/Account.tsx`);
   - la pista de las monedas de la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`);
-  - el perfil, que hace de inicio en línea (D-67), suma "Jugar".
+  - el perfil, que hace de inicio en línea (D-67), suma "Jugar";
+  - las ayudas de daño y de alcance no existen en línea (D-78): el anfitrión de una partida en línea dice que no es local (`GameHost.local`), con lo que el tablero las ignora, y su pantalla de equipo no las muestra. La especificación del M8 debe recogerlo.
 - **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen en presente que la cuenta guarda el progreso, y en futuro que "pronto podrás jugar en línea" (`loginIntro` e `invite` en `i18n/es.ts`). Esa mitad vuelve al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

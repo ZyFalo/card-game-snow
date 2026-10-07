@@ -205,15 +205,21 @@ export const REVIVE_TEXT = {
   back: (name: string, hp: number) => `${name} vuelve con ${hp} de vida`,
 } as const;
 
-/** Estado del plan de cada ninja, en su panel. */
+/**
+ * El plan de cada ninja, en su panel: un resumen con palabras y sin números. Con movimiento y acción dice
+ * las dos cosas ("Moverse → atacar a Témpano"); sin movimiento, solo la acción ("Atacar a Témpano").
+ */
 export const PLAN_TEXT = {
   ko: 'Caído',
   none: 'Sin plan',
   move: 'Solo moverse',
-  attack: (target?: string) => (target ? `Atacar a ${target}` : 'Atacar'),
-  heal: (target?: string) => (target ? `Curar a ${target}` : 'Curar'),
-  revive: (target?: string) => (target ? `Revivir a ${target}` : 'Revivir'),
-  card: (value?: number) => (value === undefined ? 'Carta' : `Carta ${value}`),
+  attack: (target?: string) => (target ? `atacar a ${target}` : 'atacar'),
+  heal: (target?: string) => (target ? `curar a ${target}` : 'curar'),
+  revive: (target?: string) => (target ? `revivir a ${target}` : 'revivir'),
+  card: 'jugar carta',
+  moveThen: (action: string) => `Moverse → ${action}`,
+  /** Lo mismo, para quien lo oye en vez de verlo: sin la flecha. */
+  moveThenSpoken: (action: string) => `Moverse y ${action}`,
 } as const;
 
 /** Consejo en pantalla según la fase del turno (§9.5). */
@@ -223,8 +229,8 @@ export const TIP_TEXT = {
   ninjas: (hint: string) => `Actúan tus ninjas: ${ORDER_NAMES}, en ese orden. ${hint}`,
   enemies: (hint: string) => `Responden los gólems, uno por uno. ${hint}`,
   end: (hint: string) => `Final del turno: reanimaciones, quemaduras y cierre de ronda. ${hint}`,
-  enemy: (name: string, role: string, hp: number, maxHp: number, tip: string) =>
-    `${name}, ${role.toLowerCase()} (${hp}/${maxHp}). ${tip}`,
+  /** Con el ratón sobre un gólem: su nombre y cómo ataca. */
+  enemy: (name: string, tip: string) => `${name}. ${tip}`,
   confirm: 'Confirma el turno.',
   placeCard: (name: string) => `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`,
   /** La primera vez que cae un ninja en la partida: cómo se revive (R-09). */

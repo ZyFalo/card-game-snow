@@ -444,3 +444,57 @@ test('R-09: la primera vez que cae un ninja, un consejo dice cómo revivirlo', a
   await page.mouse.move(640, 60);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
 });
+
+/* ---------- Información a pedido (D-74 y D-78) ---------- */
+
+test('el panel de cada ninja resume su plan sin números, y el resumen más largo cabe', async ({ page }) => {
+  await startPrepared(page, [10]);
+  const panel = page.locator('[data-ninja-panel="fire"]');
+  const pill = panel.locator('.plan-pill');
+  await expect(pill).toHaveText('Sin plan');
+
+  // Brasa se mueve y ataca a Carámbano: el resumen dice las dos cosas.
+  await click(page, 3, 1);
+  await expect(pill).toHaveText('Solo moverse');
+  await click(page, 5, 1);
+  await expect(pill).toHaveText('Moverse → atacar a Carámbano');
+  await expect(panel).toHaveAccessibleName('Brasa, 30 de 30 de vida. Moverse y atacar a Carámbano');
+
+  // Es el más largo que puede salir, y cabe entero, también con los dos estados encendidos.
+  await page.evaluate(() => {
+    type Ninja = { shield: boolean; boost: boolean };
+    const store = (window as unknown as TestWindow).__ventisca as unknown as {
+      getState(): { view: { ninjas: Ninja[] } };
+      setState(patch: object): void;
+    };
+    const { view } = store.getState();
+    store.setState({ view: { ...view, ninjas: view.ninjas.map((n) => ({ ...n, shield: true, boost: true })) } });
+  });
+  await expect(panel.locator('.np-status img')).toHaveCount(2);
+  expect(await pill.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const status = await panel.locator('.np-status').boundingBox();
+  const box = await pill.boundingBox();
+  // Los estados van arriba: no comparten renglón con el resumen.
+  expect((status?.y ?? 0) + (status?.height ?? 0)).toBeLessThanOrEqual(box?.y ?? 0);
+
+  // Una carta no dice su valor: el resumen no lleva números.
+  await panel.click();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('1');
+  await click(page, 4, 1);
+  await expect(pill).toHaveText('Moverse → jugar carta');
+  await expect(pill).not.toHaveText(/\d/);
+});
+
+test('con el ratón sobre un gólem, la franja dice su nombre y cómo ataca', async ({ page }) => {
+  await startPrepared(page);
+  const tip = page.locator('.tip-text');
+  await page.mouse.move(tile(4, 2).x, tile(4, 2).y);
+  await expect(tip).toHaveText(
+    'Témpano. Lento pero brutal: barre tres casillas. No se pongan hombro con hombro frente a él.',
+  );
+  await page.mouse.move(tile(5, 1).x, tile(5, 1).y);
+  await expect(tip).toHaveText('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
+  await page.mouse.move(640, 60);
+  await expect(tip).toHaveText(PLAN_TIP('Brasa'));
+});

@@ -140,29 +140,34 @@ export function planStatus(plan: Plan | undefined, ninja: Ninja): PlanStatus {
   return 'none';
 }
 
-export function planLabel(plan: Plan | undefined, ninja: Ninja, m: MatchState): string {
-  const status = planStatus(plan, ninja);
-  const action = plan?.action;
-  switch (status) {
-    case 'ko':
-      return PLAN_TEXT.ko;
-    case 'none':
-      return PLAN_TEXT.none;
-    case 'move':
-      return PLAN_TEXT.move;
+/** La acción de un plan, con palabras y en minúscula: "atacar a Témpano". */
+function actionLabel(action: NonNullable<Plan['action']>, m: MatchState): string {
+  switch (action.type) {
     case 'attack': {
-      const e = action?.type === 'attack' ? getEnemy(m, action.targetId) : undefined;
+      const e = getEnemy(m, action.targetId);
       return PLAN_TEXT.attack(e ? ENEMY_TEXT[e.kind].name : undefined);
     }
     case 'heal':
-      return PLAN_TEXT.heal(action?.type === 'heal' ? NINJA_TEXT[action.targetId as ElementKind].name : undefined);
+      return PLAN_TEXT.heal(NINJA_TEXT[action.targetId as ElementKind]?.name);
     case 'revive':
-      return PLAN_TEXT.revive(action?.type === 'revive' ? NINJA_TEXT[action.targetId as ElementKind].name : undefined);
-    case 'card': {
-      const card = action?.type === 'card' ? ninja.hand.find((c) => c.id === action.cardId) : undefined;
-      return PLAN_TEXT.card(card?.value);
-    }
+      return PLAN_TEXT.revive(NINJA_TEXT[action.targetId as ElementKind]?.name);
+    case 'card':
+      return PLAN_TEXT.card;
   }
+}
+
+/**
+ * El resumen del plan de un ninja para su panel, sin números: "Moverse → atacar a Témpano". `spoken` da
+ * el mismo resumen para quien lo oye: sin la flecha.
+ */
+export function planLabel(plan: Plan | undefined, ninja: Ninja, m: MatchState, spoken = false): string {
+  const status = planStatus(plan, ninja);
+  if (status === 'ko') return PLAN_TEXT.ko;
+  if (status === 'none') return PLAN_TEXT.none;
+  if (!plan?.action) return PLAN_TEXT.move;
+  const action = actionLabel(plan.action, m);
+  if (!plan.moveTo) return action.charAt(0).toUpperCase() + action.slice(1);
+  return spoken ? PLAN_TEXT.moveThenSpoken(action) : PLAN_TEXT.moveThen(action);
 }
 
 /** Casillas que un enemigo puede golpear el próximo turno (vista previa al pasar el cursor). */
@@ -199,7 +204,7 @@ export function contextualTip(s: TipState): string | null {
     const e = enemyAt(m, s.hover);
     if (e && !s.pendingCard) {
       const t = ENEMY_TEXT[e.kind];
-      return TIP_TEXT.enemy(t.name, t.role, e.hp, e.maxHp, t.tip);
+      return TIP_TEXT.enemy(t.name, t.tip);
     }
   }
   const info = activeInfo(s);

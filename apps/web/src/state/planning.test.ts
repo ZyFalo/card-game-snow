@@ -3,11 +3,15 @@ import {
   type Difficulty,
   difficultyConfig,
   type ElementKind,
+  type Enemy,
+  type EnemyKind,
+  getNinja,
   type MatchState,
+  type Ninja,
   type Plan,
 } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
-import { bonusProgress, contextualTip, firstFallTip, reviverOf, turnClockMs } from './planning';
+import { bonusProgress, contextualTip, firstFallTip, planLabel, reviverOf, turnClockMs } from './planning';
 
 /* R-21: la ficha del bonus contra el reloj cuenta el turno que se planifica y los que quedan. */
 describe('Bonus contra el reloj en la planificación (R-21)', () => {
@@ -127,5 +131,108 @@ describe('Revivir en la planificación (R-09)', () => {
     expect(reviverOf({ snow: { ninjaId: 'snow', action: revive } }, 'water')).toBe('snow');
     expect(reviverOf({ snow: { ninjaId: 'snow', action: revive } }, 'fire')).toBeNull();
     expect(reviverOf({ fire: { ninjaId: 'fire', action: { type: 'attack', targetId: 'e1' } } }, 'water')).toBeNull();
+  });
+});
+
+/** Una partida con un solo gólem, de la clase y en la casilla que se pidan. */
+function withGolem(kind: EnemyKind, x: number, y: number): MatchState {
+  const s = createMatch({ seed: 1 }).state;
+  const golem: Enemy = { id: 'e1', kind, pos: { x, y }, hp: 50, maxHp: 60, stunned: false, burnTicks: 0 };
+  s.enemies = [golem];
+  return s;
+}
+
+/* D-74: el panel de cada ninja resume su plan con palabras y sin números. */
+describe('El resumen del plan en el panel (D-74)', () => {
+  const m = withGolem('colossus', 5, 2);
+  const ninja = (id: ElementKind): Ninja => getNinja(m, id) as Ninja;
+  const fire = ninja('fire');
+  fire.hand = [{ id: 'fire-1', element: 'fire', value: 11 }];
+  const to = { x: fire.pos.x + 1, y: fire.pos.y };
+  const attack = { type: 'attack', targetId: 'e1' } as const;
+  const card = { type: 'card', cardId: 'fire-1', at: to } as const;
+  const label = (plan: Plan | undefined, id: ElementKind = 'fire') => planLabel(plan, ninja(id), m);
+
+  it('con movimiento y acción dice las dos cosas, en orden: "Moverse → atacar a Témpano"', () => {
+    expect(label({ ninjaId: 'fire', moveTo: to, action: attack })).toBe('Moverse → atacar a Témpano');
+    expect(label({ ninjaId: 'snow', moveTo: to, action: { type: 'heal', targetId: 'fire' } }, 'snow')).toBe(
+      'Moverse → curar a Brasa',
+    );
+    expect(label({ ninjaId: 'fire', moveTo: to, action: { type: 'revive', targetId: 'water' } })).toBe(
+      'Moverse → revivir a Marea',
+    );
+    expect(label({ ninjaId: 'fire', moveTo: to, action: card })).toBe('Moverse → jugar carta');
+  });
+
+  it('si no se mueve, dice solo la acción', () => {
+    expect(label({ ninjaId: 'fire', action: attack })).toBe('Atacar a Témpano');
+    expect(label({ ninjaId: 'snow', action: { type: 'heal', targetId: 'water' } }, 'snow')).toBe('Curar a Marea');
+    expect(label({ ninjaId: 'fire', action: { type: 'revive', targetId: 'snow' } })).toBe('Revivir a Escarcha');
+    expect(label({ ninjaId: 'fire', action: card })).toBe('Jugar carta');
+  });
+
+  it('no lleva números: una carta no dice su valor', () => {
+    for (const plan of [
+      { ninjaId: 'fire', action: card },
+      { ninjaId: 'fire', moveTo: to, action: card },
+      { ninjaId: 'fire', moveTo: to, action: attack },
+    ] satisfies Plan[]) {
+      expect(label(plan)).not.toMatch(/\d/);
+    }
+  });
+
+  it('solo moverse, sin plan y caído se dicen como antes', () => {
+    expect(label({ ninjaId: 'fire', moveTo: to })).toBe('Solo moverse');
+    expect(label(undefined)).toBe('Sin plan');
+    expect(planLabel(undefined, { ...fire, hp: 0 }, m)).toBe('Caído');
+  });
+
+  it('para quien no ve la pantalla, el resumen se dice sin la flecha', () => {
+    expect(planLabel({ ninjaId: 'fire', moveTo: to, action: attack }, fire, m, true)).toBe(
+      'Moverse y atacar a Témpano',
+    );
+    expect(planLabel({ ninjaId: 'fire', action: attack }, fire, m, true)).toBe('Atacar a Témpano');
+  });
+});
+
+/* D-74: al pasar el ratón sobre un gólem, la franja dice su nombre y cómo ataca. */
+describe('El gólem bajo el ratón (D-74)', () => {
+  type Tip = Parameters<typeof contextualTip>[0];
+  const tip = (kind: EnemyKind, patch: Partial<Tip> = {}) =>
+    contextualTip({
+      phase: 'planning',
+      resolveStep: null,
+      boosting: false,
+      match: withGolem(kind, 5, 2),
+      plans: {},
+      active: 'fire',
+      pendingCard: null,
+      hover: { x: 5, y: 2 },
+      reviveTip: null,
+      ...patch,
+    });
+
+  it('dice su nombre y un consejo corto sobre cómo ataca, sin su vida ni otros números de la partida', () => {
+    expect(tip('colossus')).toBe(
+      'Témpano. Lento pero brutal: barre tres casillas. No se pongan hombro con hombro frente a él.',
+    );
+    expect(tip('sniper')).toBe('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
+    expect(tip('artillery')).toBe('Granizo. Su granizo salpica 4 a los vecinos del objetivo. No se amontonen.');
+  });
+
+  it('vale antes y después de moverse, y no con una carta en la mano', () => {
+    const m = withGolem('colossus', 5, 2);
+    const at = m.ninjas[0]?.pos ?? { x: 0, y: 0 };
+    const moved: Plan = { ninjaId: 'fire', moveTo: { x: at.x + 1, y: at.y } };
+    expect(tip('colossus', { match: m, plans: { fire: moved } })).toMatch(/^Témpano\. /);
+    expect(tip('colossus', { pendingCard: 'fire-1' })).toBe(
+      'Elige dónde colocar la carta de Brasa. Afecta un área de 3×3.',
+    );
+  });
+
+  it('fuera del gólem, la franja vuelve al consejo de planificar', () => {
+    expect(tip('colossus', { hover: { x: 4, y: 2 } })).toBe(
+      'Elige a dónde se mueve Brasa, o un objetivo desde donde está.',
+    );
   });
 });

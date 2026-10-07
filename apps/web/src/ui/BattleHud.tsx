@@ -215,6 +215,7 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
   const t = NINJA_TEXT[n.id];
   const status = match ? planStatus(plan, n) : 'none';
   const label = match ? planLabel(plan, n, match) : '';
+  const spoken = match ? planLabel(plan, n, match, true) : '';
   const frac = Math.max(0, n.hp / n.maxHp);
   const filled = Math.floor(n.meter / 2);
   const charged = n.meter >= 10;
@@ -278,7 +279,7 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
       className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''}`}
       onClick={() => selectNinja(n.id)}
       aria-pressed={isActive}
-      aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, label)}
+      aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, spoken)}
     >
       <span ref={inner} className="np-inner">
         {order ? (
@@ -314,18 +315,17 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
           </div>
           <span>{ES.deck(n.deck.length)}</span>
         </div>
+        {/* Los estados van arriba, bajo el número de orden: el resumen del plan ocupa todo el pie. */}
+        <span className="np-status">
+          {n.shield ? <img src={art.icon('shield')} alt={HUD.shield} title={HUD.shieldTitle} /> : null}
+          {n.boost ? <img src={art.icon('boost')} alt={HUD.boost} title={HUD.boostTitle} /> : null}
+        </span>
         <div className="np-foot">
           {planning || status === 'ko' ? (
             <span key={label} className={`plan-pill ${status === 'ko' ? 'ko' : status === 'none' ? '' : 'set'}`}>
               {label}
             </span>
-          ) : (
-            <span />
-          )}
-          <span className="np-status">
-            {n.shield ? <img src={art.icon('shield')} alt={HUD.shield} title={HUD.shieldTitle} /> : null}
-            {n.boost ? <img src={art.icon('boost')} alt={HUD.boost} title={HUD.boostTitle} /> : null}
-          </span>
+          ) : null}
         </div>
       </span>
     </button>

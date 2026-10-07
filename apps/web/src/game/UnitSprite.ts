@@ -56,6 +56,8 @@ export class UnitSprite {
   hp: number;
   maxHp: number;
   private shownHp: number;
+  /** Ayuda de daño (D-78): la vida que perdería con lo planeado. La barra la muestra aparte. */
+  private loss = 0;
   ko = false;
   stunned = false;
   /** Está reviviendo a un aliado: su reposo es la pose de reanimar (R-09). */
@@ -209,10 +211,31 @@ export class UnitSprite {
     g.fillRoundedRect(x, y, w, h, 2.5);
     if (frac > 0) {
       const color = frac <= 0.3 ? hex(PALETTE.danger) : this.barColor;
-      g.fillStyle(color, 1);
-      g.fillRoundedRect(x, y, Math.max(4, w * frac), h, 2.5);
+      const full = Math.max(4, w * frac);
+      const left = this.loss > 0 ? w * Math.max(0, (this.shownHp - this.loss) / this.maxHp) : full;
+      if (left < full) {
+        // Lo que se perdería va en oro, al final de la barra, con una raya de tinta donde empieza.
+        g.fillStyle(hex(PALETTE.gold), 1);
+        g.fillRoundedRect(x, y, full, h, 2.5);
+        if (left > 0) {
+          g.fillStyle(color, 1);
+          g.fillRoundedRect(x, y, left, h, { tl: 2.5, bl: 2.5, tr: 0, br: 0 });
+          g.fillStyle(INK, 1);
+          g.fillRect(x + left - 0.75, y, 1.5, h);
+        }
+      } else {
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(x, y, full, h, 2.5);
+      }
     }
     this.hpText.setText(`${Math.round(this.hp)}`);
+  }
+
+  /** La vida que perdería con lo planeado (ayuda de daño, D-78). Con 0, la barra queda como siempre. */
+  setLoss(loss: number): void {
+    if (loss === this.loss) return;
+    this.loss = loss;
+    this.drawBar();
   }
 
   setHp(hp: number, animateMs = 420): void {

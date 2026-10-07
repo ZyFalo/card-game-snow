@@ -96,8 +96,11 @@ const planning = (page: Page) =>
  * Escarcha abajo) y tres gólems delante: Carámbano en (5,1), Témpano en (4,2) y Granizo en (5,3). Sin
  * reloj, para que el turno no se confirme solo a mitad de la prueba.
  */
-async function startPrepared(page: Page, hand: number[] = []) {
-  await page.addInitScript(() => window.localStorage.setItem('ventisca:settings:v1', '{"pace":"relaxed"}'));
+async function startPrepared(page: Page, hand: number[] = [], settings: Record<string, boolean> = {}) {
+  await page.addInitScript(
+    (saved) => window.localStorage.setItem('ventisca:settings:v1', saved),
+    JSON.stringify({ pace: 'relaxed', ...settings }),
+  );
   await startMatch(page);
   await page.evaluate((hand) => {
     type Unit = { id: string; pos: { x: number; y: number }; hp: number; maxHp: number };
@@ -497,4 +500,129 @@ test('con el ratón sobre un gólem, la franja dice su nombre y cómo ataca', as
   await expect(tip).toHaveText('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
   await page.mouse.move(640, 60);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
+});
+
+type LossWindow = { __ventiscaScene: { units: Map<string, { loss: number }> } };
+/** La vida que la barra de un gólem dice que perdería (ayuda de daño). */
+const lossOf = (page: Page, id: string) =>
+  page.evaluate((id) => (window as unknown as LossWindow).__ventiscaScene.units.get(id)?.loss ?? null, id);
+
+test('D-78: sin la ayuda, la barra de un gólem no dice cuánto perdería', async ({ page }) => {
+  await startPrepared(page);
+  await click(page, 3, 1);
+  await click(page, 4, 2);
+  expect((await planning(page)).plans).toMatchObject({ fire: { action: { type: 'attack', targetId: 'e2' } } });
+  expect(await lossOf(page, 'e2')).toBe(0);
+});
+
+test('D-78: con "Ver el daño antes de confirmar", la barra muestra lo planeado y lo que se apunta', async ({
+  page,
+}) => {
+  await startPrepared(page, [], { aidDamage: true });
+  // Brasa se mueve junto a Témpano. Al apuntarle, su barra muestra los 8 de su ataque.
+  await click(page, 3, 1);
+  expect(await lossOf(page, 'e2')).toBe(0);
+  await page.mouse.move(tile(4, 2).x, tile(4, 2).y);
+  await expect.poll(() => lossOf(page, 'e2')).toBe(8);
+  await page.mouse.move(640, 60);
+  await expect.poll(() => lossOf(page, 'e2')).toBe(0);
+  // Elegido, queda en la barra aunque el ratón se vaya.
+  await click(page, 4, 2);
+  await page.mouse.move(640, 60);
+  await expect.poll(() => lossOf(page, 'e2')).toBe(8);
+  expect(await lossOf(page, 'e1')).toBe(0);
+});
+
+interface Mini {
+  key: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  depth: number;
+}
+type MiniWindow = {
+  __ventiscaScene: {
+    children: {
+      list: {
+        type: string;
+        visible: boolean;
+        x: number;
+        y: number;
+        displayWidth: number;
+        displayHeight: number;
+        depth: number;
+        texture?: { key: string };
+      }[];
+    };
+  };
+};
+/** Las miniaturas de las cartas colocadas que dibuja la escena, de izquierda a derecha. */
+const minis = (page: Page): Promise<Mini[]> =>
+  page.evaluate(() =>
+    (window as unknown as MiniWindow).__ventiscaScene.children.list
+      .filter((o) => o.type === 'Image' && o.visible && (o.texture?.key ?? '').startsWith('placed-'))
+      .map((o) => ({
+        key: o.texture?.key ?? '',
+        x: o.x,
+        y: o.y,
+        w: o.displayWidth,
+        h: o.displayHeight,
+        depth: o.depth,
+      }))
+      .sort((a, b) => a.x - b.x),
+  );
+
+test('las cartas colocadas dejan su miniatura: cada elemento en su lugar, sin taparse ni moverse', async ({ page }) => {
+  await startPrepared(page);
+  // Los tres ninjas con una carta en la mano, y las van colocando en la misma casilla, que está vacía.
+  const place = (who: string[]) =>
+    page.evaluate((who) => {
+      type Ninja = { id: string; hand: unknown[] };
+      const store = (window as unknown as TestWindow).__ventisca as unknown as {
+        getState(): { match: { ninjas: Ninja[] } };
+        setState(patch: object): void;
+      };
+      const m = structuredClone(store.getState().match);
+      for (const n of m.ninjas) n.hand = [{ id: `${n.id}-1`, element: n.id, value: 10 }];
+      const plans = Object.fromEntries(
+        who.map((id) => [id, { ninjaId: id, action: { type: 'card', cardId: `${id}-1`, at: { x: 2, y: 2 } } }]),
+      );
+      store.setState({ match: m, view: m, plans, active: 'fire', pendingCard: null });
+    }, who);
+  await page.mouse.move(640, 60);
+
+  await place(['water']);
+  const one = await minis(page);
+  expect(one.map((m) => m.key)).toEqual(['placed-water']);
+
+  await place(['water', 'snow']);
+  const two = await minis(page);
+  expect(two.map((m) => m.key)).toEqual(['placed-water', 'placed-snow']);
+
+  await place(['snow', 'fire', 'water']);
+  const three = await minis(page);
+  // Fuego a la izquierda, Agua al centro y Nieve a la derecha, lado a lado y sin taparse.
+  expect(three.map((m) => m.key)).toEqual(['placed-fire', 'placed-water', 'placed-snow']);
+  const [fire, water, snow] = three as [Mini, Mini, Mini];
+  expect(fire.x + fire.w).toBeLessThanOrEqual(water.x);
+  expect(water.x + water.w).toBeLessThanOrEqual(snow.x);
+  expect(new Set(three.map((m) => m.y)).size).toBe(1);
+  // Ninguna se movió al sumarse otra.
+  expect(water).toMatchObject({ x: one[0]?.x, y: one[0]?.y });
+  expect(snow).toMatchObject({ x: two[1]?.x, y: two[1]?.y });
+  // Van en la franja de arriba de su casilla, que empieza en (390, 270) y mide 100×84.
+  for (const m of three) {
+    expect(m.x).toBeGreaterThanOrEqual(390);
+    expect(m.x + m.w).toBeLessThanOrEqual(490);
+    expect(m.y).toBeGreaterThanOrEqual(270);
+    expect(m.y + m.h).toBeLessThanOrEqual(270 + 42);
+  }
+
+  // En el suelo, bajo las unidades; con el ratón sobre su casilla pasan al frente.
+  expect(three.every((m) => m.depth < 0)).toBe(true);
+  await page.mouse.move(tile(2, 2).x, tile(2, 2).y);
+  await expect.poll(async () => (await minis(page)).every((m) => m.depth > 1000)).toBe(true);
+  await page.mouse.move(640, 60);
+  await expect.poll(async () => (await minis(page)).every((m) => m.depth < 0)).toBe(true);
 });

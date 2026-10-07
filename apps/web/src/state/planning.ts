@@ -170,7 +170,7 @@ export function planLabel(plan: Plan | undefined, ninja: Ninja, m: MatchState, s
   return spoken ? PLAN_TEXT.moveThenSpoken(action) : PLAN_TEXT.moveThen(action);
 }
 
-/** Casillas que un enemigo puede golpear el próximo turno (vista previa al pasar el cursor). */
+/** Casillas que un enemigo puede golpear el próximo turno: lo que pinta la ayuda de alcance (D-78). */
 export const threatTiles = (m: MatchState, e: Enemy): Vec[] => enemyThreatTiles(m, e);
 
 export const tileKey = key;

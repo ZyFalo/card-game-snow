@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { golemSvg } from '../art/golems';
 import { ninjaKoSvg, ninjaOutlineSvg, ninjaStandSvg } from '../art/ninjas';
 import { golemRig, ninjaRig } from '../art/rigs';
-import { FIGURE_SINK, FOOT_Y, TH, TW, UNIT_HUD, UNIT_SIZE } from './layout';
+import { FIGURE_SINK, FOOT_Y, MINI, miniRect, TH, TW, tileRect, UNIT_HUD, UNIT_SIZE } from './layout';
 
 /*
  * Lineamientos de diseño, sección "Tablero": cada unidad cabe en su casilla, con su barra de vida y sus
@@ -135,5 +135,64 @@ describe('Cada unidad cabe en su casilla', () => {
       );
     }
     expect(icon.step).toBeGreaterThanOrEqual(icon.size);
+  });
+});
+
+/*
+ * Lineamientos de diseño, sección "Tablero": cada carta colocada deja una miniatura en la franja de
+ * arriba de su casilla, y cada elemento tiene su lugar fijo.
+ */
+describe('Las miniaturas de las cartas colocadas', () => {
+  const tile = { x: 4, y: 2 };
+  const box = tileRect(tile);
+  /** La miniatura con su borde dorado, que es lo más que ocupa. */
+  const framed = (el: (typeof ELEMENTS)[number]) => {
+    const r = miniRect(tile, el);
+    return { left: r.x - MINI.ring, right: r.x + r.w + MINI.ring, top: r.y - MINI.ring, bottom: r.y + r.h + MINI.ring };
+  };
+
+  it('ninguna miniatura tapa a otra: las tres caben lado a lado, también con el borde dorado del combo', () => {
+    const [fire, water, snow] = ELEMENTS.map(framed);
+    if (!fire || !water || !snow) throw new Error('faltan elementos');
+    expect(fire.right).toBeLessThanOrEqual(water.left);
+    expect(water.right).toBeLessThanOrEqual(snow.left);
+    // Todas a la misma altura.
+    expect(new Set([fire.top, water.top, snow.top]).size).toBe(1);
+  });
+
+  it('cada elemento tiene su lugar fijo: Fuego a la izquierda, Agua al centro y Nieve a la derecha', () => {
+    const [fire, water, snow] = ELEMENTS.map((el) => miniRect(tile, el));
+    if (!fire || !water || !snow) throw new Error('faltan elementos');
+    expect(ELEMENTS).toEqual(['fire', 'water', 'snow']);
+    expect(fire.x).toBeLessThan(water.x);
+    expect(water.x).toBeLessThan(snow.x);
+    // La de Agua, centrada en la casilla; las otras dos, a la misma distancia de ella.
+    expect(water.x + water.w / 2).toBe(box.x + TW / 2);
+    expect(water.x - fire.x).toBe(snow.x - water.x);
+  });
+
+  it('el lugar depende solo de la casilla y del elemento: no se mueve al sumarse otra carta', () => {
+    for (const el of ELEMENTS) {
+      const here = miniRect(tile, el);
+      const there = miniRect({ x: tile.x + 2, y: tile.y + 1 }, el);
+      expect(there.x - here.x).toBe(2 * TW);
+      expect(there.y - here.y).toBe(TH);
+    }
+  });
+
+  it('van en la franja de arriba de la casilla, dentro de su papel', () => {
+    for (const el of ELEMENTS) {
+      const r = framed(el);
+      expect(r.left - box.x).toBeGreaterThanOrEqual(INSET);
+      expect(box.x + TW - r.right).toBeGreaterThanOrEqual(INSET);
+      expect(r.top - box.y).toBeGreaterThanOrEqual(0);
+      // No pasan de la mitad de la casilla: abajo van los pies de la unidad y su barra de vida.
+      expect(r.bottom - box.y).toBeLessThanOrEqual(TH / 2);
+    }
+  });
+
+  it('el valor de la carta respeta el tamaño mínimo de texto de los lineamientos', () => {
+    expect(MINI.value).toBeGreaterThanOrEqual(13);
+    expect(MINI.band).toBeGreaterThanOrEqual(MINI.value - 1);
   });
 });

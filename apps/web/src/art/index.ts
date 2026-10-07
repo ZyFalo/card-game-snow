@@ -19,6 +19,7 @@ import {
   miniCardSvg,
   paperStarSvg,
   phoenixSvg,
+  placedCardSvg,
   ringSvg,
   waveSvg,
 } from './effects';
@@ -38,6 +39,7 @@ export function artEntries(): { key: string; svg: string }[] {
       { key: `ninja-${el}-outline`, svg: ninjaOutlineSvg(el) },
       { key: `ninja-${el}-ko`, svg: ninjaKoSvg(el) },
       { key: `card-${el}`, svg: miniCardSvg(el) },
+      { key: `placed-${el}`, svg: placedCardSvg(el) },
     ]),
     ...ENEMY_KINDS.map((k) => ({ key: `enemy-${k}`, svg: golemSvg(k) })),
     ...MAPS.map((m) => ({ key: `bg-${m}`, svg: backgroundSvg(m) })),

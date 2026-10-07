@@ -160,7 +160,7 @@ export const TIPS: readonly string[] = [
   'Revivir ocupa tu acción: el ninja se levanta al final del turno, con 1 de vida. Protege a quien lo revive.',
   'El medidor sube al moverte, al actuar y al recibir golpes. Llénalo para ganar cartas.',
   'Las acciones se resuelven en orden: primero Fuego, luego Agua y al final Nieve.',
-  'Pasa el cursor sobre un gólem para ver hasta dónde puede atacar el próximo turno.',
+  'Pasa el cursor sobre un gólem para ver su nombre y cómo ataca.',
   'Una carta de Fuego aturde: el gólem pierde su próximo turno.',
   'Escarcha puede revivir con su carta a quien esté dentro del área.',
 ];

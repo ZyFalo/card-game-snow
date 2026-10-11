@@ -37,6 +37,18 @@ export async function startMatch(page: Page, speed = 0.3) {
 }
 
 /**
+ * Pide una jugada sugerida para cada ninja: S para el activo y Tab para pasar al siguiente, porque el foco
+ * no salta solo (D-79).
+ */
+export async function suggestAll(page: Page) {
+  await page.keyboard.press('s');
+  for (let i = 0; i < 2; i++) {
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('s');
+  }
+}
+
+/**
  * Lineamientos de diseño, sección 8: los elementos visibles de la pantalla cuyo contenido es más ancho
  * que su caja y que no se pueden desplazar, es decir, texto cortado o que se sale. También los que
  * recortan lo que no les cabe a lo alto, como una carta con un nombre de dos líneas. Devuelve una

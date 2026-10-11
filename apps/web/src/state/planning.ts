@@ -221,8 +221,8 @@ export function contextualTip(s: TipState): string | null {
     // Ya eligió casilla: le falta qué hacer, si desde ahí tiene con qué.
     if (canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
   }
-  // Este ninja ya no tiene nada por decidir, aunque siga activo: el foco no salta tras moverse. Quiénes
-  // faltan, o todo listo.
+  // Este ninja ya no tiene nada por decidir, aunque siga activo: el foco no salta solo (D-79). Cómo
+  // pasar al siguiente y quiénes faltan, o todo listo.
   const pending = ELEMENTS.filter((id) => id !== info.ninja.id && hasPending(m, s.plans, id));
   if (pending.length > 0) {
     return TIP_TEXT.pending(pending.map((id) => NINJA_TEXT[id].name));

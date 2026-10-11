@@ -283,8 +283,9 @@ export function cycleNinja(dir: 1 | -1): void {
 }
 
 /**
- * El ninja activo eligió su acción. Con "Pasar al siguiente ninja", le toca al siguiente que tenga algo por
- * decidir. Tras moverse no: puede cambiar de casilla con otro clic, y se pasa de ninja con Tab.
+ * El ninja activo eligió su acción. Con "Pasar al siguiente ninja", que viene apagado (D-79), le toca al
+ * siguiente que tenga algo por decidir. Sin esa ayuda el foco se queda: quien juega pasa al siguiente con
+ * un clic en él o con Tab. Tras moverse nunca salta: puede cambiar de casilla con otro clic.
  */
 function afterStep(): void {
   const st = store.getState();

@@ -121,7 +121,24 @@ describe('Revivir en la planificación (R-09)', () => {
     // salta tras moverse, pero ya no le queda nada por decidir.
     const m = match();
     expect(contextualTip(planning({ match: m, plans: { fire: step(m) } }))).toBe(
-      'Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.',
+      'Pasa al siguiente ninja con un clic en él o con Tab. Falta planear a Marea y Escarcha.',
+    );
+  });
+
+  it('D-79: cuando el ninja activo ya eligió su acción, la franja dice cómo pasar al siguiente', () => {
+    // El foco no salta solo: Brasa sigue activa con su acción elegida, y faltan Marea y Escarcha.
+    const m = match();
+    const acted: Plan = { ninjaId: 'fire', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    const tip = contextualTip(planning({ match: m, plans: { fire: acted } }));
+    expect(tip).toBe('Pasa al siguiente ninja con un clic en él o con Tab. Falta planear a Marea y Escarcha.');
+    // Si solo falta uno, lo nombra a él; y con los tres planeados, pide confirmar.
+    const water: Plan = { ninjaId: 'water', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    expect(contextualTip(planning({ match: m, plans: { fire: acted, water } }))).toBe(
+      'Pasa al siguiente ninja con un clic en él o con Tab. Falta planear a Escarcha.',
+    );
+    const snow: Plan = { ninjaId: 'snow', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    expect(contextualTip(planning({ match: m, plans: { fire: acted, water, snow } }))).toBe(
+      'Todo listo. Confirma el turno con Espacio.',
     );
   });
 

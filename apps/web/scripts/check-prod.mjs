@@ -155,7 +155,11 @@ await check('Un turno jugado en Chromium, sin errores ni peticiones a otros domi
         else if (gone) w.__turnDone = true;
       }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
     });
-    for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+    // Una jugada sugerida para cada ninja. El foco no salta solo (D-79): se pasa con un clic en su panel.
+    for (const panel of await page.locator('[data-ninja-panel]').all()) {
+      await panel.click();
+      await page.keyboard.press('s');
+    }
     await page.keyboard.press('Space');
     await page.waitForFunction(() => /** @type {any} */ (window).__turnDone === true, null, { timeout: 60_000 });
     await page.evaluate(() => document.fonts.ready);

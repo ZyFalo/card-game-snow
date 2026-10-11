@@ -97,9 +97,10 @@ const planning = (page: Page) =>
  * reloj, para que el turno no se confirme solo a mitad de la prueba.
  */
 async function startPrepared(page: Page, hand: number[] = [], settings: Record<string, boolean> = {}) {
+  // Los ajustes van con la marca de ya migrados (D-79): valen tal como se piden.
   await page.addInitScript(
     (saved) => window.localStorage.setItem('ventisca:settings:v1', saved),
-    JSON.stringify({ pace: 'relaxed', ...settings }),
+    JSON.stringify({ pace: 'relaxed', ...settings, version: 2 }),
   );
   await startMatch(page);
   await page.evaluate((hand) => {
@@ -153,9 +154,9 @@ const fireNextToGolems = (page: Page) =>
     w.__ventiscaScene.setupMatch(m);
   });
 
-test('al planificar valen a la vez las casillas y los objetivos, y el foco pasa al elegir la acción', async ({
-  page,
-}) => {
+const NEXT_TIP = (names: string) => `Pasa al siguiente ninja con un clic en él o con Tab. Falta planear a ${names}.`;
+
+test('al planificar valen a la vez las casillas y los objetivos, y el foco no salta solo', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await startPrepared(page);
@@ -193,14 +194,20 @@ test('al planificar valen a la vez las casillas y los objetivos, y el foco pasa 
   await click(page, 8, 4);
   await expect(toast).toHaveText('Brasa no llega hasta ahí este turno.');
 
-  // Vuelve junto a los gólems y elige uno: queda elegido y le toca al siguiente ninja.
+  // Vuelve junto a los gólems y elige uno: queda elegido, y el foco sigue en Brasa (D-79). La franja dice
+  // cómo pasar al siguiente. Con el ratón sobre un gólem habla de él: se aparta para leerla.
   await click(page, 3, 1);
   await click(page, 4, 2);
   expect(await planning(page)).toMatchObject({
-    active: 'water',
+    active: 'fire',
     plans: { fire: { moveTo: { x: 3, y: 1 }, action: { type: 'attack', targetId: 'e2' } } },
   });
-  // Con el ratón sobre un gólem, la franja de arriba habla de él: se aparta para leer el consejo.
+  await page.mouse.move(640, 60);
+  await expect(tip).toHaveText(NEXT_TIP('Marea y Escarcha'));
+
+  // Con un clic en el ninja: Marea, en su casilla.
+  await click(page, 1, 2);
+  expect(await planning(page)).toMatchObject({ active: 'water' });
   await page.mouse.move(640, 60);
   await expect(tip).toHaveText(PLAN_TIP('Marea'));
 
@@ -211,15 +218,32 @@ test('al planificar valen a la vez las casillas y los objetivos, y el foco pasa 
     pendingCard: null,
     plans: { fire: { ninjaId: 'fire', moveTo: { x: 3, y: 1 }, action: { type: 'attack', targetId: 'e2' } } },
   });
-  // Marea se mueve a donde no alcanza a nadie, y no tiene cartas. El foco no salta: puede elegir otra
-  // casilla. La franja dice cómo seguir, y Tab pasa a Escarcha.
+  // Marea se mueve a donde no alcanza a nadie, y no tiene cartas: ya no le queda nada por decidir.
   await click(page, 2, 2);
   expect(await planning(page)).toMatchObject({ active: 'water', plans: { water: { moveTo: { x: 2, y: 2 } } } });
   await page.mouse.move(640, 60);
-  await expect(tip).toHaveText('Tab pasa al siguiente ninja. Falta planear a Escarcha.');
+  await expect(tip).toHaveText(NEXT_TIP('Escarcha'));
+  // Con Tab: Escarcha. Y con un clic en su panel se vuelve a Brasa.
   await page.keyboard.press('Tab');
   expect(await planning(page)).toMatchObject({ active: 'snow' });
+  await page.locator('[data-ninja-panel="fire"]').click();
+  expect(await planning(page)).toMatchObject({ active: 'fire' });
   expect(errors).toEqual([]);
+});
+
+test('D-79: con "Pasar al siguiente ninja" encendido, el foco pasa solo al elegir la acción', async ({ page }) => {
+  await startPrepared(page, [], { autoAdvance: true });
+  // Tras moverse no salta: Brasa puede cambiar de casilla.
+  await click(page, 3, 1);
+  expect(await planning(page)).toMatchObject({ active: 'fire' });
+  // Al elegir a Témpano, le toca a Marea.
+  await click(page, 4, 2);
+  expect(await planning(page)).toMatchObject({
+    active: 'water',
+    plans: { fire: { moveTo: { x: 3, y: 1 }, action: { type: 'attack', targetId: 'e2' } } },
+  });
+  await page.mouse.move(640, 60);
+  await expect(page.locator('.tip-text')).toHaveText(PLAN_TIP('Marea'));
 });
 
 test('un objetivo a su alcance se elige sin moverse, y si después se aleja, se quita con un aviso', async ({
@@ -228,16 +252,15 @@ test('un objetivo a su alcance se elige sin moverse, y si después se aleja, se 
   await startPrepared(page);
   await fireNextToGolems(page);
 
-  // Un clic en Témpano: Brasa lo ataca desde donde está, y le toca a Marea.
+  // Un clic en Témpano: Brasa lo ataca desde donde está, y sigue activa.
   await click(page, 4, 2);
   expect(await planning(page)).toEqual({
-    active: 'water',
+    active: 'fire',
     pendingCard: null,
     plans: { fire: { ninjaId: 'fire', action: { type: 'attack', targetId: 'e2' } } },
   });
 
-  // Se vuelve a Brasa y se la mueve a donde Témpano ya no queda a su alcance.
-  await page.locator('[data-ninja-panel="fire"]').click();
+  // Si después se mueve a donde Témpano ya no queda a su alcance, el objetivo se quita.
   await click(page, 2, 1);
   await expect(page.locator('.toast')).toHaveText('La acción anterior ya no alcanza desde aquí: elige otra.');
   expect(await planning(page)).toMatchObject({
@@ -251,8 +274,7 @@ test('deshacer va hacia atrás, de a una cosa, y sin nada que deshacer Esc abre 
   await startPrepared(page);
   await click(page, 3, 1);
   await click(page, 4, 2);
-  // Brasa ya tiene su plan y el turno pasó a Marea: se vuelve a Brasa.
-  await page.locator('[data-ninja-panel="fire"]').click();
+  // Brasa ya tiene su plan, y sigue activa.
   expect(await planning(page)).toMatchObject({ active: 'fire' });
 
   // Primero se va la acción; después, la casilla.
@@ -296,11 +318,11 @@ test('elegir una carta cambia el tablero al modo carta, antes o después de move
   await page.keyboard.press('Escape');
   expect(await planning(page)).toMatchObject({ pendingCard: null, plans: { fire: { moveTo: { x: 2, y: 1 } } } });
 
-  // A su alcance: la carta queda colocada y el turno pasa al siguiente ninja.
+  // A su alcance: la carta queda colocada, y el tablero sale del modo carta.
   await page.keyboard.press('1');
   await click(page, 4, 1);
   expect(await planning(page)).toMatchObject({
-    active: 'water',
+    active: 'fire',
     pendingCard: null,
     plans: { fire: { moveTo: { x: 2, y: 1 }, action: { type: 'card', cardId: 'fire-1', at: { x: 4, y: 1 } } } },
   });
@@ -480,8 +502,7 @@ test('el panel de cada ninja resume su plan sin números, y el resumen más larg
   // Los estados van arriba: no comparten renglón con el resumen.
   expect((status?.y ?? 0) + (status?.height ?? 0)).toBeLessThanOrEqual(box?.y ?? 0);
 
-  // Una carta no dice su valor: el resumen no lleva números.
-  await panel.click();
+  // Una carta no dice su valor: el resumen no lleva números. Brasa sigue activa: se le quita el ataque.
   await page.keyboard.press('Escape');
   await page.keyboard.press('1');
   await click(page, 4, 1);
@@ -535,6 +556,54 @@ test('D-78: las ayudas de daño y de alcance están en "Tu equipo", apagadas, y 
   await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: 'Ver el daño antes de confirmar' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Ver el alcance de los enemigos' })).toBeChecked();
+});
+
+/** Los ajustes tal como quedaron guardados en el navegador. */
+const savedSettings = (page: Page) =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('ventisca:settings:v1') ?? 'null') as Record<string, unknown>);
+
+test('D-79: "Pasar al siguiente ninja" viene apagado en "Tu equipo"', async ({ page }) => {
+  await page.goto('/?speed=0.3');
+  await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Pasar al siguiente ninja' })).not.toBeChecked();
+  // Como las demás opciones que vienen apagadas. "Consejos en pantalla" sigue encendida.
+  await expect(page.getByRole('checkbox', { name: 'Animaciones rápidas' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Consejos en pantalla' })).toBeChecked();
+  // Sin haber tocado nada, no hay nada guardado.
+  expect(await savedSettings(page)).toBeNull();
+});
+
+test('D-79: en unos ajustes ya guardados, la opción se apaga una sola vez; después, cada persona decide', async ({
+  page,
+}) => {
+  // Un navegador que guardó sus ajustes antes del cambio, con la opción encendida. Se siembra una sola
+  // vez: al recargar vale lo que haya dejado el juego.
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('sembrado')) return;
+    sessionStorage.setItem('sembrado', 'sí');
+    localStorage.setItem('ventisca:settings:v1', JSON.stringify({ pace: 'expert', autoAdvance: true }));
+  });
+  const team = async () => {
+    await page.getByRole('button', { name: 'Jugar sin cuenta', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Tu equipo' })).toBeVisible();
+  };
+  const option = page.getByRole('checkbox', { name: 'Pasar al siguiente ninja' });
+
+  await page.goto('/?speed=0.3');
+  await team();
+  // La migración la apagó, y conservó lo demás: el ritmo sigue en Experto.
+  await expect(option).not.toBeChecked();
+  await expect(page.getByRole('button', { name: /^Experto/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(await savedSettings(page)).toMatchObject({ pace: 'expert', autoAdvance: false, version: 2 });
+
+  // Quien la quiere, la enciende, y así se queda al volver a abrir el juego.
+  await option.check({ force: true });
+  expect(await savedSettings(page)).toMatchObject({ autoAdvance: true, version: 2 });
+  await page.reload();
+  await team();
+  await expect(option).toBeChecked();
+  expect(await savedSettings(page)).toMatchObject({ pace: 'expert', autoAdvance: true, version: 2 });
 });
 
 type LossWindow = { __ventiscaScene: { units: Map<string, { loss: number }> } };

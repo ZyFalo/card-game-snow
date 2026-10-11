@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { phase, startMatch, type TestWindow } from './helpers';
+import { phase, startMatch, suggestAll, type TestWindow } from './helpers';
 
 /* Casilla del tablero -> coordenadas de página con el escenario a 1280×720 (escala 1). */
 const tile = (x: number, y: number) => ({ x: 240 + 100 * x, y: 144 + 84 * y });
@@ -26,7 +26,7 @@ test('menú, planificación y un turno completo sin errores', async ({ page }) =
 
   // Deshacer con clic derecho y completar el plan con sugerencias.
   await page.mouse.click(640, 300, { button: 'right' });
-  for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+  await suggestAll(page);
   await page.keyboard.press('Space');
   await expect.poll(() => phase(page)).toBe('resolving');
   await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('planning');
@@ -57,7 +57,7 @@ test('una partida completa con sugerencias llega a resultados @lento', async ({ 
       )
       .toMatch(/planning|results/);
     if ((await page.getByRole('heading', { name: /Victoria|Derrota/ }).count()) > 0) break;
-    for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+    await suggestAll(page);
     await page.keyboard.press('Space');
   }
   await expect(page.getByRole('heading', { name: /Victoria|Derrota/ })).toBeVisible();

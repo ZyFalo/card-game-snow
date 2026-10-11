@@ -195,7 +195,7 @@ Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y sus objet
 - **Un objetivo se elige sin moverse.** Un clic en un gólem a su alcance lo ataca desde donde está: no hace falta decir antes que se queda.
 - **Al moverse, los objetivos se recalculan** desde la casilla nueva. Si el que ya había elegido queda fuera de alcance, se quita y un aviso lo dice.
 - **Las casillas no se apagan después de moverse:** siguen a la vista, más tenues, y quien juega cambia de destino con otro clic, sin volver atrás.
-- **Pasa solo al siguiente ninja al elegir la acción:** el objetivo o la casilla de la carta. Tras moverse el foco no salta, aunque desde ahí no alcance a nadie; se pasa con Tab. Se apaga con "Pasar al siguiente ninja".
+- **El foco no salta solo** (D-79). Quien juega pasa al siguiente ninja con un clic en él, en el tablero o en su panel, o con Tab; cuando el ninja activo ya no tiene nada por decidir, la franja de arriba se lo dice. Con la ayuda "Pasar al siguiente ninja", que viene apagada, el foco pasa solo al elegir la acción: el objetivo o la casilla de la carta. Tras moverse nunca salta, aunque desde ahí no alcance a nadie.
 - **Deshacer va hacia atrás, de a una cosa:** la carta en la mano, la acción, la casilla.
 - **La forma dice qué acción es:** atacar es una mira o un anillo, curar es una cruz y revivir es una flecha. **El color dice quién actúa:** el anillo de un ataque elegido lleva un arco del color de cada ninja que lo eligió. Nada depende solo del color.
 

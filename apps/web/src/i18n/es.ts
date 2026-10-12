@@ -267,6 +267,37 @@ export const MOMENT_TIP = {
   dismissTitle: 'Entendido (Enter)',
 } as const;
 
+/**
+ * Demostraciones (D-81): qué hace una carta, en un tablero en miniatura que se abre con el ▶ que va junto
+ * al título de la mano.
+ */
+export const DEMO_TEXT = {
+  /** El ▶ junto al título de la mano. */
+  open: (name: string) => `Ver qué hacen las cartas de ${name}`,
+  /** Con la mano vacía no hay valor que mostrar. */
+  cardTitle: (element: string, value: number | null) =>
+    value === null ? `Carta de ${element}` : `Carta de ${element} · ${value}`,
+  mode: 'Con o sin combo',
+  alone: 'Sin combo',
+  combo: 'Con combo',
+  /** Lo que suma la carta cuando otro ninja también juega la suya (R-18). */
+  comboCaption: (effect: string) => `Con combo, si otro ninja también juega carta este turno: ${effect}`,
+  comboEffect: {
+    fire: 'además los quema, 3 de daño por turno durante 3 turnos.',
+    water: 'da Potencia a todo el equipo, y el siguiente golpe o cura hace un 50 % más.',
+    snow: 'da Escudo a todo el equipo, que anula el siguiente golpe.',
+  } satisfies Record<ElementKind, string>,
+  /** Con animaciones reducidas: dos imágenes fijas. */
+  before: 'Antes',
+  after: 'Después',
+  /** Lo que se lee sobre cada unidad al terminar: "−9 · aturdido". */
+  stunned: 'aturdido',
+  burning: 'quema',
+  boost: 'Potencia',
+  shield: 'Escudo',
+  revived: 'revive',
+} as const;
+
 /** Progreso de la condición del bonus en la ficha de ronda (R-21). */
 export const BONUS_PROGRESS = {
   unlocked: 'Desbloqueado',

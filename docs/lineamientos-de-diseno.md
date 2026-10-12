@@ -355,6 +355,7 @@ Las de los gólems usan la misma burbuja:
 - **La burbuja** no lleva selector, y su título es "Carámbano, cómo ataca". La línea de texto lleva los números del motor.
 - **El tablero en miniatura** tiene el tamaño que pide cada ataque, siempre dentro de 368 px de ancho: 5×2 casillas para Carámbano, 4×3 para Granizo y 3×3 para Témpano. Las casillas golpeadas van teñidas todo el bucle, con el tinte del alcance de los gólems, y siempre hay un ninja fuera de ellas, que al final dice "a salvo".
 - **Con animaciones reducidas,** el tablero de Carámbano, ancho y bajo, va una vez sobre otra en vez de lado a lado, a su tamaño del bucle. Los otros dos van lado a lado.
+- **En la ayuda (`.help-demo`):** el mismo botón, debajo de la descripción de cada gólem. Abre la burbuja en el centro de la pantalla, sobre la ayuda, con el fondo oscurecido. Toma el foco y, al cerrarse, lo devuelve a su botón. Esc cierra primero la demostración y después la ayuda.
 
 `state/demos.ts` arma el tablero y le pide al motor que lo resuelva; `game/DemoScene.ts` es la escena del juego sin sonido ni conexión con la partida.
 

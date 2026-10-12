@@ -250,8 +250,8 @@ export const TIP_TEXT = {
 } as const;
 
 /**
- * Consejos en el momento (D-80): cada uno sale una sola vez, en una burbuja pegada a los paneles o a la
- * mano, y se cierra con "Entendido".
+ * Consejos en el momento (D-80): cada uno sale una sola vez, en una burbuja junto a la mano, y se cierra
+ * con "Entendido".
  */
 export const MOMENT_TIP = {
   /** La primera vez que un ninja completa su plan y a otro le falta el suyo. */
@@ -384,7 +384,7 @@ export const HELP = {
   /** Los consejos en el momento (D-80) salen una sola vez: desde aquí se vuelven a ver. */
   tipsTitle: 'Consejos',
   tipsIntro:
-    'Cada consejo sale una sola vez, la primera vez que hace falta, junto a los paneles o a la mano. Se cierra con «Entendido».',
+    'Cada consejo sale una sola vez, la primera vez que hace falta, junto a la mano. Se cierra con «Entendido».',
   tipsReset: 'Volver a ver los consejos',
   tipsResetDone: 'Listo: volverán a salir',
   tipsOff: 'Ahora están apagados: enciende «Consejos en pantalla» en la pausa o en «Tu equipo».',

@@ -10,8 +10,9 @@ import {
 } from './helpers';
 
 /*
- * Consejos en el momento (D-80): cuatro consejos, cada uno una sola vez, en una burbuja pegada a los
- * paneles o a la mano, nunca sobre el tablero. Se cierran con "Entendido".
+ * Consejos en el momento (D-80): cuatro consejos, cada uno una sola vez, en una burbuja que va siempre en
+ * el mismo lugar, junto a la mano, nunca sobre el tablero. Lo que señala lleva el borde dorado: el panel
+ * del ninja o la carta. Se cierran con "Entendido".
  */
 
 /* Casilla del tablero -> coordenadas de página con el escenario a 1280×720 (escala 1). */
@@ -48,23 +49,27 @@ const understood = (page: Page) => bubble(page).getByRole('button', { name: 'Ent
 const state = (page: Page): Promise<TestState> =>
   page.evaluate(() => (window as unknown as TestWindow).__ventisca.getState());
 
-/** La burbuja con su sombra y su punta, que sobresalen de su caja: unos 4 px y 9 px. */
+/** Lo que lleva el borde dorado: el panel de un ninja (su elemento) o una carta (su identificador). */
+const marked = (page: Page) =>
+  page
+    .locator('.tip-mark')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-ninja-panel') ?? el.getAttribute('data-card-id')));
+
 async function boxOf(el: Locator) {
   const box = await el.boundingBox();
-  if (!box) throw new Error('la burbuja no está a la vista');
+  if (!box) throw new Error('el elemento no está a la vista');
   return { left: box.x, top: box.y, right: box.x + box.width, bottom: box.y + box.height };
 }
 
-/** La burbuja no tapa el tablero, cabe en la pantalla y muestra su texto entero, a 13 px o más. */
+/** La burbuja, con su sombra de 4 px, no tapa el tablero, cabe en la pantalla y muestra su texto entero. */
 async function expectClearOfBoard(page: Page) {
   const b = await boxOf(bubble(page));
-  const apart = b.right + 4 <= FRAME.left || b.left - 9 >= FRAME.right || b.top >= FRAME.bottom;
+  const apart = b.right + 4 <= FRAME.left || b.left >= FRAME.right || b.top >= FRAME.bottom;
   expect(apart, `la burbuja (${JSON.stringify(b)}) pisa el tablero`).toBe(true);
   expect(b.left).toBeGreaterThanOrEqual(0);
   expect(b.top).toBeGreaterThanOrEqual(0);
   expect(b.right + 4).toBeLessThanOrEqual(1280);
-  expect(b.bottom + 9).toBeLessThanOrEqual(720);
-  // Se miden el texto y el botón: la caja de la burbuja cuenta también su punta, que sobresale a propósito.
+  expect(b.bottom + 4).toBeLessThanOrEqual(720);
   const sizes = await bubble(page).evaluate((node) => {
     const parts = [...node.querySelectorAll('*')] as HTMLElement[];
     return {
@@ -76,7 +81,26 @@ async function expectClearOfBoard(page: Page) {
   expect(sizes.smallest).toBeGreaterThanOrEqual(13);
 }
 
-test('D-80: cambiar de ninja sale sobre los paneles la primera vez que un ninja completa su plan', async ({ page }) => {
+/**
+ * La burbuja está en su lugar de siempre: la franja de abajo, a la derecha, dentro de la mano y a la
+ * derecha de lo que haya en ella (sus cartas o, vacía, su frase).
+ */
+async function expectBesideHand(page: Page) {
+  await expect(bubble(page)).toHaveClass(/at-hand/);
+  await expectClearOfBoard(page);
+  const b = await boxOf(bubble(page));
+  const hand = await boxOf(page.locator('.hand'));
+  expect(b.right + 4).toBeLessThanOrEqual(hand.right + 1);
+  expect(b.top).toBeGreaterThanOrEqual(hand.top);
+  expect(b.bottom).toBeLessThanOrEqual(hand.bottom);
+  // Pegada a la derecha de la mano, y sin tapar nada de lo que hay en ella.
+  expect(hand.right - b.right).toBeLessThanOrEqual(8);
+  for (const item of await page.locator('.hand .card, .hand .hand-empty').all()) {
+    expect((await boxOf(item)).right).toBeLessThanOrEqual(b.left);
+  }
+}
+
+test('D-80: cambiar de ninja sale junto a la mano la primera vez que un ninja completa su plan', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await startBoard(page, QUIET);
@@ -87,27 +111,29 @@ test('D-80: cambiar de ninja sale sobre los paneles la primera vez que un ninja 
   await click(page, 2, 1);
   await expect(text(page)).toHaveText(SWITCH('Brasa'));
   await expect(bubble(page)).toHaveAttribute('data-tip', 'switchNinja');
-  await expect(bubble(page)).toHaveClass(/at-panels/);
-  await expectClearOfBoard(page);
-  // Va pegada a la fila de paneles: justo encima del de Brasa, que es el de la izquierda.
-  const b = await boxOf(bubble(page));
-  const panel = await boxOf(page.locator('[data-ninja-panel="fire"]'));
-  expect(b.left).toBeGreaterThanOrEqual(panel.left - 1);
-  expect(b.right).toBeLessThanOrEqual(panel.right);
-  expect(panel.top - b.bottom).toBeGreaterThanOrEqual(0);
-  expect(panel.top - b.bottom).toBeLessThanOrEqual(20);
+  // En su lugar de siempre, también con la mano vacía: a la derecha de la frase de la mano.
+  await expect(page.locator('.hand .hand-empty')).toBeVisible();
+  await expectBesideHand(page);
+  // Habla de Brasa: lleva una franja de su color, y su panel, el borde dorado.
+  await expect(bubble(page)).toHaveClass(/el-fire/);
+  expect(await marked(page)).toEqual(['fire']);
 
   // No estorba: con la burbuja abierta se sigue jugando. Con Marea activa, que no tiene plan, se va.
   await page.keyboard.press('Tab');
   expect((await state(page)).active).toBe('water');
   await expect(bubble(page)).toHaveCount(0);
-  // Nadie la cerró: vuelve cuando Marea completa su plan, y la nombra a ella.
+  expect(await marked(page)).toEqual([]);
+  // Nadie la cerró: vuelve cuando Marea completa su plan. Está en el mismo lugar, y ahora señala a Marea.
   await click(page, 2, 2);
   await expect(text(page)).toHaveText(SWITCH('Marea'));
+  await expectBesideHand(page);
+  await expect(bubble(page)).toHaveClass(/el-water/);
+  expect(await marked(page)).toEqual(['water']);
 
   // "Entendido" la cierra, y queda aprendida con los ajustes.
   await understood(page).click();
   await expect(bubble(page)).toHaveCount(0);
+  expect(await marked(page)).toEqual([]);
   expect(await savedSettings(page)).toMatchObject({ learnedTips: ['switchNinja'], version: 2 });
   // No vuelve: Marea deshace su paso y lo da otra vez.
   await page.keyboard.press('Escape');
@@ -148,21 +174,16 @@ test('D-80: Enter cierra el consejo sin confirmar el turno', async ({ page }) =>
     .toBe(turn + 1);
 });
 
-test('D-80: la primera carta y el combo posible salen en la mano, al lado de las cartas', async ({ page }) => {
-  // Brasa y Marea tienen una carta cada uno.
-  await startBoard(page, withHands({ fire: [9], water: [11] }));
+test('D-80: la primera carta y el combo posible salen en el mismo lugar, y marcan la carta', async ({ page }) => {
+  // Brasa tiene dos cartas y Marea una.
+  await startBoard(page, withHands({ fire: [9, 12], water: [11] }));
   await expect(text(page)).toHaveText(FIRST_CARD);
   await expect(bubble(page)).toHaveAttribute('data-tip', 'firstCard');
-  await expect(bubble(page)).toHaveClass(/at-hand/);
-  await expectClearOfBoard(page);
-  // A la derecha de la carta, a su altura y dentro de la mano: no la tapa.
-  const hand = await boxOf(page.locator('.hand'));
-  const card = await boxOf(page.locator('.hand .card'));
-  const b = await boxOf(bubble(page));
-  expect(b.left - 9).toBeGreaterThanOrEqual(card.right);
-  expect(b.top).toBeGreaterThanOrEqual(card.top);
-  expect(b.bottom).toBeLessThanOrEqual(card.bottom);
-  expect(b.right + 4).toBeLessThanOrEqual(hand.right + 1);
+  // Junto a la mano, a la derecha de sus cartas, con la franja del color de Brasa.
+  await expectBesideHand(page);
+  await expect(bubble(page)).toHaveClass(/el-fire/);
+  // El borde dorado va en su primera carta, la de la tecla 1. Ningún panel lo lleva.
+  expect(await marked(page)).toEqual(['fire-1']);
   // La franja sigue con el estado del turno.
   await expect(page.locator('.tip-text')).toHaveText(PLAN_TIP('Brasa'));
 
@@ -171,46 +192,57 @@ test('D-80: la primera carta y el combo posible salen en la mano, al lado de las
   expect((await state(page)).pendingCard).toBe('fire-1');
   await page.keyboard.press('Escape');
 
-  // Al cerrarla sale la siguiente: dos ninjas tienen carta.
+  // Al cerrarla sale la siguiente: dos ninjas tienen carta. Marca las cartas de la mano que se ve.
   await understood(page).click();
   await expect(text(page)).toHaveText(COMBO);
   await expect(bubble(page)).toHaveAttribute('data-tip', 'combo');
-  await expect(bubble(page)).toHaveClass(/at-hand/);
-  await expectClearOfBoard(page);
+  await expectBesideHand(page);
+  expect(await marked(page)).toEqual(['fire-1', 'fire-2']);
   await understood(page).click();
   await expect(bubble(page)).toHaveCount(0);
+  expect(await marked(page)).toEqual([]);
   expect(await savedSettings(page)).toMatchObject({ learnedTips: ['firstCard', 'combo'] });
 });
 
-test('D-80: con tres cartas, la burbuja de la mano no cabe a su lado y va encima, sin tapar el tablero', async ({
-  page,
-}) => {
-  await startBoard(page, withHands({ fire: [9, 10, 12] }));
-  await expect(text(page)).toHaveText(FIRST_CARD);
-  await expect(bubble(page)).toHaveClass(/at-above-hand/);
-  await expectClearOfBoard(page);
-  const b = await boxOf(bubble(page));
-  const hand = await boxOf(page.locator('.hand'));
-  // Encima de la mano, en el margen derecho del tablero: no tapa ninguna carta.
-  expect(b.left).toBeGreaterThanOrEqual(FRAME.right);
-  expect(b.bottom).toBeLessThanOrEqual(hand.top);
-  expect(hand.top - b.bottom).toBeLessThanOrEqual(20);
-  // Con dos cartas todavía cabe al lado.
-  await page.evaluate(() => {
+/** Deja a Brasa con esas cartas en la mano, en la partida en curso. */
+const giveFire = (page: Page, values: number[]) =>
+  page.evaluate((values) => {
     type Ninja = { id: string; hand: unknown[] };
     const w = window as unknown as {
       __ventisca: { getState(): { match: { ninjas: Ninja[] } } };
       __ventiscaLoad(m: unknown): void;
     };
     const m = structuredClone(w.__ventisca.getState().match);
-    for (const n of m.ninjas) if (n.id === 'fire') n.hand = n.hand.slice(0, 2);
+    for (const n of m.ninjas) {
+      if (n.id === 'fire') n.hand = values.map((value, i) => ({ id: `fire-${i + 1}`, element: 'fire', value }));
+    }
     w.__ventiscaLoad(m);
-  });
-  await expect(bubble(page)).toHaveClass(/at-hand/);
-  await expectClearOfBoard(page);
-  const beside = await boxOf(bubble(page));
-  const last = await boxOf(page.locator('.hand .card').nth(1));
-  expect(beside.left - 9).toBeGreaterThanOrEqual(last.right);
+  }, values);
+
+test('D-80: con tres o cuatro cartas no queda espacio junto a la mano, y la burbuja sube encima de ella', async ({
+  page,
+}) => {
+  await startBoard(page, withHands({ fire: [9, 10, 11, 12] }));
+  for (const count of [4, 3]) {
+    await giveFire(page, [9, 10, 11, 12].slice(0, count));
+    await expect(page.locator('.hand .card')).toHaveCount(count);
+    await expect(text(page)).toHaveText(FIRST_CARD);
+    await expect(bubble(page)).toHaveClass(/at-above-hand/);
+    await expectClearOfBoard(page);
+    const b = await boxOf(bubble(page));
+    const hand = await boxOf(page.locator('.hand'));
+    // Encima de la mano, a su derecha, en el margen del tablero: no tapa ninguna carta ni el tablero.
+    expect(b.left).toBeGreaterThanOrEqual(FRAME.right);
+    expect(b.bottom).toBeLessThanOrEqual(hand.top);
+    expect(hand.top - b.bottom).toBeLessThanOrEqual(20);
+    expect(Math.abs(hand.right - b.right)).toBeLessThanOrEqual(8);
+    // Sigue marcando la primera carta.
+    expect(await marked(page)).toEqual(['fire-1']);
+  }
+  // Con dos cartas vuelve a su lugar, junto a la mano.
+  await giveFire(page, [9, 10]);
+  await expect(page.locator('.hand .card')).toHaveCount(2);
+  await expectBesideHand(page);
 });
 
 test('D-80 y R-09: la primera caída sale en su burbuja, y la franja sigue con el estado del turno', async ({
@@ -238,12 +270,16 @@ test('D-80 y R-09: la primera caída sale en su burbuja, y la franja sigue con e
   await page.mouse.move(640, 60);
   await expect(text(page)).toHaveText(FALL('Marea', 'Brasa'));
   await expect(bubble(page)).toHaveAttribute('data-tip', 'firstFall');
-  await expect(bubble(page)).toHaveClass(/at-panels/);
-  await expectClearOfBoard(page);
+  // En el mismo lugar que los demás, señalando a Brasa: la franja de su color y su panel con borde dorado.
+  await expectBesideHand(page);
+  await expect(bubble(page)).toHaveClass(/el-fire/);
+  expect(await marked(page)).toEqual(['fire']);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
-  // Con otro ninja activo, lo nombra a él.
+  // Con otro ninja activo, lo nombra y lo señala a él.
   await page.keyboard.press('Tab');
   await expect(text(page)).toHaveText(FALL('Marea', 'Escarcha'));
+  await expect(bubble(page)).toHaveClass(/el-snow/);
+  expect(await marked(page)).toEqual(['snow']);
 
   // Se cierra con "Entendido" y no vuelve, aunque Marea siga caída.
   await understood(page).click();

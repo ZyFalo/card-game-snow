@@ -1333,9 +1333,9 @@ button {
 /* ---------- Consejos en el momento (D-80) ---------- */
 
 /*
- * Una burbuja de papel pegada a los paneles o a la mano, nunca sobre el tablero. Entre el tablero y los
- * paneles no cabe, así que va a los lados: sobre la fila de paneles, en el margen izquierdo del tablero;
- * dentro de la mano, al lado de sus cartas; o sobre la mano, en el margen derecho.
+ * Una burbuja de papel, siempre en el mismo lugar: la franja de abajo, a la derecha, en el espacio libre
+ * junto a la mano. Nunca va sobre el tablero. A la izquierda lleva una franja del color del ninja del que
+ * habla, y lo que señala lleva el borde dorado (`.tip-mark`): el panel de ese ninja o sus cartas.
  */
 .bubble {
   position: absolute;
@@ -1343,11 +1343,24 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px 8px;
+  padding: 10px 12px 8px 22px;
   font: 500 14px / 1.35 var(--font-ui);
   color: var(--ink);
   text-align: left;
   animation: tipIn 0.28s ease backwards;
+}
+
+/* La franja de color, recortada como el resto del papel: la misma de los mensajes (`.notice`). */
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: var(--el);
+  border-right: var(--line) solid var(--ink);
+  border-radius: calc(var(--radius-panel) - var(--line)) 0 0 calc(var(--radius-panel) - var(--line));
 }
 
 .bubble p {
@@ -1358,70 +1371,43 @@ button {
   align-self: flex-end;
 }
 
-/* La punta: un triángulo de tinta y, encima, uno de papel que deja ver solo su borde. */
-.bubble::before,
-.bubble::after {
-  content: "";
-  position: absolute;
-  border: 9px solid transparent;
+/* Junto a la mano: pegada a la derecha, y tan ancha como deje el espacio libre que queda tras las cartas. */
+.bubble.at-hand {
+  right: 4px;
+  bottom: 12px;
+  width: min(290px, calc(100% - var(--cards) * 122px - 12px));
 }
 
-.bubble.at-panels,
-.bubble.at-above-hand {
-  width: 150px;
-}
-
-.bubble.at-panels {
-  left: 0;
-  bottom: calc(100% + 18px);
-}
-
+/* Con tres o cuatro cartas no queda espacio a su lado: encima de la mano, en el margen derecho del tablero. */
 .bubble.at-above-hand {
   right: 0;
   bottom: calc(100% + 14px);
+  width: 150px;
 }
 
-.bubble.at-panels::before,
-.bubble.at-panels::after,
-.bubble.at-above-hand::before,
-.bubble.at-above-hand::after {
-  left: 24px;
-  border-bottom-width: 0;
+/* Con la mano vacía, su frase deja lugar a la burbuja. */
+.hand.has-tip .hand-empty {
+  max-width: 190px;
 }
 
-.bubble.at-panels::before,
-.bubble.at-above-hand::before {
-  top: 100%;
-  border-top-color: var(--ink);
+/* El borde dorado de lo que señala el consejo: el aro de lo elegido, sin levantar la carta. */
+.card.tip-mark {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    3px 3px 0 var(--ink);
 }
 
-.bubble.at-panels::after,
-.bubble.at-above-hand::after {
-  top: calc(100% - 3px);
-  border-top-color: var(--paper-hi);
+.ninja-panel.tip-mark {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    7px 7px 0 var(--ink);
 }
 
-/* En la mano: a la derecha de la última carta, con la punta hacia ella. */
-.bubble.at-hand {
-  left: calc(var(--cards) * 122px + 4px);
-  bottom: 12px;
-  width: min(290px, calc(100% - var(--cards) * 122px - 8px));
-}
-
-.bubble.at-hand::before,
-.bubble.at-hand::after {
-  top: calc(50% - 9px);
-  border-left-width: 0;
-}
-
-.bubble.at-hand::before {
-  right: 100%;
-  border-right-color: var(--ink);
-}
-
-.bubble.at-hand::after {
-  right: calc(100% - 3px);
-  border-right-color: var(--paper-hi);
+.ninja-panel.active.tip-mark {
+  box-shadow:
+    0 0 0 2px var(--el),
+    0 0 0 5px var(--gold),
+    9px 9px 0 var(--el-lo);
 }
 
 .card {

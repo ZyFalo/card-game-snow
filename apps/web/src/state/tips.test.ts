@@ -4,8 +4,8 @@ import { DEFAULT_SETTINGS } from './persist';
 import { bubbleSlot, momentTip, TIP_IDS, type TipId } from './tips';
 
 /*
- * D-80: cuatro consejos en el momento, cada uno una sola vez, en una burbuja pegada a los paneles o a la
- * mano. Qué consejo sale, cuándo y dónde.
+ * D-80: cuatro consejos en el momento, cada uno una sola vez, en una burbuja que va siempre junto a la
+ * mano. Qué consejo sale, cuándo, de qué ninja habla y qué se marca con el borde dorado.
  */
 
 type Tips = Parameters<typeof momentTip>[0];
@@ -51,11 +51,16 @@ describe('Consejos en el momento (D-80)', () => {
     expect(momentTip(planning({ match: m, plans: { fire: step(m) } }))).toEqual({
       id: 'switchNinja',
       text: SWITCH,
-      anchor: 'panels',
+      ninja: 'fire',
+      mark: 'panel',
     });
-    // Nombra al ninja activo, que es el que ya terminó.
+    // Habla del ninja activo, que es el que ya terminó: lo nombra y marca su panel.
     const water = momentTip(planning({ match: m, plans: { water: step(m, 'water') }, active: 'water' }));
-    expect(water?.text).toBe('Marea ya tiene su plan. Elige otro ninja con un clic o con Tab.');
+    expect(water).toMatchObject({
+      text: 'Marea ya tiene su plan. Elige otro ninja con un clic o con Tab.',
+      ninja: 'water',
+      mark: 'panel',
+    });
     // Si el activo todavía tiene algo por decidir, no sale: aunque otro ya haya terminado.
     expect(momentTip(planning({ match: m, plans: { water: step(m, 'water') } }))).toBeNull();
   });
@@ -80,10 +85,12 @@ describe('Consejos en el momento (D-80)', () => {
     ninja(m, 'water').hand = [card('water')];
     // La mano que se ve es la del ninja activo: con Brasa activo todavía no hay carta que señalar.
     expect(momentTip(planning({ match: m }))).toBeNull();
+    // Marca su primera carta, la de la tecla 1.
     expect(momentTip(planning({ match: m, active: 'water' }))).toEqual({
       id: 'firstCard',
       text: FIRST_CARD,
-      anchor: 'hand',
+      ninja: 'water',
+      mark: 'card',
     });
   });
 
@@ -93,8 +100,14 @@ describe('Consejos en el momento (D-80)', () => {
     // Con una sola mano con cartas no hay combo que anunciar.
     expect(momentTip(planning({ match: m }, ['firstCard']))).toBeNull();
     ninja(m, 'snow').hand = [card('snow', 12)];
-    expect(momentTip(planning({ match: m }, ['firstCard']))).toEqual({ id: 'combo', text: COMBO, anchor: 'hand' });
-    // La burbuja va en la mano: con un ninja activo sin cartas, espera a que se active uno que las tenga.
+    // Marca las cartas de la mano que se ve: cualquiera sirve para el combo.
+    expect(momentTip(planning({ match: m }, ['firstCard']))).toEqual({
+      id: 'combo',
+      text: COMBO,
+      ninja: 'fire',
+      mark: 'hand',
+    });
+    // Habla de la mano que se ve: con un ninja activo sin cartas, espera a que se active uno que las tenga.
     expect(momentTip(planning({ match: m, active: 'water' }, ['firstCard']))).toBeNull();
     // Un caído no juega su carta (R-09).
     ninja(m, 'snow').hp = 0;
@@ -107,7 +120,9 @@ describe('Consejos en el momento (D-80)', () => {
     expect(momentTip(planning({ match: m, active: 'water' }))).toEqual({
       id: 'firstFall',
       text: 'Brasa cayó. Mueve a Marea junto a él para revivirlo. Se levanta al final del turno: protege a quien lo revive.',
-      anchor: 'panels',
+      // Señala a Marea, que es a quien hay que mover: su panel lleva el borde dorado.
+      ninja: 'water',
+      mark: 'panel',
     });
     // Con dos caídos, nombra al primero en el orden de los paneles.
     ninja(m, 'water').hp = 0;
@@ -154,16 +169,15 @@ describe('Consejos en el momento (D-80)', () => {
   });
 });
 
-describe('Dónde va la burbuja (D-80): pegada a los paneles o a la mano, nunca sobre el tablero', () => {
-  it('la de los paneles va sobre la fila de paneles', () => {
-    expect(bubbleSlot('panels', 0)).toBe('panels');
-    expect(bubbleSlot('panels', 4)).toBe('panels');
+describe('Dónde va la burbuja (D-80): siempre junto a la mano, nunca sobre el tablero', () => {
+  it('va en el espacio libre junto a la mano mientras lo haya: con la mano vacía, o con una o dos cartas', () => {
+    expect(bubbleSlot(0)).toBe('hand');
+    expect(bubbleSlot(1)).toBe('hand');
+    expect(bubbleSlot(2)).toBe('hand');
   });
 
-  it('la de la mano va al lado de las cartas mientras quepa, y si no, encima de la mano', () => {
-    expect(bubbleSlot('hand', 1)).toBe('hand');
-    expect(bubbleSlot('hand', 2)).toBe('hand');
-    expect(bubbleSlot('hand', 3)).toBe('above-hand');
-    expect(bubbleSlot('hand', 4)).toBe('above-hand');
+  it('con tres o cuatro cartas ya no queda espacio libre a su lado: sube encima de la mano', () => {
+    expect(bubbleSlot(3)).toBe('above-hand');
+    expect(bubbleSlot(4)).toBe('above-hand');
   });
 });

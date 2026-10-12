@@ -57,12 +57,13 @@ function useMomentTip(): MomentTip | null {
 }
 
 /**
- * La burbuja de un consejo en el momento (D-80): va pegada a los paneles o a la mano, nunca sobre el
- * tablero, y se cierra con "Entendido" o con Enter. `slot` dice dónde va y hacia dónde apunta su punta.
+ * La burbuja de un consejo en el momento (D-80): va siempre junto a la mano, nunca sobre el tablero, con
+ * una franja del color del ninja del que habla, y se cierra con "Entendido" o con Enter. Lo que señala
+ * lleva el borde dorado (`tip-mark`): el panel de ese ninja o sus cartas.
  */
 function TipBubble({ tip, slot }: { tip: MomentTip; slot: BubbleSlot }) {
   return (
-    <div className={`bubble paper interactive at-${slot}`} role="status" data-tip={tip.id}>
+    <div className={`bubble paper interactive el-${tip.ninja} at-${slot}`} role="status" data-tip={tip.id}>
       <p>{tip.text}</p>
       <button
         type="button"
@@ -248,7 +249,7 @@ function Toast() {
   );
 }
 
-function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
+function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined; marked: boolean }) {
   const plan = useApp((s) => s.plans[n.id]);
   const match = useApp((s) => s.match);
   const isActive = useApp((s) => s.active === n.id);
@@ -318,7 +319,7 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
     <button
       type="button"
       data-ninja-panel={n.id}
-      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''}`}
+      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''} ${marked ? 'tip-mark' : ''}`}
       onClick={() => selectNinja(n.id)}
       aria-pressed={isActive}
       aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, spoken)}
@@ -384,11 +385,10 @@ function NinjaPanels() {
   const order = match ? resolutionOrder(match, plansArray(plans)) : {};
   return (
     <div className="panels">
+      {/* El panel del ninja del que habla el consejo en pantalla lleva el borde dorado (D-80). */}
       {ninjas.map((n) => (
-        <NinjaPanel key={n.id} n={n} order={order[n.id]} />
+        <NinjaPanel key={n.id} n={n} order={order[n.id]} marked={tip?.mark === 'panel' && tip.ninja === n.id} />
       ))}
-      {/* Después de los paneles, para no mover su orden: la burbuja va sobre la fila, a la izquierda. */}
-      {tip?.anchor === 'panels' ? <TipBubble key={tip.id} tip={tip} slot="panels" /> : null}
     </div>
   );
 }
@@ -410,10 +410,13 @@ function Hand() {
   const plan = plans[shown];
   const placed = plan?.action?.type === 'card' ? plan.action.cardId : null;
   const usable = phase === 'planning' && ninja.hp > 0 && active === shown;
-  // La burbuja de la mano va al lado de las cartas, a partir de la última, o encima si no cabe.
+  // La burbuja de los consejos va siempre aquí: en el espacio libre junto a las cartas, o encima si no lo hay.
   const count = ninja.hand.length;
   return (
-    <div className={`hand interactive el-${shown}`} style={{ '--cards': count } as CSSProperties}>
+    <div
+      className={`hand interactive el-${shown} ${tip ? 'has-tip' : ''}`}
+      style={{ '--cards': count } as CSSProperties}
+    >
       <div className="hand-head">
         {ES.hand(NINJA_TEXT[shown].name)}
         <span>{HUD.handHint}</span>
@@ -423,12 +426,14 @@ function Hand() {
         {ninja.hand.length === 0 ? <p className="hand-empty">{HUD.handEmpty}</p> : null}
         {ninja.hand.map((card, i) => {
           const t = NINJA_TEXT[card.element];
+          // La carta de la que habla el consejo en pantalla: la primera, o todas las de la mano (D-80).
+          const marked = tip?.mark === 'hand' || (tip?.mark === 'card' && i === 0);
           return (
             <button
               key={card.id}
               type="button"
               data-card-id={card.id}
-              className={`card el-${card.element} ${pendingCard === card.id ? 'selected' : ''} ${placed === card.id ? 'placed' : ''} ${incoming.includes(card.id) ? 'incoming' : ''} ${arrived.includes(card.id) ? 'arrived' : ''}`}
+              className={`card el-${card.element} ${pendingCard === card.id ? 'selected' : ''} ${placed === card.id ? 'placed' : ''} ${incoming.includes(card.id) ? 'incoming' : ''} ${arrived.includes(card.id) ? 'arrived' : ''} ${marked ? 'tip-mark' : ''}`}
               disabled={!usable}
               onClick={() => selectCard(card.id)}
               aria-pressed={pendingCard === card.id || placed === card.id}
@@ -445,7 +450,7 @@ function Hand() {
           );
         })}
       </div>
-      {tip?.anchor === 'hand' ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot('hand', count)} /> : null}
+      {tip ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot(count)} /> : null}
     </div>
   );
 }

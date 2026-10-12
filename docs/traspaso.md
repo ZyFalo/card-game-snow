@@ -33,7 +33,7 @@ Estado al 11 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
   - Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y los objetivos que alcanza desde donde va a estar: un clic en un objetivo lo elige sin moverse, y un clic en una casilla lo mueve y recalcula los objetivos. No hay un paso de moverse, y solo colocar una carta es un modo aparte (casillas rojas). Los planes del equipo quedan en silueta y marca: un ataque elegido lleva un anillo con un arco del color de cada ninja que lo eligió, y una carta colocada, su miniatura, siempre al frente, con un lugar fijo por elemento y un borde dorado cuando hay combo.
   - El tablero muestra lo que se puede hacer, no el resultado. Lo demás es a pedido: el panel de cada ninja resume su plan sin números, la franja de arriba nombra al gólem que está bajo el ratón, y la vida que perdería un gólem y su alcance son ayudas opcionales, apagadas por defecto y solo en las partidas locales (D-78; `state/aids.ts`).
   - Ningún tinte se mezcla con otro: cada casilla lleva un solo relleno.
-  - El foco no salta solo: se pasa al siguiente ninja con un clic en él o con Tab. "Pasar al siguiente ninja" viene apagado, y una migración única lo apagó también en los ajustes ya guardados en el navegador (D-79; `state/persist.ts`).
+  - El foco no salta solo: se elige otro ninja con un clic, en el tablero o en su panel, o con Tab. "Pasar al siguiente ninja" viene apagado, y una migración única lo apagó también en los ajustes ya guardados en el navegador (D-79; `state/persist.ts`).
   - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
@@ -154,7 +154,7 @@ El M7 y P-20 están cerrados. Va en este orden:
    **Lo que falta para cerrar la ronda:**
    - **El PR 5, consejos en el momento.** Una línea junto al ninja activo según el paso, que deja de mostrarse tras varias veces; la franja superior queda solo con el estado del turno. El consejo de la primera caída (R-09), que hoy sale una vez por partida, se suma a la lógica de los consejos aprendidos: deja de mostrarse al aprenderlo. Dos cosas a tener en cuenta al hacerlo: ya no hay paso de moverse, así que los momentos del ninja activo son dos, al activarlo y cuando ya eligió casilla; y el nombre del gólem que está bajo el ratón sale hoy en esa franja, así que habrá que decidir dónde va.
    - **Al cerrar la ronda, volver a correr las tablas de P-20** (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y actualizar `docs/balance-report.md`: sus secciones anteriores a D-77 siguen medidas con la reanimación vieja.
-   - **Al cerrar la ronda, proponer la prueba con personas:** corta, con tres tareas como "haz que Marea ataque a Témpano", "cura a Brasa" y "usa una carta", midiendo errores y dudas.
+   - **Al cerrar la ronda, proponer una segunda prueba con personas,** centrada en los consejos y las demostraciones. La primera ya se hizo y dejó D-79.
 
    Para toda la ronda:
    - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;

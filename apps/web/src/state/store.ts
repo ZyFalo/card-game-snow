@@ -138,6 +138,8 @@ export interface AppState {
   /** La partida corre en este navegador (`GameHost.local`): ahí valen las ayudas opcionales (D-78). */
   local: boolean;
   helpOpen: boolean;
+  /** El gólem cuya demostración se abrió desde la ayuda (D-82): va sobre ella, en cualquier pantalla. */
+  helpDemo: EnemyKind | null;
   paused: boolean;
   phase: Phase;
   /** Estado autoritativo (el último que devolvió el motor). */
@@ -176,6 +178,7 @@ export const initialState = (): AppState => ({
   settings: loadSettings(),
   local: true,
   helpOpen: false,
+  helpDemo: null,
   paused: false,
   phase: 'idle',
   match: null,

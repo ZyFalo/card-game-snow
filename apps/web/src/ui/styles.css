@@ -991,8 +991,12 @@ button {
   height: 26px;
 }
 
-/* "Ver cómo ataca": el botón de la demostración del gólem que la franja está nombrando (D-82). */
-.tip-demo {
+/*
+ * "Ver cómo ataca" (D-82): el botón de la demostración de un gólem. En la franja, el del gólem que está
+ * nombrando; en la ayuda, uno junto a cada gólem.
+ */
+.tip-demo,
+.help-demo {
   display: flex;
   align-items: center;
   flex: none;
@@ -1008,13 +1012,20 @@ button {
   cursor: pointer;
 }
 
-.tip-demo svg {
+.tip-demo svg,
+.help-demo svg {
   width: 11px;
   height: 11px;
 }
 
-.tip-demo:hover {
+.tip-demo:hover,
+.help-demo:hover {
   background: var(--paper-lo);
+}
+
+/* En la ayuda va debajo de la descripción del gólem, a la izquierda. */
+.help-demo {
+  margin: 8px 0 0;
 }
 
 /* Con su demostración abierta, el aro dorado de lo elegido, como el ▶ de las cartas. */
@@ -1022,7 +1033,8 @@ button {
   box-shadow: 0 0 0 3px var(--gold);
 }
 
-.tip-demo:focus-visible {
+.tip-demo:focus-visible,
+.help-demo:focus-visible {
   outline: var(--focus);
   outline-offset: var(--focus-offset);
 }
@@ -1433,6 +1445,19 @@ button {
 /* Con animaciones reducidas van dos tableros lado a lado. */
 .demo.stills {
   width: 484px;
+}
+
+/* Abierta desde la ayuda (D-82): en el centro, sobre ella, con su fondo oscurecido. */
+.demo-backdrop.over {
+  z-index: 20;
+  background: rgba(31, 36, 64, 0.35);
+}
+
+.demo.over {
+  inset: 0;
+  z-index: 21;
+  height: fit-content;
+  margin: auto;
 }
 
 .demo-head {

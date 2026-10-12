@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { type Board, startBoard, type TestState, type TestWindow } from './helpers';
+import { type Board, clippedElements, smallText, startBoard, type TestState, type TestWindow } from './helpers';
 
 /*
  * Demostraciones de las cartas (D-81): un ▶ junto al título de la mano abre un tablero en miniatura donde
@@ -552,4 +552,62 @@ test('D-82: con una carta en la mano, la franja no nombra al gólem ni ofrece su
   await look(page, 'colossus');
   await expect(franja(page)).toHaveText('Elige dónde colocar la carta de Brasa. Afecta un área de 3×3.');
   await expect(show(page)).toHaveCount(0);
+});
+
+test('D-82: en la ayuda, "Ver cómo ataca" junto a cada gólem abre su demostración, sin ratón y sin franja', async ({
+  page,
+}) => {
+  // Con "Consejos en pantalla" apagado no hay franja: la ayuda es el otro camino, y sirve con el teclado.
+  await startBoard(page, GOLEMS, { ...LEARNED, tips: false });
+  await expect(page.locator('.tip')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  const expected = {
+    Carámbano: ['−5', 'a salvo', '−3'],
+    Granizo: ['−4', 'a salvo', '−8'],
+    Témpano: ['a salvo', '−10', '−10'],
+  } as const;
+  for (const name of ['Carámbano', 'Granizo', 'Témpano'] as const) {
+    const open = help.getByRole('button', { name: `Ver cómo ataca ${name}` });
+    await open.scrollIntoViewIfNeeded();
+    await expect(open).toHaveText('Ver cómo ataca');
+    // Con el teclado: el foco en el botón y Enter.
+    await open.focus();
+    await page.keyboard.press('Enter');
+    await expect(attack(page).getByRole('heading')).toHaveText(`${name}, cómo ataca`);
+    await expect(page.locator('.demo-stage canvas')).toHaveCount(1);
+    // Va sobre la ayuda, entera dentro de la pantalla, y es la misma demostración: la juega el motor.
+    const bubble = await boxOf(page.locator('.demo'));
+    expect(bubble.top).toBeGreaterThanOrEqual(0);
+    expect(bubble.bottom).toBeLessThanOrEqual(720);
+    expect(bubble.left).toBeGreaterThanOrEqual(0);
+    expect(bubble.right).toBeLessThanOrEqual(1280);
+    expect((await at(page, 'after')).labels).toEqual(expected[name]);
+    // Esc cierra la demostración, no la ayuda, y el foco vuelve a su botón.
+    await page.keyboard.press('Escape');
+    await expect(attack(page)).toHaveCount(0);
+    await expect(help).toBeVisible();
+    await expect(open).toBeFocused();
+  }
+  // Los botones caben en la ayuda y respetan el tamaño mínimo de texto.
+  expect(await clippedElements(page)).toEqual([]);
+  expect((await smallText(page)).filter((found) => !found.startsWith('span.kbd'))).toEqual([]);
+  // El siguiente Esc cierra la ayuda.
+  await page.keyboard.press('Escape');
+  await expect(help).toHaveCount(0);
+});
+
+test('D-82: la ayuda de la pantalla de inicio también abre la demostración de un gólem', async ({ page }) => {
+  await page.goto('/?speed=0.3');
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  const open = help.getByRole('button', { name: 'Ver cómo ataca Granizo' });
+  await open.scrollIntoViewIfNeeded();
+  await open.click();
+  await expect(attack(page).getByRole('heading')).toHaveText('Granizo, cómo ataca');
+  expect((await at(page, 'after')).labels).toEqual(['−4', 'a salvo', '−8']);
+  // Un clic fuera la cierra, y la ayuda sigue abierta.
+  await page.mouse.click(40, 40);
+  await expect(attack(page)).toHaveCount(0);
+  await expect(help).toBeVisible();
 });

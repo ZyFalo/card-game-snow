@@ -297,6 +297,8 @@ export const DEMO_TEXT = {
   } satisfies Record<ElementKind, string>,
   /** La demostración de un gólem (D-82): el botón de la franja, el título y lo que se lee sobre quien se salva. */
   showAttack: 'Ver cómo ataca',
+  /** Para quien no ve el botón: en la ayuda hay uno por gólem, y todos dicen lo mismo. */
+  showAttackOf: (name: string) => `Ver cómo ataca ${name}`,
   attackTitle: (name: string) => `${name}, cómo ataca`,
   safe: 'a salvo',
   /** La línea de cada gólem. Sus números los pone el motor (`golemCaption`): nunca van escritos a mano. */

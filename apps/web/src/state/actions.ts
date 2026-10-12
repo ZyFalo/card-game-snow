@@ -48,7 +48,19 @@ export function notify(text: string): void {
 }
 
 export function setHelp(open: boolean): void {
-  store.setState({ helpOpen: open });
+  store.setState({ helpOpen: open, helpDemo: null });
+}
+
+/**
+ * La demostración de un gólem, abierta desde la ayuda (D-82). No depende de la franja ni del ratón: sirve
+ * con el teclado y con "Consejos en pantalla" apagado. Va sobre la ayuda, no en la partida.
+ */
+export function openHelpDemo(enemy: EnemyKind): void {
+  store.setState({ helpDemo: enemy });
+}
+
+export function closeHelpDemo(): void {
+  if (store.getState().helpDemo) store.setState({ helpDemo: null });
 }
 
 /** Abre la demostración de las cartas de ese ninja (D-81), sin combo. Solo hay una abierta a la vez. */

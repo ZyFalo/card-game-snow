@@ -1,5 +1,5 @@
 import type { ElementKind, EnemyKind } from '@ventisca/core';
-import { type CSSProperties, type ReactNode, useMemo, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import type { DemoBeat, DemoMode } from '../game/DemoScene';
 import { DemoStage, demoSize } from '../game/DemoStage';
 import { TH, TW } from '../game/layout';
@@ -73,36 +73,57 @@ function DemoBoard({
 /**
  * La burbuja de una demostración: su título, lo que lleve debajo (el selector de las cartas), el tablero
  * en miniatura y su línea de texto. Con animaciones reducidas muestra el antes y el después como dos
- * imágenes fijas.
+ * imágenes fijas. En la partida va sobre la mano; abierta desde la ayuda (`over`), en el centro, sobre
+ * ella: ahí toma el foco, y al cerrarse lo devuelve al botón que la abrió.
  */
 function DemoBubble({
   title,
   demo,
   caption,
+  onClose,
+  over = false,
   children,
 }: {
   title: string;
   demo: Demo;
   caption: string;
+  onClose: () => void;
+  over?: boolean;
   children?: ReactNode;
 }) {
   const reduced = useApp((s) => s.settings.reducedMotion);
   const [beat, setBeat] = useState<DemoBeat>('before');
   const stacked = isWide(demo);
   const still = scaleFor(demo, stacked ? FIT.loop : FIT.still);
+  const close = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!over) return;
+    const opener = document.activeElement;
+    close.current?.focus();
+    return () => {
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, [over]);
   return (
     <>
-      {/* Un clic fuera la cierra, y ese clic no llega al tablero. */}
-      <div className="demo-backdrop interactive" onPointerDown={closeDemo} />
+      {/* Un clic fuera la cierra, y ese clic no llega al tablero ni a la ayuda. */}
+      <div className={`demo-backdrop interactive ${over ? 'over' : ''}`} onPointerDown={onClose} />
       <section
-        className={`demo paper interactive ${reduced ? 'stills' : ''}`}
+        className={`demo paper interactive ${reduced ? 'stills' : ''} ${over ? 'over' : ''}`}
         role="dialog"
         aria-label={title}
         data-beat={reduced ? 'still' : beat}
       >
         <div className="demo-head">
           <h3>{title}</h3>
-          <button type="button" className="demo-close" onClick={closeDemo} aria-label={ES.close} title={ES.close}>
+          <button
+            ref={close}
+            type="button"
+            className="demo-close"
+            onClick={onClose}
+            aria-label={ES.close}
+            title={ES.close}
+          >
             <Icon name="close" />
           </button>
         </div>
@@ -141,6 +162,7 @@ function CardDemo({ ninja, combo }: { ninja: ElementKind; combo: boolean }) {
       title={DEMO_TEXT.cardTitle(t.element, value)}
       demo={demo}
       caption={combo ? DEMO_TEXT.comboCaption(DEMO_TEXT.comboEffect[ninja]) : t.card}
+      onClose={closeDemo}
     >
       <Segmented
         label={DEMO_TEXT.mode}
@@ -155,16 +177,24 @@ function CardDemo({ ninja, combo }: { ninja: ElementKind; combo: boolean }) {
   );
 }
 
-/** Cómo ataca ese gólem (D-82). Sus números los pone el motor. */
-function GolemDemo({ enemy }: { enemy: EnemyKind }) {
+/** Cómo ataca ese gólem (D-82). Sus números los pone el motor. `over`: abierta desde la ayuda, sobre ella. */
+export function GolemDemo({ enemy, onClose, over }: { enemy: EnemyKind; onClose: () => void; over?: boolean }) {
   const demo = useMemo(() => golemDemo(enemy), [enemy]);
-  return <DemoBubble title={DEMO_TEXT.attackTitle(ENEMY_TEXT[enemy].name)} demo={demo} caption={golemCaption(enemy)} />;
+  return (
+    <DemoBubble
+      title={DEMO_TEXT.attackTitle(ENEMY_TEXT[enemy].name)}
+      demo={demo}
+      caption={golemCaption(enemy)}
+      onClose={onClose}
+      over={over}
+    />
+  );
 }
 
 /** La demostración abierta, si hay una. Solo hay una a la vez. */
 export function DemoLayer() {
   const demo = useApp((s) => s.demo);
   if (!demo) return null;
-  if (demo.kind === 'golem') return <GolemDemo key={demo.enemy} enemy={demo.enemy} />;
+  if (demo.kind === 'golem') return <GolemDemo key={demo.enemy} enemy={demo.enemy} onClose={closeDemo} />;
   return <CardDemo key={demo.ninja} ninja={demo.ninja} combo={demo.combo} />;
 }

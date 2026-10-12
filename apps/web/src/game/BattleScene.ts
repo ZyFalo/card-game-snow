@@ -24,6 +24,7 @@ import {
   footPoint,
   MINI,
   miniRect,
+  ORDER_BADGE,
   orderPoint,
   RES,
   TH,
@@ -303,9 +304,9 @@ export class BattleScene extends Phaser.Scene {
   private badge(at: Pt, text: string, color: number): void {
     const g = this.add.graphics().setDepth(1600);
     g.fillStyle(color, 1);
-    g.fillCircle(at.x, at.y, 11);
-    g.lineStyle(2.5, INK, 1);
-    g.strokeCircle(at.x, at.y, 11);
+    g.fillCircle(at.x, at.y, ORDER_BADGE.r);
+    g.lineStyle(ORDER_BADGE.stroke, INK, 1);
+    g.strokeCircle(at.x, at.y, ORDER_BADGE.r);
     const t = this.add
       .text(at.x, at.y + 0.5, text, {
         fontFamily: '"Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif',
@@ -631,7 +632,7 @@ export class BattleScene extends Phaser.Scene {
     for (const mark of layers.marks) if (mine(mark)) this.mark(ov, mark);
 
     // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.
-    for (const o of layers.order) this.badge(orderPoint(o.at), `${o.n}`, colorOf(o.ninja));
+    for (const o of layers.order) this.badge(orderPoint(o.at, o.below), `${o.n}`, colorOf(o.ninja));
 
     if (layers.hover) {
       const r = tileRect(layers.hover);

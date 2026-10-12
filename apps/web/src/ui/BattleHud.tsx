@@ -1,11 +1,21 @@
 import { BALANCE, type ElementKind, type Ninja, resolutionOrder } from '@ventisca/core';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { BONUS_SHORT, ES, HUD, NINJA_TEXT } from '../i18n/es';
-import { confirmTurn, selectCard, selectNinja, setBoost, setHelp, suggest, togglePause } from '../state/actions';
+import { BONUS_SHORT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n/es';
+import {
+  confirmTurn,
+  learnTip,
+  selectCard,
+  selectNinja,
+  setBoost,
+  setHelp,
+  suggest,
+  togglePause,
+} from '../state/actions';
 import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
+import { type BubbleSlot, bubbleSlot, type MomentTip, momentTip } from '../state/tips';
 import { ElementGlyph, Icon } from './common';
 
 export function BattleHud() {
@@ -31,6 +41,39 @@ function TipBar() {
       <span key={tip} className="tip-text">
         {tip}
       </span>
+    </div>
+  );
+}
+
+/** El consejo en el momento que toca mostrar ahora (D-80), o `null`. */
+function useMomentTip(): MomentTip | null {
+  const phase = useApp((s) => s.phase);
+  const settings = useApp((s) => s.settings);
+  const match = useApp((s) => s.match);
+  const plans = useApp((s) => s.plans);
+  const active = useApp((s) => s.active);
+  const pendingCard = useApp((s) => s.pendingCard);
+  return momentTip({ phase, settings, match, plans, active, pendingCard });
+}
+
+/**
+ * La burbuja de un consejo en el momento (D-80): va siempre junto a la mano, nunca sobre el tablero, con
+ * una franja del color del ninja del que habla, y se cierra con "Entendido" o con Enter. Lo que señala
+ * lleva el borde dorado (`tip-mark`): el panel de ese ninja o sus cartas.
+ */
+function TipBubble({ tip, slot }: { tip: MomentTip; slot: BubbleSlot }) {
+  return (
+    <div className={`bubble paper interactive el-${tip.ninja} at-${slot}`} role="status" data-tip={tip.id}>
+      <p>{tip.text}</p>
+      <button
+        type="button"
+        className="link"
+        title={MOMENT_TIP.dismissTitle}
+        aria-keyshortcuts="Enter"
+        onClick={() => learnTip(tip.id)}
+      >
+        {MOMENT_TIP.dismiss}
+      </button>
     </div>
   );
 }
@@ -206,7 +249,7 @@ function Toast() {
   );
 }
 
-function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
+function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined; marked: boolean }) {
   const plan = useApp((s) => s.plans[n.id]);
   const match = useApp((s) => s.match);
   const isActive = useApp((s) => s.active === n.id);
@@ -276,7 +319,7 @@ function NinjaPanel({ n, order }: { n: Ninja; order: number | undefined }) {
     <button
       type="button"
       data-ninja-panel={n.id}
-      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''}`}
+      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''} ${marked ? 'tip-mark' : ''}`}
       onClick={() => selectNinja(n.id)}
       aria-pressed={isActive}
       aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, spoken)}
@@ -336,13 +379,15 @@ function NinjaPanels() {
   const ninjas = useApp((s) => s.view?.ninjas);
   const match = useApp((s) => s.match);
   const plans = useApp((s) => s.plans);
+  const tip = useMomentTip();
   if (!ninjas) return null;
   // D-32: el orden real de R-11 según los planes del momento; sin acción no hay número.
   const order = match ? resolutionOrder(match, plansArray(plans)) : {};
   return (
     <div className="panels">
+      {/* El panel del ninja del que habla el consejo en pantalla lleva el borde dorado (D-80). */}
       {ninjas.map((n) => (
-        <NinjaPanel key={n.id} n={n} order={order[n.id]} />
+        <NinjaPanel key={n.id} n={n} order={order[n.id]} marked={tip?.mark === 'panel' && tip.ninja === n.id} />
       ))}
     </div>
   );
@@ -356,6 +401,7 @@ function Hand() {
   const phase = useApp((s) => s.phase);
   const incoming = useApp((s) => s.incoming);
   const arrived = useApp((s) => s.arrived);
+  const tip = useMomentTip();
   const last = useRef<ElementKind>('fire');
   if (active) last.current = active;
   const shown = active ?? last.current;
@@ -364,8 +410,13 @@ function Hand() {
   const plan = plans[shown];
   const placed = plan?.action?.type === 'card' ? plan.action.cardId : null;
   const usable = phase === 'planning' && ninja.hp > 0 && active === shown;
+  // La burbuja de los consejos va siempre aquí: en el espacio libre junto a las cartas, o encima si no lo hay.
+  const count = ninja.hand.length;
   return (
-    <div className={`hand interactive el-${shown}`}>
+    <div
+      className={`hand interactive el-${shown} ${tip ? 'has-tip' : ''}`}
+      style={{ '--cards': count } as CSSProperties}
+    >
       <div className="hand-head">
         {ES.hand(NINJA_TEXT[shown].name)}
         <span>{HUD.handHint}</span>
@@ -375,12 +426,14 @@ function Hand() {
         {ninja.hand.length === 0 ? <p className="hand-empty">{HUD.handEmpty}</p> : null}
         {ninja.hand.map((card, i) => {
           const t = NINJA_TEXT[card.element];
+          // La carta de la que habla el consejo en pantalla: la primera, o todas las de la mano (D-80).
+          const marked = tip?.mark === 'hand' || (tip?.mark === 'card' && i === 0);
           return (
             <button
               key={card.id}
               type="button"
               data-card-id={card.id}
-              className={`card el-${card.element} ${pendingCard === card.id ? 'selected' : ''} ${placed === card.id ? 'placed' : ''} ${incoming.includes(card.id) ? 'incoming' : ''} ${arrived.includes(card.id) ? 'arrived' : ''}`}
+              className={`card el-${card.element} ${pendingCard === card.id ? 'selected' : ''} ${placed === card.id ? 'placed' : ''} ${incoming.includes(card.id) ? 'incoming' : ''} ${arrived.includes(card.id) ? 'arrived' : ''} ${marked ? 'tip-mark' : ''}`}
               disabled={!usable}
               onClick={() => selectCard(card.id)}
               aria-pressed={pendingCard === card.id || placed === card.id}
@@ -397,6 +450,7 @@ function Hand() {
           );
         })}
       </div>
+      {tip ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot(count)} /> : null}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { initAccount } from './state/account';
 import {
   confirmTurn,
   cycleNinja,
+  learnTip,
   selectCardIndex,
   setBoost,
   setHelp,
@@ -16,6 +17,7 @@ import {
 import { sceneReady } from './state/bridge';
 import { canUndo } from './state/steps';
 import { type Screen, store, useApp } from './state/store';
+import { momentTip } from './state/tips';
 import { AccountScreen } from './ui/Account';
 import { BattleHud } from './ui/BattleHud';
 import { CardFlights } from './ui/CardFlights';
@@ -134,6 +136,13 @@ function useKeyboard(): void {
         return;
       }
       if (st.phase !== 'planning') return;
+      // Con un consejo en pantalla, Enter es su "Entendido" (D-80); sin él, confirma el turno como Espacio.
+      const tip = k === 'enter' ? momentTip(st) : null;
+      if (tip) {
+        ev.preventDefault();
+        learnTip(tip.id);
+        return;
+      }
       if (k === 'tab') {
         ev.preventDefault();
         cycleNinja(ev.shiftKey ? -1 : 1);

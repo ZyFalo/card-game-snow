@@ -2,7 +2,15 @@ import { BALANCE, ELEMENTS, ENEMY_KINDS } from '@ventisca/core';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { art } from '../art';
 import { ENEMY_TEXT, ES, HELP, NINJA_TEXT } from '../i18n/es';
-import { quitToMenu, replayJson, restartMatch, setHelp, togglePause, updateSettings } from '../state/actions';
+import {
+  forgetTips,
+  quitToMenu,
+  replayJson,
+  restartMatch,
+  setHelp,
+  togglePause,
+  updateSettings,
+} from '../state/actions';
 import { store, useApp } from '../state/store';
 import { Icon, Modal, Toggle } from './common';
 
@@ -89,6 +97,30 @@ export function PauseMenu() {
   );
 }
 
+/** Los consejos en el momento salen una sola vez (D-80): desde la ayuda se pide volver a verlos. */
+function TipsHelp() {
+  const tipsOn = useApp((s) => s.settings.tips);
+  const [done, setDone] = useState(false);
+  return (
+    <>
+      <h3>{HELP.tipsTitle}</h3>
+      <p>{HELP.tipsIntro}</p>
+      <button
+        type="button"
+        className="btn"
+        disabled={done}
+        onClick={() => {
+          forgetTips();
+          setDone(true);
+        }}
+      >
+        {done ? HELP.tipsResetDone : HELP.tipsReset}
+      </button>
+      {tipsOn ? null : <p className="help-note">{HELP.tipsOff}</p>}
+    </>
+  );
+}
+
 export function HelpModal() {
   const close = () => setHelp(false);
   const inBattle = store.getState().screen === 'battle';
@@ -163,6 +195,8 @@ export function HelpModal() {
           </Fragment>
         ))}
       </div>
+
+      <TipsHelp />
       <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
         <button type="button" className="btn btn-primary" onClick={close}>
           {inBattle ? HELP.backToPause : ES.close}

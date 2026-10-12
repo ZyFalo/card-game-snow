@@ -448,9 +448,9 @@ describe('Capas del tablero al planificar', () => {
 
     it('D-32: el número de orden va en la casilla desde la que actúa cada ninja', () => {
       expect(layers({ plans: PLANS, active: 'snow' }).order).toEqual([
-        { ninja: 'fire', at: { x: 3, y: 1 }, n: 1 },
-        { ninja: 'water', at: { x: 3, y: 2 }, n: 2 },
-        { ninja: 'snow', at: { x: 4, y: 3 }, n: 3 },
+        { ninja: 'fire', at: { x: 3, y: 1 }, n: 1, below: false },
+        { ninja: 'water', at: { x: 3, y: 2 }, n: 2, below: false },
+        { ninja: 'snow', at: { x: 4, y: 3 }, n: 3, below: false },
       ]);
     });
   });
@@ -479,6 +479,23 @@ describe('Capas del tablero al planificar', () => {
       // El contorno rodea las 9 casillas del área. No rellena ninguna.
       expect(keys(l.cards[0]?.area ?? [])).toEqual(['2,1', '2,2', '2,3', '3,1', '3,2', '3,3', '4,1', '4,2', '4,3']);
       expect(l.combo).toBe(false);
+    });
+
+    it('con una carta en la casilla desde la que actúa un ninja, su número de orden baja de esquina', () => {
+      const m = withCards();
+      // Brasa juega su carta sobre su propia casilla, (1,1): su miniatura va arriba a la izquierda, justo
+      // donde iría su número de orden.
+      const own = layers({ match: m, plans: { fire: card('fire', 1, 1) }, active: 'water' });
+      expect(own.order).toEqual([{ ninja: 'fire', at: { x: 1, y: 1 }, n: 1, below: true }]);
+      // Vale para la carta de cualquiera: Marea la coloca en (3,1), desde donde ataca Brasa.
+      const plans = { fire: PLANS.fire, water: card('water', 3, 1) };
+      expect(layers({ match: m, plans, active: 'snow' }).order).toEqual([
+        { ninja: 'fire', at: { x: 3, y: 1 }, n: 1, below: true },
+        { ninja: 'water', at: { x: 1, y: 2 }, n: 2, below: false },
+      ]);
+      // Sin carta en su casilla, el número se queda arriba.
+      const apart = layers({ match: m, plans: { fire: card('fire', 3, 2) }, active: 'water' });
+      expect(apart.order).toEqual([{ ninja: 'fire', at: { x: 1, y: 1 }, n: 1, below: false }]);
     });
 
     it('el área completa se ve solo con su dueño activo o con el ratón sobre la miniatura', () => {

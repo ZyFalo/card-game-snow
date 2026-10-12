@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { HUD_BAND_Y } from '../src/art/scenery';
-import { clippedElements, startMatch, type TestWindow } from './helpers';
+import { clippedElements, savedSettings, startBoard, startMatch, type TestWindow } from './helpers';
 
 /* El tablero durante la planificación (lineamientos de diseño, sección "Tablero"). */
 
@@ -330,54 +330,6 @@ test('elegir una carta cambia el tablero al modo carta, antes o después de move
 
 /* ---------- La reanimación (R-09) ---------- */
 
-type NinjaId = 'fire' | 'water' | 'snow';
-interface Board {
-  ninjas: Record<NinjaId, { at: [number, number]; hp?: number }>;
-  golems: { kind: 'sniper' | 'artillery' | 'colossus'; at: [number, number] }[];
-}
-
-/**
- * Una partida en un tablero preparado, también en el anfitrión (`__ventiscaLoad`): al confirmar, el turno
- * se resuelve de verdad sobre ese tablero. Sin reloj, en Clásica.
- */
-async function startBoard(page: Page, board: Board) {
-  await page.addInitScript(() => window.localStorage.setItem('ventisca:settings:v1', '{"pace":"relaxed"}'));
-  await startMatch(page);
-  await page.evaluate((board) => {
-    type Unit = { id: string; pos: { x: number; y: number }; hp: number; maxHp: number };
-    type Match = {
-      ninjas: (Unit & { everKo: boolean; hand: unknown[] })[];
-      enemies: unknown[];
-      nextEnemySeq: number;
-      difficulty: string;
-      round: number;
-      bonusCondition: string;
-    };
-    const w = window as unknown as { __ventisca: { getState(): { match: Match } }; __ventiscaLoad(m: Match): void };
-    const m = structuredClone(w.__ventisca.getState().match);
-    Object.assign(m, { difficulty: 'classic', round: 1, bonusCondition: 'noKo' });
-    for (const n of m.ninjas) {
-      const spec = board.ninjas[n.id as 'fire' | 'water' | 'snow'];
-      n.pos = { x: spec.at[0], y: spec.at[1] };
-      n.hp = spec.hp ?? n.maxHp;
-      n.everKo = n.hp <= 0;
-      n.hand = [];
-    }
-    const life = { sniper: 30, artillery: 45, colossus: 60 };
-    m.enemies = board.golems.map((g, i) => ({
-      id: `e${i + 1}`,
-      kind: g.kind,
-      pos: { x: g.at[0], y: g.at[1] },
-      hp: life[g.kind],
-      maxHp: life[g.kind],
-      stunned: false,
-      burnTicks: 0,
-    }));
-    m.nextEnemySeq = m.enemies.length + 1;
-    w.__ventiscaLoad(m);
-  }, board);
-}
-
 const hpOf = (page: Page) =>
   page.evaluate(() => {
     const s = (window as unknown as TestWindow).__ventisca.getState();
@@ -400,9 +352,6 @@ async function playTurn(page: Page) {
     .toBe(turn + 1);
 }
 
-const REVIVE_TIP = (name: string) =>
-  `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`;
-
 test('R-09: revivir se completa al final del turno, y el aliado vuelve con 1 de vida', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -412,9 +361,11 @@ test('R-09: revivir se completa al final del turno, y el aliado vuelve con 1 de 
     golems: [{ kind: 'colossus', at: [8, 0] }],
   });
   const tip = page.locator('.tip-text');
-  // Es la primera vez que hay un caído: el consejo dice cómo se le revive.
+  // Es la primera vez que hay un caído: una burbuja dice cómo se le revive (D-80), y la franja sigue con
+  // el estado del turno.
   expect(await planning(page)).toMatchObject({ active: 'water' });
-  await expect(tip).toHaveText(REVIVE_TIP('Brasa'));
+  await expect(page.locator('.bubble')).toContainText('Brasa cayó. Mueve a Marea junto a él para revivirlo.');
+  await expect(tip).toHaveText(PLAN_TIP('Marea'));
 
   // Marea ya está al lado: sin moverse, Brasa es su objetivo.
   await click(page, 2, 2);
@@ -426,9 +377,10 @@ test('R-09: revivir se completa al final del turno, y el aliado vuelve con 1 de 
   // Brasa se levantó al final del turno, después del gólem, y lo dice.
   await expect(page.locator('.toast')).toHaveText('Brasa vuelve con 1 de vida');
   expect(await hpOf(page)).toMatchObject({ fire: 1, water: 40 });
-  // El consejo de revivir sale una sola vez: Brasa ya planifica como cualquiera.
+  // Ya no hay caídos: la burbuja se fue, y Brasa planifica como cualquiera.
   expect(await planning(page)).toMatchObject({ active: 'fire' });
   await page.mouse.move(640, 60);
+  await expect(page.locator('.bubble')).toHaveCount(0);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
   expect(errors).toEqual([]);
 });
@@ -450,24 +402,6 @@ test('R-09: si cae quien revive, la reanimación se interrumpe', async ({ page }
   await expect(page.locator('.toast')).toHaveText('Reanimación interrumpida');
   expect(await hpOf(page)).toMatchObject({ fire: 30, water: 0, snow: 0 });
   expect(errors).toEqual([]);
-});
-
-test('R-09: la primera vez que cae un ninja, un consejo dice cómo revivirlo', async ({ page }) => {
-  // A Marea le queda 1 de vida y está pegada a Témpano: cae este turno.
-  await startBoard(page, {
-    ninjas: { fire: { at: [1, 1] }, water: { at: [4, 2], hp: 1 }, snow: { at: [1, 3] } },
-    golems: [{ kind: 'colossus', at: [5, 2] }],
-  });
-  const tip = page.locator('.tip-text');
-  await expect(tip).toHaveText(PLAN_TIP('Brasa'));
-  await playTurn(page);
-  expect(await hpOf(page)).toMatchObject({ water: 0 });
-  await page.mouse.move(640, 60);
-  await expect(tip).toHaveText(REVIVE_TIP('Marea'));
-  // Sale una sola vez por partida: al turno siguiente, el consejo dice lo de siempre.
-  await playTurn(page);
-  await page.mouse.move(640, 60);
-  await expect(tip).toHaveText(PLAN_TIP('Brasa'));
 });
 
 /* ---------- Información a pedido (D-74 y D-78) ---------- */
@@ -557,10 +491,6 @@ test('D-78: las ayudas de daño y de alcance están en "Tu equipo", apagadas, y 
   await expect(page.getByRole('checkbox', { name: 'Ver el daño antes de confirmar' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Ver el alcance de los enemigos' })).toBeChecked();
 });
-
-/** Los ajustes tal como quedaron guardados en el navegador. */
-const savedSettings = (page: Page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('ventisca:settings:v1') ?? 'null') as Record<string, unknown>);
 
 test('D-79: "Pasar al siguiente ninja" viene apagado en "Tu equipo"', async ({ page }) => {
   await page.goto('/?speed=0.3');
@@ -751,4 +681,36 @@ test('las cartas colocadas dejan su miniatura: cada elemento en su lugar, sin ta
   await expect.poll(async () => (await minis(page)).every((m) => m.depth > 1000 && m.alpha < 0.5)).toBe(true);
   await page.mouse.move(640, 60);
   await expect.poll(whole).toBe(true);
+});
+
+test('el número de orden baja de esquina si en su casilla hay una carta: la miniatura no lo tapa', async ({ page }) => {
+  await startPrepared(page, [10]);
+  type Label = { type: string; visible: boolean; text?: string; x: number; y: number; depth: number };
+  type LabelWindow = { __ventiscaScene: { children: { list: Label[] } } };
+  /** El número de orden de Brasa, que actúa primera: el "1" que la escena dibuja sobre el tablero. */
+  const order = () =>
+    page.evaluate(() => {
+      const { list } = (window as unknown as LabelWindow).__ventiscaScene.children;
+      const one = list.find((o) => o.type === 'Text' && o.visible && o.text === '1' && o.depth > 1600);
+      return one ? { x: Math.round(one.x), y: Math.round(one.y) } : null;
+    });
+  await page.mouse.move(640, 60);
+
+  // Brasa ataca a Témpano tras moverse a (3,1), que empieza en (490, 186): el número va arriba a la izquierda.
+  await click(page, 3, 1);
+  await click(page, 4, 2);
+  await expect.poll(order).toEqual({ x: 505, y: 202 });
+
+  // Ahora juega su carta sobre esa misma casilla. La miniatura de Fuego ocupa esa esquina, y va al frente:
+  // el número baja a la de abajo, donde se ve entero.
+  await page.keyboard.press('1');
+  await click(page, 3, 1);
+  expect((await planning(page)).plans).toMatchObject({
+    fire: { moveTo: { x: 3, y: 1 }, action: { type: 'card', at: { x: 3, y: 1 } } },
+  });
+  await expect.poll(order).toEqual({ x: 505, y: 248 });
+  const [mini] = await minis(page);
+  expect(mini?.key).toBe('placed-fire');
+  // La miniatura termina antes de donde empieza el círculo del número, de 11 px de radio más su borde.
+  expect((mini?.y ?? 0) + (mini?.h ?? 0)).toBeLessThan(248 - 13);
 });

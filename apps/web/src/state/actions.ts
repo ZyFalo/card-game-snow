@@ -16,10 +16,11 @@ import { LocalHost } from '../host/LocalHost';
 import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import { firstFallTip, nextPending, nextPlannable, plansArray, turnClockMs, withoutAction } from './planning';
+import { nextPending, nextPlannable, plansArray, turnClockMs, withoutAction } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
+import type { TipId } from './tips';
 
 /* Flujo de la partida y acciones del jugador. La UI (React y Phaser) solo llama a estas funciones. */
 
@@ -47,6 +48,17 @@ export function notify(text: string): void {
 
 export function setHelp(open: boolean): void {
   store.setState({ helpOpen: open });
+}
+
+/** "Entendido": ese consejo queda aprendido y no vuelve a salir (D-80). Se guarda con los ajustes. */
+export function learnTip(id: TipId): void {
+  const { learnedTips } = store.getState().settings;
+  if (!learnedTips.includes(id)) updateSettings({ learnedTips: [...learnedTips, id] });
+}
+
+/** Desde la ayuda: los consejos vuelven a salir, cada uno en su momento (D-80). */
+export function forgetTips(): void {
+  updateSettings({ learnedTips: [] });
 }
 
 function applyToView(e: GameEvent): void {
@@ -96,8 +108,6 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
     active: null,
     pendingCard: null,
     hover: null,
-    reviveTip: null,
-    reviveTipSeen: false,
     overlay: null,
     paused: false,
     results: null,
@@ -122,9 +132,8 @@ export function planningMs(): number | null {
 }
 
 export function beginPlanning(): void {
-  const { match, reviveTipSeen } = store.getState();
+  const { match } = store.getState();
   if (match?.status !== 'playing') return;
-  const reviveTip = firstFallTip(match, reviveTipSeen);
   const ms = planningMs();
   host.startTimer(ms, () => {
     void confirmTurn(true);
@@ -136,8 +145,6 @@ export function beginPlanning(): void {
     plans: {},
     active: nextPlannable(match, {}, null, 1),
     pendingCard: null,
-    reviveTip,
-    reviveTipSeen: reviveTipSeen || reviveTip !== null,
     timer: { ...host.timer(), total: ms },
   });
 }
@@ -164,7 +171,6 @@ function closePlanning(): void {
     pendingCard: null,
     active: null,
     hover: null,
-    reviveTip: null,
     timer: { deadline: null, remaining: null, total: null },
   });
 }

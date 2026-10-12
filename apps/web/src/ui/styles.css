@@ -1330,6 +1330,86 @@ button {
   color: var(--ink-2);
 }
 
+/* ---------- Consejos en el momento (D-80) ---------- */
+
+/*
+ * Una burbuja de papel, siempre en el mismo lugar: la franja de abajo, a la derecha, en el espacio libre
+ * junto a la mano. Nunca va sobre el tablero. A la izquierda lleva una franja del color del ninja del que
+ * habla, y lo que señala lleva el borde dorado (`.tip-mark`): el panel de ese ninja o sus cartas.
+ */
+.bubble {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px 8px 22px;
+  font: 500 14px / 1.35 var(--font-ui);
+  color: var(--ink);
+  text-align: left;
+  animation: tipIn 0.28s ease backwards;
+}
+
+/* La franja de color, recortada como el resto del papel: la misma de los mensajes (`.notice`). */
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: var(--el);
+  border-right: var(--line) solid var(--ink);
+  border-radius: calc(var(--radius-panel) - var(--line)) 0 0 calc(var(--radius-panel) - var(--line));
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble .link {
+  align-self: flex-end;
+}
+
+/* Junto a la mano: pegada a la derecha, y tan ancha como deje el espacio libre que queda tras las cartas. */
+.bubble.at-hand {
+  right: 4px;
+  bottom: 12px;
+  width: min(290px, calc(100% - var(--cards) * 122px - 12px));
+}
+
+/* Con tres o cuatro cartas no queda espacio a su lado: encima de la mano, en el margen derecho del tablero. */
+.bubble.at-above-hand {
+  right: 0;
+  bottom: calc(100% + 14px);
+  width: 150px;
+}
+
+/* Con la mano vacía, su frase deja lugar a la burbuja. */
+.hand.has-tip .hand-empty {
+  max-width: 190px;
+}
+
+/* El borde dorado de lo que señala el consejo: el aro de lo elegido, sin levantar la carta. */
+.card.tip-mark {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    3px 3px 0 var(--ink);
+}
+
+.ninja-panel.tip-mark {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    7px 7px 0 var(--ink);
+}
+
+.ninja-panel.active.tip-mark {
+  box-shadow:
+    0 0 0 2px var(--el),
+    0 0 0 5px var(--gold),
+    9px 9px 0 var(--el-lo);
+}
+
 .card {
   position: relative;
   width: 110px;
@@ -1687,6 +1767,16 @@ button {
   font: 500 14px / 1.4 var(--font-ui);
 }
 
+/* Los consejos en el momento, desde la ayuda (D-80). */
+.help h3 + p {
+  margin: 0 0 var(--gap-2);
+}
+
+.help-note {
+  margin: var(--gap-2) 0 0;
+  color: var(--ink-2);
+}
+
 /* Animaciones reducidas (ajuste del jugador; por defecto sigue prefers-reduced-motion). */
 .reduced .title-ninjas img,
 .reduced .folds i,
@@ -1968,6 +2058,7 @@ button {
 .reduced .hud .ninja-panel,
 .reduced .hud .hand,
 .reduced .tip-text,
+.reduced .bubble,
 .reduced .plan-pill.set,
 .reduced .card.arrived,
 .reduced .meter.charged i.on {

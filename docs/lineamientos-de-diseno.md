@@ -218,7 +218,7 @@ Un ninja que no está activo deja en el tablero solo esto:
 - **Su silueta,** en la casilla a la que planea moverse.
 - **La marca de su objetivo,** con su punto.
 - **La miniatura de su carta,** en la casilla donde la colocó, con un contorno fino de su área.
-- **Su número de orden** (D-32), en la casilla desde la que actúa.
+- **Su número de orden** (D-32), en la casilla desde la que actúa: arriba a la izquierda o, si en esa casilla hay una carta, abajo a la izquierda.
 
 Su camino no se dibuja, y su línea de mira aparece solo con el ratón. Lo del ninja activo se dibuja encima de lo de los demás: sus casillas, sus objetivos posibles y la marca del que eligió.
 
@@ -266,7 +266,7 @@ La casilla mide 100×84 px. Dentro van la figura, su barra de vida y sus estados
 - **La figura** se apoya a 67 px del borde de arriba de la casilla y no lo pasa.
 - **La barra de vida** va al pie, bajo la figura, con su número a la derecha, en 13 px. Usa el color del elemento del ninja, `ICE.deep` en los gólems y `--danger` cuando queda el 30 % o menos.
 - **Los íconos de estado** van arriba a la derecha, uno bajo el otro. Una unidad tiene dos como mucho: escudo y potencia, o aturdido y quemado.
-- **El número de orden** (D-32) va arriba a la izquierda de la casilla desde la que actúa el ninja.
+- **El número de orden** (D-32) va arriba a la izquierda de la casilla desde la que actúa el ninja. Si en esa casilla hay una carta colocada, de cualquier ninja, baja a la esquina de abajo a la izquierda: arriba van las miniaturas, que se dibujan al frente, y la de Fuego lo taparía. Abajo no pisa la barra de vida ni su número.
 - **La marca de un objetivo** va sobre el cuerpo de la unidad, con sus puntos encima, y cabe en la casilla.
 - **Las miniaturas de las cartas colocadas** van en la franja de arriba, al frente de la unidad. Con el ratón sobre ella se vuelven semitransparentes.
 
@@ -291,7 +291,7 @@ De abajo hacia arriba:
 | Objetivo elegido | Atacar: un anillo con un arco del color de cada atacante. Curar: la cruz. Revivir: la flecha. Encima, un punto por cada ninja que lo eligió | El anillo y los puntos, del elemento de cada ninja | Para cada acción planeada, en cualquier modo. Las del ninja activo van encima de las demás |
 | Objetivos posibles | Una mira tenue sobre cada gólem al alcance, una cruz sobre el aliado que se puede curar y una flecha sobre el caído que se puede revivir | `--danger`, `--snow` y `--gold` | Para el ninja activo, salvo con una carta en la mano. Van encima de las marcas de los demás ninjas |
 | Casilla bajo el ratón | Un borde | `--ink` | Con el ratón sobre el tablero |
-| Número de orden | El orden real en que actuará cada ninja (D-32) | El de su elemento | Para cada ninja con una acción planeada |
+| Número de orden | El orden real en que actuará cada ninja (D-32) | El de su elemento | Para cada ninja con una acción planeada. Arriba a la izquierda de su casilla; abajo a la izquierda si en ella hay una carta colocada |
 | Miniatura de una carta colocada | Una carta pequeña con su valor y el símbolo de su elemento, en su lugar fijo. Con combo, un borde `--gold` | El del elemento | Para cada carta ya colocada. Va al frente de todo; con el ratón sobre la unidad de su casilla, semitransparente |
 
 - **Tinta alrededor:** el anillo, los puntos y la línea de mira llevan borde de tinta, para leerse sobre cualquier figura.
@@ -305,13 +305,34 @@ Revivir se completa al final del turno (R-09), así que el tablero muestra la re
 - **Al planificar:** con el ratón sobre un caído se ven sus casillas vecinas, y la flecha tenue aparece sobre él solo cuando el ninja activo está en una de ellas o planeó ir a una. Si otro ninja ya planeó revivirlo, no se ofrece: queda la marca de ese ninja, la flecha sólida con su punto, y un clic lo dice ("Marea ya va a revivir a Brasa.").
 - **Durante la fase de los gólems:** quien revive mantiene su pose de reanimar, inclinado sobre su aliado, y el caído lleva un anillo `--gold` que gira.
 - **Al terminar:** si se completa, el aliado se levanta con su haz de luz y el aviso dice "Brasa vuelve con 1 de vida". Si quien revivía cae, el anillo se apaga y el aviso dice "Reanimación interrumpida".
-- **La primera vez que cae un ninja en la partida,** el consejo que sale al activar a un ninja explica cómo revivirlo.
+- **La primera vez que cae un ninja,** una burbuja sobre los paneles explica cómo revivirlo (ver "Consejos en el momento").
 
 ### La mano
 
 - Muestra solo las cartas que hay: un lugar sin carta no se dibuja.
 - Vacía, dice bajo su título cómo se ganan: "Llena el medidor para ganar cartas".
 - Guarda su alto aunque esté vacía, para que su título no salte al cambiar de ninja.
+
+### Consejos en el momento
+
+Cuatro consejos salen una sola vez cada uno, la primera vez que hacen falta (D-80): cambiar de ninja, primera carta, combo posible y primera caída. Sus textos están en el §9.5 del PRD.
+
+- **La burbuja (`.bubble`):** un panel `.paper` con una franja a la izquierda del color del ninja del que habla, como la de los mensajes (`.notice`). El texto va en 14 px, como el de la franja de arriba, y abajo a la derecha lleva "Entendido", un `.link`. Se cierra con ese enlace o con Enter.
+- **Siempre en el mismo lugar, y nunca sobre el tablero:** la franja de abajo, a la derecha, en el espacio libre junto a la mano. Va pegada al borde derecho y mide 290 px de ancho como mucho, así se lee en dos o tres renglones. En la maqueta iba encima del panel o de la mano; ahí no cabe, porque entre el marco del tablero y los paneles quedan menos de 20 px.
+- **Lo que señala lleva el borde dorado (`.tip-mark`),** el aro de lo elegido (sección 2), sin levantar la carta: el panel del ninja, en cambiar de ninja y en la primera caída; su primera carta, en la primera carta; y todas las cartas de la mano, en el combo posible. Así la burbuja no se mueve y siempre señala al ninja correcto.
+
+| En la mano | Dónde va la burbuja |
+| --- | --- |
+| Ninguna carta | Junto a la frase de la mano, que se parte en dos renglones para dejarle lugar |
+| Una o dos cartas | A la derecha de las cartas |
+| Tres o cuatro cartas | No queda espacio libre junto a la mano: sube encima de ella, al margen derecho del tablero, con 150 px de ancho. No tapa ninguna carta |
+
+- **Una a la vez.** Si coinciden varios consejos, sale primero la caída, después la primera carta, el combo y cambiar de ninja. Al cerrar uno sale el siguiente.
+- **No estorba.** La burbuja no pausa nada ni bloquea el tablero: se puede seguir jugando con ella abierta.
+- **Aprendidos.** El consejo que se cierra se guarda con los ajustes y no vuelve a salir. La ayuda trae "Volver a ver los consejos". Con "Consejos en pantalla" apagado no sale ninguno.
+- **La franja de arriba es la línea de contexto:** el estado del turno y, con el ratón sobre un gólem, su nombre y su consejo. Lo que se enseña una sola vez va en una burbuja, no en la franja.
+
+`state/tips.ts` decide qué consejo sale, cuándo y dónde, con pruebas. Una prueba e2e mide que ninguna burbuja pise el marco del tablero.
 
 ### El fondo
 

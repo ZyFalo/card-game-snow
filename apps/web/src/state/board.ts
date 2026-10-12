@@ -126,8 +126,11 @@ export interface BoardLayers {
   cards: PlacedCards[];
   /** Dos o más ninjas juegan carta este turno (R-18): sus miniaturas lo anuncian. */
   combo: boolean;
-  /** El orden real en que actuará cada ninja (R-11, D-32), en la casilla desde la que actúa. */
-  order: { ninja: ElementKind; at: Vec; n: number }[];
+  /**
+   * El orden real en que actuará cada ninja (R-11, D-32), en la casilla desde la que actúa. `below`: en
+   * esa casilla hay una carta colocada, y el número baja de esquina para no quedar bajo su miniatura.
+   */
+  order: { ninja: ElementKind; at: Vec; n: number; below: boolean }[];
   /** Líneas de mira: solo las que pide el ratón. */
   aims: AimLine[];
 
@@ -272,10 +275,12 @@ export function boardLayers(s: BoardState): BoardLayers | null {
       }
     }
     const num = order[n.id];
-    if (num) layers.order.push({ ninja: n.id, at: from, n: num });
+    if (num) layers.order.push({ ninja: n.id, at: from, n: num, below: false });
   }
   layers.marks = [...marks.values()];
   layers.combo = played >= 2;
+  // Las miniaturas ocupan la franja de arriba de su casilla: ahí el número de orden cambia de esquina.
+  for (const o of layers.order) o.below = placed.has(key(o.at));
 
   for (const group of placed.values()) {
     const over = hover !== null && eq(hover, group.at);

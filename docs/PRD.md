@@ -5,8 +5,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.22 |
-| Última actualización | 11 de octubre de 2026 |
+| Versión | 0.10.23 |
+| Última actualización | 12 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
 | Contexto | Piloto de un proyecto personal, que su responsable avanza en sus ratos libres: recrear con IA el juego favorito de la infancia. Empezó como proyecto de clase (D-75) |
@@ -510,7 +510,16 @@ Redactados por nosotros, uno por pantalla de carga y uno contextual por fase si 
 - "Las acciones se resuelven en orden: primero Fuego, luego Agua y al final Nieve."
 - "Tu medidor sube al moverte, al actuar y al recibir golpes. Llénalo para ganar cartas."
 
-La primera vez que cae un ninja en la partida, el consejo que sale al activar a un ninja explica cómo revivirlo: "Muévete junto a [Ninja] para revivirlo. Se levanta al final del turno: protege a quien lo revive." (R-09).
+**Consejos en el momento (D-80).** Cuatro consejos salen una sola vez cada uno, en una burbuja que va siempre en el mismo lugar: la franja de abajo, a la derecha, en el espacio libre junto a la mano, nunca sobre el tablero. Lo que señala lleva el borde dorado, sea el panel del ninja o la carta, y la burbuja lleva a la izquierda una franja del color de ese ninja. Se cierran con "Entendido":
+
+- **Cambiar de ninja,** la primera vez que un ninja completa su plan y a otro le falta el suyo: "[Ninja] ya tiene su plan. Elige otro ninja con un clic o con Tab."
+- **Primera carta,** cuando el ninja activo tiene una carta en la mano: "Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja."
+- **Combo posible,** la primera vez que el ninja activo y otro en pie tienen carta: "Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo."
+- **Primera caída** (R-09): "[Caído] cayó. Mueve a [Ninja] junto a él para revivirlo. Se levanta al final del turno: protege a quien lo revive." Nombra al ninja activo, que es quien puede ir.
+
+El consejo que se cierra queda aprendido: se guarda con los ajustes del navegador y no vuelve a salir. Sale uno a la vez, en este orden si coinciden: la caída, la primera carta, el combo y cambiar de ninja. Respetan "Consejos en pantalla", y la ayuda trae "Volver a ver los consejos".
+
+La franja de arriba es la línea de contexto: dice el estado del turno y, con el ratón sobre un gólem, su nombre y su consejo.
 
 ### 9.6 Logros locales (nombres propios)
 
@@ -523,6 +532,7 @@ Combo doble, Combo triple, Reanimador, De pie otra vez (ganar después de haber 
 - Opción de movimiento reducido (sin sacudidas; cinemática de combo abreviada).
 - Ayudas opcionales en la pantalla de equipo, apagadas por defecto y solo en las partidas locales (D-78): "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos".
 - "Pasar al siguiente ninja", en la pantalla de equipo y en la pausa, también apagada por defecto (D-79): con ella, el foco pasa solo al siguiente ninja al elegir cada acción.
+- "Consejos en pantalla", en la pantalla de equipo y en la pausa, encendida por defecto: apagada, no se ven la franja de arriba ni los consejos en el momento (D-80).
 - Tamaño de texto ajustable, textos en español con estructura lista para traducir (P-11).
 - Mouse, teclado y táctil.
 
@@ -1009,6 +1019,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-23 | Monedas como el original: 60 / 120 / 120 por ronda y 120 por el bonus, se conservan al perder; los 9 logros activan las monedas dobles (R-29) | ✅ | 2026-09-29 |
 | D-24 | Inventario inicial: 1 carta de 9 por elemento; sin cartas de práctica (R-30) | ✅ | 2026-09-29 |
 | D-25 | Carta de camino elegida al entrar por primera vez (R-30; detalle en P-16) | ✅ | 2026-09-29 |
+| D-80 | Consejos en el momento, el quinto paso de la ronda de claridad del tablero (D-74), con un alcance más chico que el previsto: ya no hay pasos que explicar, y la franja de arriba y las demostraciones que vienen cubren buena parte de la ayuda. Son cuatro consejos, cada uno una sola vez, en una burbuja pegada a los paneles o a la mano, nunca sobre el tablero: cambiar de ninja (la primera vez que un ninja completa su plan), primera carta, combo posible (la primera vez que dos ninjas tienen carta) y primera caída, que sale de la franja y pasa a este sistema. Se cierran con "Entendido". El que se cierra queda aprendido: se guarda con los ajustes y no vuelve a salir. Respetan "Consejos en pantalla", y desde la ayuda se pueden volver a ver. La franja de arriba sigue siendo la línea de contexto: el estado del turno y, con el ratón sobre un gólem, su nombre y su consejo. Entre el tablero y los paneles no hay lugar para la burbuja de la maqueta, así que todas van en un mismo lugar: la franja de abajo, a la derecha, en el espacio libre junto a la mano. Lo que señala lleva el borde dorado, sea el panel del ninja o la carta, y la burbuja lleva a la izquierda una franja del color de ese ninja: así no tapa el tablero, se lee en dos o tres renglones y siempre señala al ninja correcto. Con tres o cuatro cartas no queda espacio libre junto a la mano, y la burbuja sube encima de ella, al margen derecho del tablero. Detalle en el §9.5 | ✅ | 2026-10-12 |
 | D-79 | "Pasar al siguiente ninja" viene apagado por defecto, como las demás opciones que ya vienen apagadas ("Animaciones rápidas" y las dos ayudas). Hallazgo de la prueba con personas: el juego se siente muy bien, pero la gente elige por su cuenta al siguiente ninja, y el paso automático la confunde. Como todas las cuentas y partidas siguen siendo internas, una migración única apaga la opción también en los ajustes ya guardados en el navegador; después, cada persona decide. Los textos que daban por hecho que el foco salta solo dicen cómo pasar al siguiente: con un clic en el ninja o con Tab. Lo dicen con una sola fórmula, igual en todos lados: "Elige otro ninja con un clic o con Tab." | ✅ | 2026-10-11 |
 | D-78 | Ayudas opcionales, solo en las partidas locales. "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos" existen solo en las partidas locales (sandbox y un jugador), apagadas por defecto y en el grupo "Ayudas" de la pantalla de equipo, y se guardan como los demás ajustes. La primera muestra, en la barra de cada gólem, la vida que perdería con los ataques y las cartas ya planeados y con lo que se está apuntando, sin contar las quemaduras; la segunda pinta, con el ratón sobre un gólem, las casillas que puede golpear en su turno. En línea no están disponibles: todos juegan con la misma información, como en el original. Cuando llegue el M8, las partidas en línea las ignoran y no las muestran. Idea para después, sin compromiso: podrían ofrecerse en línea en el futuro ("Ideas para después" en `docs/PRD-v2.md`) | ✅ | 2026-10-06 |
 | D-77 | La reanimación vuelve a la regla del original y reemplaza a D-18. En el original, según el código de Snowflake (el servidor reconstruido que funciona con el cliente original), quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. Con D-18, el revivido se levantaba antes de los enemigos y solía volver a caer en el mismo turno; el bot casi nunca revivía a un caído amenazado, y para una persona era frustrante y confuso. Revivir sigue costando la acción y exigiendo una de las 8 casillas vecinas; un caído no puede tener dos reanimadores; las cartas de Nieve siguen reviviendo en el acto (R-09 y R-11). El bot pasa a evaluar si alcanzan a quien revive, en la casilla desde donde revive. Medido en el simulador: con D-18 se perdía cerca de la mitad de las reanimaciones, porque el revivido volvía a caer ese turno; con D-77 se interrumpe entre el 1 y el 6 %. La victoria en Tormenta sube unos 3 puntos con el mismo mazo en los tres ninjas y entre 3 y 8 en los equipos mezclados; en Clásica solo se mueve donde todavía se pierde, 4 puntos con la colección de inicio (`docs/balance-report.md`) | ✅ | 2026-10-06 |
@@ -1070,6 +1081,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.23 | 2026-10-12 | Ronda de claridad del tablero, quinto paso (D-80): los consejos en el momento. Cuatro consejos salen una sola vez cada uno, en una burbuja que va siempre junto a la mano, nunca sobre el tablero, y marca con un borde dorado el panel o la carta de la que habla: cambiar de ninja, primera carta, combo posible y primera caída, que deja la franja. Se cierran con "Entendido", quedan aprendidos en los ajustes y la ayuda permite volver a verlos. Además, el número de orden baja de esquina cuando en su casilla hay una carta, para que la miniatura de Fuego no lo tape. Cambian el §9.5 y el §9.7 |
 | 0.10.22 | 2026-10-11 | D-79: "Pasar al siguiente ninja" viene apagado por defecto, por un hallazgo de la prueba con personas, y una migración única lo apaga también en los ajustes ya guardados en el navegador. La franja de arriba y la ayuda dicen cómo pasar al siguiente ninja con una sola fórmula: "Elige otro ninja con un clic o con Tab." Cambian el §9.3 y el §9.7 |
 | 0.10.21 | 2026-10-06 | Ronda de claridad del tablero, cuarto paso (D-74): la información a pedido. El panel de cada ninja resume su plan sin números y, con el ratón sobre un gólem, la franja dice su nombre y cómo ataca, sin pintar casillas. Las cartas colocadas quedan en miniatura, con un lugar fijo por elemento, un solo contorno para el área compartida y un borde dorado cuando hay combo; ningún tinte se mezcla con otro. D-78: las ayudas "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos", opcionales, apagadas por defecto y solo en las partidas locales. Cambian el §9.3, el §9.4 y el §9.7 |
 | 0.10.20 | 2026-10-06 | Segundo ajuste al foco y los pasos (D-74): se quita el paso de moverse, que el original no tenía. Al activar un ninja se ven a la vez sus casillas y los objetivos que alcanza desde donde está; un clic en un objetivo lo elige sin moverse, y un clic en una casilla lo mueve y recalcula los objetivos desde ahí. Las cartas siguen siendo el único modo aparte. Cambian el §9.3 y el consejo de planificar; se va el aviso que pedía moverse primero, y la ayuda se reescribe sin pasos |

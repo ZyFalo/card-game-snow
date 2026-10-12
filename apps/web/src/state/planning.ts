@@ -175,21 +175,15 @@ export const threatTiles = (m: MatchState, e: Enemy): Vec[] => enemyThreatTiles(
 
 export const tileKey = key;
 
-/**
- * R-09: la primera vez que cae un ninja en la partida, el consejo de cómo revivir lo nombra. `seen` dice
- * si ese consejo ya salió.
- */
-export function firstFallTip(m: MatchState, seen: boolean): ElementKind | null {
-  if (seen) return null;
-  return m.ninjas.find((n) => n.hp <= 0)?.id ?? null;
-}
-
 type TipState = Pick<
   AppState,
-  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover' | 'reviveTip'
+  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover'
 >;
 
-/** Consejo contextual para la barra superior (§9.5). */
+/**
+ * La franja de arriba: la línea de contexto (§9.5). Dice el estado del turno y, con el ratón sobre un
+ * gólem, su nombre y su consejo. Los consejos que salen una sola vez van en su burbuja (`state/tips.ts`).
+ */
 export function contextualTip(s: TipState): string | null {
   const m = s.match;
   if (s.phase === 'intro') return TIP_TEXT.intro;
@@ -212,12 +206,7 @@ export function contextualTip(s: TipState): string | null {
   const name = NINJA_TEXT[info.ninja.id].name;
   if (s.pendingCard) return TIP_TEXT.placeCard(name);
   if (!info.plan.action) {
-    if (!info.plan.moveTo) {
-      // La primera vez que cae un ninja, el consejo de ese momento explica cómo se le revive (R-09).
-      const fallen = s.reviveTip ? getNinja(m, s.reviveTip) : undefined;
-      if (fallen && fallen.hp <= 0) return TIP_TEXT.reviveHow(NINJA_TEXT[fallen.id].name);
-      return TIP_TEXT.plan(name);
-    }
+    if (!info.plan.moveTo) return TIP_TEXT.plan(name);
     // Ya eligió casilla: le falta qué hacer, si desde ahí tiene con qué.
     if (canAct(m, s.plans, info.ninja.id)) return TIP_TEXT.act(name);
   }

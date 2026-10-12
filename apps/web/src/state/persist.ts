@@ -1,5 +1,6 @@
 import { DIFFICULTIES, type Difficulty } from '@ventisca/core';
 import { PACES, type Pace } from '../i18n/es';
+import { TIP_IDS, type TipId } from './tips';
 
 /* Preferencias del jugador en localStorage (siempre con try/catch). */
 
@@ -18,6 +19,8 @@ export interface Settings {
   aidDamage: boolean;
   /** Ayuda "Ver el alcance de los enemigos" (D-78): solo en las partidas locales. */
   aidReach: boolean;
+  /** Los consejos en el momento que ya se cerraron con "Entendido" (D-80): no vuelven a salir. */
+  learnedTips: TipId[];
 }
 
 const prefersReducedMotion = (): boolean => {
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fastAnimations: false,
   aidDamage: false,
   aidReach: false,
+  learnedTips: [],
 };
 
 const KEY_SETTINGS = 'ventisca:settings:v1';
@@ -95,6 +99,9 @@ function sanitizeSettings(raw: unknown, base: Settings): Settings {
   if (typeof r.pace === 'string' && Object.hasOwn(PACES, r.pace)) out.pace = r.pace as Pace;
   if ((DIFFICULTIES as readonly unknown[]).includes(r.difficulty)) out.difficulty = r.difficulty as Difficulty;
   for (const k of BOOLEAN_SETTINGS) if (typeof r[k] === 'boolean') out[k] = r[k];
+  // Solo los consejos que existen, una vez cada uno y en su orden.
+  const learned = r.learnedTips;
+  if (Array.isArray(learned)) out.learnedTips = TIP_IDS.filter((id) => learned.includes(id));
   return out;
 }
 

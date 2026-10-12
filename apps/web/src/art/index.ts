@@ -76,8 +76,22 @@ export function artEntries(): { key: string; svg: string }[] {
   ];
 }
 
-/** Rasteriza todas las texturas como imágenes (data URIs, sin peticiones de red). */
-export async function loadArtImages(): Promise<Map<string, HTMLImageElement>> {
+let loading: Promise<Map<string, HTMLImageElement>> | null = null;
+
+/**
+ * Todas las texturas como imágenes (data URIs, sin peticiones de red). Se rasterizan una sola vez: el
+ * tablero y cada demostración (D-81) comparten las mismas imágenes.
+ */
+export function loadArtImages(): Promise<Map<string, HTMLImageElement>> {
+  loading ??= rasterize().catch((error: unknown) => {
+    // Si falla, el siguiente que las pida lo intenta de nuevo.
+    loading = null;
+    throw error;
+  });
+  return loading;
+}
+
+async function rasterize(): Promise<Map<string, HTMLImageElement>> {
   const out = new Map<string, HTMLImageElement>();
   await Promise.all(
     artEntries().map(

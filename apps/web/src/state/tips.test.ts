@@ -38,7 +38,8 @@ const planning = (patch: Partial<Tips> = {}, learned: TipId[] = []): Tips => ({
 });
 
 const SWITCH = 'Brasa ya tiene su plan. Elige otro ninja con un clic o con Tab.';
-const FIRST_CARD = 'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja.';
+const FIRST_CARD =
+  'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja. El ▶ junto al título muestra qué hace.';
 const COMBO = 'Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo.';
 
 describe('Consejos en el momento (D-80)', () => {

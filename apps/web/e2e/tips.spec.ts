@@ -37,7 +37,8 @@ const withHands = (hands: Partial<Record<'fire' | 'water' | 'snow', number[]>>):
 });
 
 const SWITCH = (name: string) => `${name} ya tiene su plan. Elige otro ninja con un clic o con Tab.`;
-const FIRST_CARD = 'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja.';
+const FIRST_CARD =
+  'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja. El ▶ junto al título muestra qué hace.';
 const COMBO = 'Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo.';
 const FALL = (fallen: string, active: string) =>
   `${fallen} cayó. Mueve a ${active} junto a él para revivirlo. Se levanta al final del turno: protege a quien lo revive.`;

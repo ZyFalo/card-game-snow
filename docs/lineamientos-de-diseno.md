@@ -334,6 +334,21 @@ Cuatro consejos salen una sola vez cada uno, la primera vez que hacen falta (D-8
 
 `state/tips.ts` decide qué consejo sale, cuándo y dónde, con pruebas. Una prueba e2e mide que ninguna burbuja pise el marco del tablero.
 
+### Demostraciones
+
+Qué hace una carta se enseña en un tablero en miniatura, donde la carta se juega en bucle (D-81). El detalle está en el §9.5 del PRD.
+
+- **El ▶ (`.demo-open`):** un botón redondo de tinta junto al título de la mano. Uno solo para toda la mano. Abierto, lleva el aro dorado de lo elegido. No cambia el alto del título.
+- **La burbuja (`.demo`):** un panel `.paper` sobre la mano, pegado a su borde derecho, de 400 px de ancho. Arriba, el título ("Carta de Fuego · 9") y una ✕; debajo, el selector "Sin combo | Con combo", que es el `.seg` de las opciones en chico; el tablero en miniatura; y la línea de texto de la carta, que guarda el alto de dos renglones para que la burbuja no salte.
+- **Tapa parte del tablero mientras está abierta.** No cabe en otro lugar, y la abre quien juega. Por eso es de una a la vez, y se cierra con la ✕, con Esc o con un clic fuera, que no llega al tablero. Las teclas del juego esperan, y el consejo en pantalla también. No pausa el reloj.
+- **El tablero en miniatura** es la escena del juego mirando solo 4×3 casillas, a 0,8 de su tamaño: a la izquierda, quien juega la carta; a la derecha, su área de 3×3 con dos gólems. Primero se ve lo planeado, como en la partida, con la miniatura de cada carta; después se juega el turno; y al final queda el resultado un momento.
+- **Lo que se lee sobre cada unidad (`.demo-label`)** sale con el resultado: "−9 · aturdido". Va en 13 px, sobre la casilla de la unidad, y ahí arriba nunca hay otra unidad: el tablero de cada demostración se arma para eso, y una prueba lo mide. Las de la primera y la última columna se alinean al borde, para no salirse.
+- **El combo** se anuncia con un "¡Combo!" corto sobre el tablero en miniatura, en vez del cartel a pantalla completa. Las dos cartas llevan el borde dorado.
+- **En miniatura no van los números de vida:** no se leerían. La barra basta. Con la mano vacía tampoco van los números del daño.
+- **Con animaciones reducidas** van dos tableros fijos, "Antes" y "Después", lado a lado, a 0,55 de su tamaño, en una burbuja de 484 px.
+
+`state/demos.ts` arma el tablero y le pide al motor que lo resuelva; `game/DemoScene.ts` es la escena del juego sin sonido ni conexión con la partida.
+
 ### El fondo
 
 - Deja lisa la franja de abajo, donde van los paneles de los ninjas y la mano: de 544 px hacia abajo solo hay campo nevado (`HUD_BAND_Y` en `art/scenery.ts`). Las montañas, los acantilados y los pinos se apoyan en esa línea o más arriba.

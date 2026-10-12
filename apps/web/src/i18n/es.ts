@@ -257,7 +257,8 @@ export const MOMENT_TIP = {
   /** La primera vez que un ninja completa su plan y a otro le falta el suyo. */
   switchNinja: (name: string) => `${name} ya tiene su plan. ${SWITCH_NINJA}`,
   /** La primera vez que el ninja activo tiene una carta. */
-  firstCard: 'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja.',
+  firstCard:
+    'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja. El ▶ junto al título muestra qué hace.',
   /** La primera vez que dos ninjas tienen carta (R-18). */
   combo: 'Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo.',
   /** La primera vez que cae un ninja: cómo se le revive (R-09). `active` es el ninja que puede ir. */
@@ -265,6 +266,37 @@ export const MOMENT_TIP = {
     `${fallen} cayó. Mueve a ${active} junto a él para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   dismiss: 'Entendido',
   dismissTitle: 'Entendido (Enter)',
+} as const;
+
+/**
+ * Demostraciones (D-81): qué hace una carta, en un tablero en miniatura que se abre con el ▶ que va junto
+ * al título de la mano.
+ */
+export const DEMO_TEXT = {
+  /** El ▶ junto al título de la mano. */
+  open: (name: string) => `Ver qué hacen las cartas de ${name}`,
+  /** Con la mano vacía no hay valor que mostrar. */
+  cardTitle: (element: string, value: number | null) =>
+    value === null ? `Carta de ${element}` : `Carta de ${element} · ${value}`,
+  mode: 'Con o sin combo',
+  alone: 'Sin combo',
+  combo: 'Con combo',
+  /** Lo que suma la carta cuando otro ninja también juega la suya (R-18). */
+  comboCaption: (effect: string) => `Con combo, si otro ninja también juega carta este turno: ${effect}`,
+  comboEffect: {
+    fire: 'además los quema, 3 de daño por turno durante 3 turnos.',
+    water: 'da Potencia a todo el equipo, y el siguiente golpe o cura hace un 50 % más.',
+    snow: 'da Escudo a todo el equipo, que anula el siguiente golpe.',
+  } satisfies Record<ElementKind, string>,
+  /** Con animaciones reducidas: dos imágenes fijas. */
+  before: 'Antes',
+  after: 'Después',
+  /** Lo que se lee sobre cada unidad al terminar: "−9 · aturdido". */
+  stunned: 'aturdido',
+  burning: 'quema',
+  boost: 'Potencia',
+  shield: 'Escudo',
+  revived: 'revive',
 } as const;
 
 /** Progreso de la condición del bonus en la ficha de ronda (R-21). */
@@ -363,6 +395,7 @@ export const HELP = {
     'El medidor sube con cada movimiento, acción o golpe recibido. Al llenarse, ganas una carta (máximo 4).',
     'Las cartas afectan un área de 3×3 y se colocan dentro del alcance de movimiento del ninja.',
     'Si dos o tres ninjas juegan carta el mismo turno, hay combo: Fuego quema, Agua da Potencia y Nieve da Escudo.',
+    'El ▶ junto a «Cartas de…» muestra qué hace la carta, sin combo y con combo.',
   ],
   koTitle: 'Caer y revivir',
   ko: [

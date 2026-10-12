@@ -1316,6 +1316,44 @@ button {
   font-weight: 500;
 }
 
+.hand-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* El ▶ de las demostraciones (D-81): redondo y de tinta. Sus márgenes dejan el título del mismo alto. */
+.demo-open {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: -5px 0;
+  padding: 0;
+  color: var(--paper-hi);
+  background: var(--ink);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  text-shadow: none;
+}
+
+.demo-open svg {
+  width: 12px;
+  height: 12px;
+  margin-left: 1px;
+}
+
+.demo-open:hover,
+.demo-open.on {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+
+.demo-open:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
 /* La mano muestra solo las cartas que hay, pero guarda su alto: su título no salta al cambiar de ninja. */
 .cards {
   display: flex;
@@ -1327,6 +1365,164 @@ button {
 .hand-empty {
   margin: 0 2px;
   font: 500 var(--text-body) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+/* ---------- Demostraciones (D-81) ---------- */
+
+/*
+ * Una burbuja sobre la mano, con un tablero en miniatura donde la carta se juega en bucle. Mientras está
+ * abierta tapa parte del tablero: la abre quien juega, y Esc o un clic fuera la cierran.
+ */
+.demo-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.demo {
+  position: absolute;
+  right: 16px;
+  bottom: 179px;
+  z-index: 6;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  text-align: left;
+  animation: tipIn 0.28s ease backwards;
+}
+
+/* Con animaciones reducidas van dos tableros lado a lado. */
+.demo.stills {
+  width: 484px;
+}
+
+.demo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.demo-head h3 {
+  margin: 0;
+  font: 700 16px / 1.2 var(--font-ui);
+}
+
+.demo-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.demo-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.demo-close:hover {
+  background: var(--paper-lo);
+}
+
+.demo-close:focus-visible {
+  outline: var(--focus);
+  outline-offset: 0;
+}
+
+/* El selector "Sin combo | Con combo": el mismo de las opciones, en chico. */
+.demo .seg button {
+  flex: none;
+  padding: 5px 12px;
+}
+
+.demo .seg button b {
+  font-size: 14px;
+}
+
+/* Arriba queda lugar para lo que se lee sobre las unidades de la primera fila. */
+.demo-board {
+  position: relative;
+  align-self: center;
+  margin-top: 18px;
+}
+
+.demo-stage {
+  overflow: hidden;
+  border-radius: 9px;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.demo-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.demo-label {
+  position: absolute;
+  padding: 1px 6px;
+  font: 700 13px / 1.3 var(--font-ui);
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--paper-hi);
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  transform: translateY(-100%);
+  pointer-events: none;
+  animation: tipIn 0.28s ease backwards;
+}
+
+.demo-label.at-middle {
+  transform: translate(-50%, -100%);
+}
+
+.demo-combo {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  padding: 2px 12px;
+  font-size: 16px;
+  line-height: 1.3;
+  white-space: nowrap;
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.demo-stills {
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-2);
+}
+
+.demo-stills figure {
+  margin: 0;
+}
+
+.demo-stills figcaption {
+  margin-top: 6px;
+  font: 700 13px / 1.2 var(--font-ui);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* El alto de dos renglones: la burbuja no salta al pasar de "Sin combo" a "Con combo". */
+.demo-caption {
+  min-height: 2.8em;
+  margin: 0;
+  font: 500 14px / 1.4 var(--font-ui);
   color: var(--ink-2);
 }
 
@@ -2059,6 +2255,8 @@ button {
 .reduced .hud .hand,
 .reduced .tip-text,
 .reduced .bubble,
+.reduced .demo,
+.reduced .demo-label,
 .reduced .plan-pill.set,
 .reduced .card.arrived,
 .reduced .meter.charged i.on {

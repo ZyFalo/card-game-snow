@@ -991,6 +991,42 @@ button {
   height: 26px;
 }
 
+/* "Ver cómo ataca": el botón de la demostración del gólem que la franja está nombrando (D-82). */
+.tip-demo {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 10px;
+  font: 700 13px / 1.2 var(--font-ui);
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--paper-hi);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tip-demo svg {
+  width: 11px;
+  height: 11px;
+}
+
+.tip-demo:hover {
+  background: var(--paper-lo);
+}
+
+/* Con su demostración abierta, el aro dorado de lo elegido, como el ▶ de las cartas. */
+.tip-demo.on {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+
+.tip-demo:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
 .turnbox {
   position: absolute;
   left: 50%;
@@ -1505,6 +1541,13 @@ button {
   display: flex;
   justify-content: center;
   gap: var(--gap-2);
+}
+
+/* Un tablero mucho más ancho que alto no cabe dos veces lado a lado: va uno sobre otro. */
+.demo-stills.stacked {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-1);
 }
 
 .demo-stills figure {

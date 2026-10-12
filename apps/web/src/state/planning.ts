@@ -6,6 +6,7 @@ import {
   ELEMENTS,
   type ElementKind,
   type Enemy,
+  type EnemyKind,
   enemyAt,
   enemyThreatTiles,
   getEnemy,
@@ -175,14 +176,27 @@ export const threatTiles = (m: MatchState, e: Enemy): Vec[] => enemyThreatTiles(
 
 export const tileKey = key;
 
+/** El gólem que está en esa casilla: el que la franja pasa a nombrar cuando el ratón lo mira (D-82). */
+export const spotAt = (m: MatchState | null, at: Vec | null): EnemyKind | null =>
+  m && at ? (enemyAt(m, at)?.kind ?? null) : null;
+
+/**
+ * El gólem que nombra la franja (D-82): el de la demostración abierta o, si no hay, el último que miró el
+ * ratón. Solo al planificar, y nunca con una carta en la mano: ahí la franja dice dónde colocarla.
+ */
+export function namedGolem(s: Pick<AppState, 'phase' | 'pendingCard' | 'spotted' | 'demo'>): EnemyKind | null {
+  if (s.phase !== 'planning' || s.pendingCard) return null;
+  return s.demo?.kind === 'golem' ? s.demo.enemy : s.spotted;
+}
+
 type TipState = Pick<
   AppState,
-  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover'
+  'phase' | 'resolveStep' | 'boosting' | 'match' | 'plans' | 'active' | 'pendingCard' | 'spotted' | 'demo'
 >;
 
 /**
- * La franja de arriba: la línea de contexto (§9.5). Dice el estado del turno y, con el ratón sobre un
- * gólem, su nombre y su consejo. Los consejos que salen una sola vez van en su burbuja (`state/tips.ts`).
+ * La franja de arriba: la línea de contexto (§9.5). Dice el estado del turno y, al mirar a un gólem, su
+ * nombre y cómo ataca. Los consejos que salen una sola vez van en su burbuja (`state/tips.ts`).
  */
 export function contextualTip(s: TipState): string | null {
   const m = s.match;
@@ -194,12 +208,11 @@ export function contextualTip(s: TipState): string | null {
     return TIP_TEXT.ninjas(hint);
   }
   if (s.phase !== 'planning' || !m) return null;
-  if (s.hover) {
-    const e = enemyAt(m, s.hover);
-    if (e && !s.pendingCard) {
-      const t = ENEMY_TEXT[e.kind];
-      return TIP_TEXT.enemy(t.name, t.tip);
-    }
+  // El gólem que se está mirando: se queda un momento después de que el ratón lo deja (D-82).
+  const golem = namedGolem(s);
+  if (golem) {
+    const t = ENEMY_TEXT[golem];
+    return TIP_TEXT.enemy(t.name, t.hint);
   }
   const info = activeInfo(s);
   if (!info) return TIP_TEXT.confirm;

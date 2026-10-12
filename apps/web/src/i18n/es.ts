@@ -118,21 +118,28 @@ export const NINJA_TEXT: Record<
   },
 };
 
-export const ENEMY_TEXT: Record<EnemyKind, { name: string; role: string; tip: string }> = {
+/**
+ * `tip` es la descripción de la ayuda. `hint` es lo que dice la franja de arriba al mirar a ese gólem: va
+ * sin números, porque los muestra su demostración (D-82).
+ */
+export const ENEMY_TEXT: Record<EnemyKind, { name: string; role: string; tip: string; hint: string }> = {
   sniper: {
     name: 'Carámbano',
     role: 'Francotirador',
     tip: 'Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.',
+    hint: 'Pega más fuerte de lejos. Acércate para que duela menos.',
   },
   artillery: {
     name: 'Granizo',
     role: 'Artillero',
     tip: 'Su granizo salpica 4 a los vecinos del objetivo. No se amontonen.',
+    hint: 'Su granizo salpica a los vecinos del objetivo. No se amontonen.',
   },
   colossus: {
     name: 'Témpano',
     role: 'Coloso',
     tip: 'Lento pero brutal: barre tres casillas. No se pongan hombro con hombro frente a él.',
+    hint: 'Lento pero brutal: barre tres casillas.',
   },
 };
 
@@ -235,8 +242,8 @@ export const TIP_TEXT = {
   ninjas: (hint: string) => `Actúan tus ninjas: ${ORDER_NAMES}, en ese orden. ${hint}`,
   enemies: (hint: string) => `Responden los gólems, uno por uno. ${hint}`,
   end: (hint: string) => `Final del turno: reanimaciones, quemaduras y cierre de ronda. ${hint}`,
-  /** Con el ratón sobre un gólem: su nombre y cómo ataca. */
-  enemy: (name: string, tip: string) => `${name}. ${tip}`,
+  /** Al mirar a un gólem: su nombre y cómo ataca, sin números. */
+  enemy: (name: string, hint: string) => `${name}. ${hint}`,
   confirm: 'Confirma el turno.',
   placeCard: (name: string) => `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`,
   /** Al activar un ninja: sus casillas y sus objetivos valen a la vez. */

@@ -6,8 +6,10 @@ import { BONUS_SHORT, DEMO_TEXT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n
 import {
   closeDemo,
   confirmTurn,
+  holdSpotted,
   learnTip,
   openCardDemo,
+  openGolemDemo,
   selectCard,
   selectNinja,
   setBoost,
@@ -15,7 +17,7 @@ import {
   suggest,
   togglePause,
 } from '../state/actions';
-import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
+import { bonusProgress, contextualTip, namedGolem, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
 import { type BubbleSlot, bubbleSlot, type MomentTip, momentTip } from '../state/tips';
 import { ElementGlyph, Icon } from './common';
@@ -38,13 +40,33 @@ export function BattleHud() {
 
 function TipBar() {
   const tip = useApp((s) => (s.settings.tips ? contextualTip(s) : null));
+  // El gólem que la franja está nombrando: con él va el botón de su demostración (D-82).
+  const golem = useApp(namedGolem);
+  const open = useApp((s) => s.demo?.kind === 'golem');
   if (!tip) return null;
   return (
-    <div className="tip" aria-live="polite">
+    // Con el ratón sobre la franja, el gólem se queda: así se llega a su botón.
+    <div
+      className="tip interactive"
+      aria-live="polite"
+      onPointerEnter={() => holdSpotted(true)}
+      onPointerLeave={() => holdSpotted(false)}
+    >
       <Icon name="flake" />
       <span key={tip} className="tip-text">
         {tip}
       </span>
+      {golem ? (
+        <button
+          type="button"
+          className={`tip-demo ${open ? 'on' : ''}`}
+          aria-expanded={open}
+          onClick={() => (open ? closeDemo() : openGolemDemo(golem))}
+        >
+          <Icon name="play" />
+          {DEMO_TEXT.showAttack}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -412,11 +434,12 @@ function Hand() {
   const last = useRef<ElementKind>('fire');
   if (active) last.current = active;
   const shown = active ?? last.current;
-  // La demostración es la de las cartas que se ven: si la mano pasa a otro ninja, se cierra.
-  const demoOpen = demo?.ninja === shown;
+  // La demostración de las cartas es la de las que se ven: si la mano pasa a otro ninja, se cierra.
+  const cardDemo = demo?.kind === 'card' ? demo.ninja : null;
+  const demoOpen = cardDemo === shown;
   useEffect(() => {
-    if (demo && !demoOpen) closeDemo();
-  }, [demo, demoOpen]);
+    if (cardDemo && !demoOpen) closeDemo();
+  }, [cardDemo, demoOpen]);
   const ninja = view?.ninjas.find((n) => n.id === shown);
   if (!ninja) return null;
   const plan = plans[shown];

@@ -12,7 +12,7 @@ import {
 } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import { HELP } from '../i18n/es';
-import { bonusProgress, contextualTip, planLabel, reviverOf, turnClockMs } from './planning';
+import { bonusProgress, contextualTip, namedGolem, planLabel, reviverOf, spotAt, turnClockMs } from './planning';
 
 /* R-21: la ficha del bonus contra el reloj cuenta el turno que se planifica y los que quedan. */
 describe('Bonus contra el reloj en la planificación (R-21)', () => {
@@ -70,7 +70,8 @@ describe('Revivir en la planificación (R-09)', () => {
     plans: {},
     active: 'fire',
     pendingCard: null,
-    hover: null,
+    spotted: null,
+    demo: null,
     ...patch,
   });
   const PLAN = 'Elige a dónde se mueve Brasa, o un objetivo desde donde está.';
@@ -206,8 +207,8 @@ describe('El resumen del plan en el panel (D-74)', () => {
   });
 });
 
-/* D-74: al pasar el ratón sobre un gólem, la franja dice su nombre y cómo ataca. */
-describe('El gólem bajo el ratón (D-74)', () => {
+/* D-74 y D-82: la franja nombra al gólem que se está mirando y dice cómo ataca, sin números. */
+describe('El gólem que se está mirando (D-74 y D-82)', () => {
   type Tip = Parameters<typeof contextualTip>[0];
   const tip = (kind: EnemyKind, patch: Partial<Tip> = {}) =>
     contextualTip({
@@ -218,16 +219,16 @@ describe('El gólem bajo el ratón (D-74)', () => {
       plans: {},
       active: 'fire',
       pendingCard: null,
-      hover: { x: 5, y: 2 },
+      spotted: kind,
+      demo: null,
       ...patch,
     });
 
-  it('dice su nombre y un consejo corto sobre cómo ataca, sin su vida ni otros números de la partida', () => {
-    expect(tip('colossus')).toBe(
-      'Témpano. Lento pero brutal: barre tres casillas. No se pongan hombro con hombro frente a él.',
-    );
-    expect(tip('sniper')).toBe('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
-    expect(tip('artillery')).toBe('Granizo. Su granizo salpica 4 a los vecinos del objetivo. No se amontonen.');
+  it('D-82: dice su nombre y cómo ataca, sin números: los muestra su demostración', () => {
+    expect(tip('colossus')).toBe('Témpano. Lento pero brutal: barre tres casillas.');
+    expect(tip('sniper')).toBe('Carámbano. Pega más fuerte de lejos. Acércate para que duela menos.');
+    expect(tip('artillery')).toBe('Granizo. Su granizo salpica a los vecinos del objetivo. No se amontonen.');
+    for (const kind of ['colossus', 'sniper', 'artillery'] as const) expect(tip(kind)).not.toMatch(/\d/);
   });
 
   it('vale antes y después de moverse, y no con una carta en la mano', () => {
@@ -240,9 +241,30 @@ describe('El gólem bajo el ratón (D-74)', () => {
     );
   });
 
-  it('fuera del gólem, la franja vuelve al consejo de planificar', () => {
-    expect(tip('colossus', { hover: { x: 4, y: 2 } })).toBe(
-      'Elige a dónde se mueve Brasa, o un objetivo desde donde está.',
-    );
+  it('D-82: con la demostración de un gólem abierta, la franja sigue nombrando a ese gólem', () => {
+    const open = { kind: 'golem', enemy: 'sniper' } as const;
+    // Aunque el ratón ya no lo mire, o el último que miró sea otro.
+    expect(tip('colossus', { spotted: null, demo: open })).toMatch(/^Carámbano\. /);
+    expect(tip('colossus', { demo: open })).toMatch(/^Carámbano\. /);
+    expect(namedGolem({ phase: 'planning', pendingCard: null, spotted: 'colossus', demo: open })).toBe('sniper');
+    // La de una carta no nombra a ningún gólem.
+    const card = { kind: 'card', ninja: 'fire', combo: false } as const;
+    expect(namedGolem({ phase: 'planning', pendingCard: null, spotted: null, demo: card })).toBeNull();
+    expect(namedGolem({ phase: 'planning', pendingCard: null, spotted: 'colossus', demo: card })).toBe('colossus');
+    // Fuera de la planificación o con una carta en la mano, ninguno.
+    expect(namedGolem({ phase: 'resolving', pendingCard: null, spotted: 'colossus', demo: open })).toBeNull();
+    expect(namedGolem({ phase: 'planning', pendingCard: 'fire-1', spotted: 'colossus', demo: null })).toBeNull();
+  });
+
+  it('sin un gólem que mirar, la franja vuelve al consejo de planificar', () => {
+    expect(tip('colossus', { spotted: null })).toBe('Elige a dónde se mueve Brasa, o un objetivo desde donde está.');
+  });
+
+  it('el gólem que se mira es el de la casilla bajo el ratón', () => {
+    const m = withGolem('artillery', 5, 2);
+    expect(spotAt(m, { x: 5, y: 2 })).toBe('artillery');
+    expect(spotAt(m, { x: 4, y: 2 })).toBeNull();
+    expect(spotAt(m, null)).toBeNull();
+    expect(spotAt(null, { x: 5, y: 2 })).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { STAGE_H, STAGE_W } from './game/layout';
 import { PhaserStage, phaserRef } from './game/PhaserStage';
 import { initAccount } from './state/account';
 import {
+  closeDemo,
   confirmTurn,
   cycleNinja,
   learnTip,
@@ -112,6 +113,13 @@ function useKeyboard(): void {
         return;
       }
       if (st.screen !== 'battle' || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+      // Con una demostración abierta (D-81), Esc la cierra y las demás teclas del juego esperan: lo que
+      // harían quedaría detrás de la burbuja.
+      if (st.demo && !st.paused) {
+        if (k === 'escape' && fresh) closeDemo();
+        if (k === 'escape' || k === ' ' || k === 'enter' || k === 'tab') ev.preventDefault();
+        return;
+      }
       // Mantener Espacio acelera la resolución, también con la autorrepetición.
       if (st.phase === 'resolving' && !st.paused && k === ' ') {
         ev.preventDefault();

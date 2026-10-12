@@ -117,6 +117,12 @@ export const TIMING: Timing = {
 /** Multiplicador de "Animaciones rápidas". */
 export const FAST_FACTOR = 0.6;
 
+/**
+ * Demostraciones (D-81): cuánto se queda quieto el tablero en miniatura antes de jugar la carta, cuánto
+ * dura su "¡Combo!" y cuánto se queda con el resultado a la vista antes de volver a empezar.
+ */
+export const DEMO_TIMING = { before: 900, combo: 700, after: 2400 } as const;
+
 export const clipMs = (clip: Clip): number => clip.frames.reduce((s, f) => s + f.ms, 0);
 
 /** Momento del marcador dentro de un clip (fin del fotograma que lo lleva). */

@@ -126,6 +126,13 @@ export interface Results {
   state: MatchState;
 }
 
+/** La demostración abierta (D-81): qué hacen las cartas de ese ninja, con o sin combo. Una a la vez. */
+export interface OpenDemo {
+  kind: 'card';
+  ninja: ElementKind;
+  combo: boolean;
+}
+
 export interface AppState {
   screen: Screen;
   settings: Settings;
@@ -142,6 +149,7 @@ export interface AppState {
   active: ElementKind | null;
   pendingCard: string | null;
   hover: Vec | null;
+  demo: OpenDemo | null;
   timer: TimerState;
   overlay: Overlay;
   notice: { text: string; key: number } | null;
@@ -175,6 +183,7 @@ export const initialState = (): AppState => ({
   active: null,
   pendingCard: null,
   hover: null,
+  demo: null,
   timer: { deadline: null, remaining: null, total: null },
   overlay: null,
   notice: null,

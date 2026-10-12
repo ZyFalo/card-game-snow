@@ -2,10 +2,12 @@ import { BALANCE, type ElementKind, type Ninja, resolutionOrder } from '@ventisc
 import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { BONUS_SHORT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n/es';
+import { BONUS_SHORT, DEMO_TEXT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n/es';
 import {
+  closeDemo,
   confirmTurn,
   learnTip,
+  openCardDemo,
   selectCard,
   selectNinja,
   setBoost,
@@ -17,6 +19,7 @@ import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from 
 import { useApp } from '../state/store';
 import { type BubbleSlot, bubbleSlot, type MomentTip, momentTip } from '../state/tips';
 import { ElementGlyph, Icon } from './common';
+import { DemoLayer } from './Demos';
 
 export function BattleHud() {
   const blocked = useApp((s) => s.paused || s.helpOpen);
@@ -28,6 +31,7 @@ export function BattleHud() {
       <Toast />
       <NinjaPanels />
       <Hand />
+      <DemoLayer />
     </div>
   );
 }
@@ -53,7 +57,9 @@ function useMomentTip(): MomentTip | null {
   const plans = useApp((s) => s.plans);
   const active = useApp((s) => s.active);
   const pendingCard = useApp((s) => s.pendingCard);
-  return momentTip({ phase, settings, match, plans, active, pendingCard });
+  // Una burbuja a la vez: con una demostración abierta (D-81), el consejo espera.
+  const demo = useApp((s) => s.demo !== null);
+  return demo ? null : momentTip({ phase, settings, match, plans, active, pendingCard });
 }
 
 /**
@@ -401,10 +407,16 @@ function Hand() {
   const phase = useApp((s) => s.phase);
   const incoming = useApp((s) => s.incoming);
   const arrived = useApp((s) => s.arrived);
+  const demo = useApp((s) => s.demo);
   const tip = useMomentTip();
   const last = useRef<ElementKind>('fire');
   if (active) last.current = active;
   const shown = active ?? last.current;
+  // La demostración es la de las cartas que se ven: si la mano pasa a otro ninja, se cierra.
+  const demoOpen = demo?.ninja === shown;
+  useEffect(() => {
+    if (demo && !demoOpen) closeDemo();
+  }, [demo, demoOpen]);
   const ninja = view?.ninjas.find((n) => n.id === shown);
   if (!ninja) return null;
   const plan = plans[shown];
@@ -418,7 +430,20 @@ function Hand() {
       style={{ '--cards': count } as CSSProperties}
     >
       <div className="hand-head">
-        {ES.hand(NINJA_TEXT[shown].name)}
+        <div className="hand-title">
+          {ES.hand(NINJA_TEXT[shown].name)}
+          {/* Un solo ▶ para toda la mano: las cartas de un ninja son de su elemento y hacen lo mismo. */}
+          <button
+            type="button"
+            className={`demo-open ${demoOpen ? 'on' : ''}`}
+            aria-label={DEMO_TEXT.open(NINJA_TEXT[shown].name)}
+            title={DEMO_TEXT.open(NINJA_TEXT[shown].name)}
+            aria-expanded={demoOpen}
+            onClick={() => (demoOpen ? closeDemo() : openCardDemo(shown))}
+          >
+            <Icon name="play" />
+          </button>
+        </div>
         <span>{HUD.handHint}</span>
       </div>
       {/* Solo las cartas que hay: un lugar sin carta no se dibuja. Sin ninguna, dice cómo se ganan. */}

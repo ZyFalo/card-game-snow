@@ -231,6 +231,11 @@ export class UnitSprite {
     this.hpText.setText(`${Math.round(this.hp)}`);
   }
 
+  /** Muestra u oculta el número de vida: en el tablero en miniatura de una demostración no se lee (D-81). */
+  showNumber(on: boolean): void {
+    this.hpText.setVisible(on);
+  }
+
   /** La vida que perdería con lo planeado (ayuda de daño, D-78). Con 0, la barra queda como siempre. */
   setLoss(loss: number): void {
     if (loss === this.loss) return;

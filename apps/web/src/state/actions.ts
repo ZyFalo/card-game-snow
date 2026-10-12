@@ -50,6 +50,21 @@ export function setHelp(open: boolean): void {
   store.setState({ helpOpen: open });
 }
 
+/** Abre la demostración de las cartas de ese ninja (D-81), sin combo. Solo hay una abierta a la vez. */
+export function openCardDemo(ninja: ElementKind): void {
+  store.setState({ demo: { kind: 'card', ninja, combo: false }, hover: null });
+}
+
+/** El selector "Sin combo | Con combo" de la demostración abierta. */
+export function setDemoCombo(combo: boolean): void {
+  const { demo } = store.getState();
+  if (demo && demo.combo !== combo) store.setState({ demo: { ...demo, combo } });
+}
+
+export function closeDemo(): void {
+  if (store.getState().demo) store.setState({ demo: null });
+}
+
 /** "Entendido": ese consejo queda aprendido y no vuelve a salir (D-80). Se guarda con los ajustes. */
 export function learnTip(id: TipId): void {
   const { learnedTips } = store.getState().settings;
@@ -108,6 +123,7 @@ async function showMatchStart(state: MatchState, events: GameEvent[]): Promise<v
     active: null,
     pendingCard: null,
     hover: null,
+    demo: null,
     overlay: null,
     paused: false,
     results: null,
@@ -207,7 +223,7 @@ async function showTurn(state: MatchState, events: GameEvent[]): Promise<void> {
 /** Tras la celebración, los resultados. El sandbox no da monedas ni logros (D-34). */
 function finishMatch(): void {
   const { match } = store.getState();
-  store.setState({ phase: 'ended', screen: 'results', results: match ? { state: match } : null });
+  store.setState({ phase: 'ended', screen: 'results', demo: null, results: match ? { state: match } : null });
 }
 
 export function restartMatch(): void {
@@ -229,6 +245,7 @@ export function quitToMenu(): void {
     overlay: null,
     plans: {},
     active: null,
+    demo: null,
   });
 }
 
@@ -277,7 +294,8 @@ export function selectNinja(id: ElementKind): void {
   if (!canPlan() || !st.match) return;
   const n = getNinja(st.match, id);
   if (!n || n.hp <= 0 || st.active === id) return;
-  store.setState({ active: id, pendingCard: null });
+  // La demostración abierta es la de las cartas de otro ninja: se cierra con el cambio.
+  store.setState({ active: id, pendingCard: null, demo: null });
   audio.play('select');
 }
 

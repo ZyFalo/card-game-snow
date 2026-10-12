@@ -257,7 +257,8 @@ export const MOMENT_TIP = {
   /** La primera vez que un ninja completa su plan y a otro le falta el suyo. */
   switchNinja: (name: string) => `${name} ya tiene su plan. ${SWITCH_NINJA}`,
   /** La primera vez que el ninja activo tiene una carta. */
-  firstCard: 'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja.',
+  firstCard:
+    'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja. El ▶ junto al título muestra qué hace.',
   /** La primera vez que dos ninjas tienen carta (R-18). */
   combo: 'Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo.',
   /** La primera vez que cae un ninja: cómo se le revive (R-09). `active` es el ninja que puede ir. */

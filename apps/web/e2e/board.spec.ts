@@ -752,3 +752,35 @@ test('las cartas colocadas dejan su miniatura: cada elemento en su lugar, sin ta
   await page.mouse.move(640, 60);
   await expect.poll(whole).toBe(true);
 });
+
+test('el número de orden baja de esquina si en su casilla hay una carta: la miniatura no lo tapa', async ({ page }) => {
+  await startPrepared(page, [10]);
+  type Label = { type: string; visible: boolean; text?: string; x: number; y: number; depth: number };
+  type LabelWindow = { __ventiscaScene: { children: { list: Label[] } } };
+  /** El número de orden de Brasa, que actúa primera: el "1" que la escena dibuja sobre el tablero. */
+  const order = () =>
+    page.evaluate(() => {
+      const { list } = (window as unknown as LabelWindow).__ventiscaScene.children;
+      const one = list.find((o) => o.type === 'Text' && o.visible && o.text === '1' && o.depth > 1600);
+      return one ? { x: Math.round(one.x), y: Math.round(one.y) } : null;
+    });
+  await page.mouse.move(640, 60);
+
+  // Brasa ataca a Témpano tras moverse a (3,1), que empieza en (490, 186): el número va arriba a la izquierda.
+  await click(page, 3, 1);
+  await click(page, 4, 2);
+  await expect.poll(order).toEqual({ x: 505, y: 202 });
+
+  // Ahora juega su carta sobre esa misma casilla. La miniatura de Fuego ocupa esa esquina, y va al frente:
+  // el número baja a la de abajo, donde se ve entero.
+  await page.keyboard.press('1');
+  await click(page, 3, 1);
+  expect((await planning(page)).plans).toMatchObject({
+    fire: { moveTo: { x: 3, y: 1 }, action: { type: 'card', at: { x: 3, y: 1 } } },
+  });
+  await expect.poll(order).toEqual({ x: 505, y: 248 });
+  const [mini] = await minis(page);
+  expect(mini?.key).toBe('placed-fire');
+  // La miniatura termina antes de donde empieza el círculo del número, de 11 px de radio más su borde.
+  expect((mini?.y ?? 0) + (mini?.h ?? 0)).toBeLessThan(248 - 13);
+});

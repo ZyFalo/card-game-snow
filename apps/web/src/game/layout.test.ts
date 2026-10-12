@@ -3,7 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { golemSvg } from '../art/golems';
 import { ninjaKoSvg, ninjaOutlineSvg, ninjaStandSvg } from '../art/ninjas';
 import { golemRig, ninjaRig } from '../art/rigs';
-import { FIGURE_SINK, FOOT_Y, MINI, miniRect, TH, TW, tileRect, UNIT_HUD, UNIT_SIZE } from './layout';
+import {
+  FIGURE_SINK,
+  FOOT_Y,
+  MINI,
+  miniRect,
+  ORDER_BADGE,
+  orderPoint,
+  TH,
+  TW,
+  tileRect,
+  UNIT_HUD,
+  UNIT_SIZE,
+} from './layout';
 
 /*
  * Lineamientos de diseño, sección "Tablero": cada unidad cabe en su casilla, con su barra de vida y sus
@@ -194,5 +206,59 @@ describe('Las miniaturas de las cartas colocadas', () => {
   it('el valor de la carta respeta el tamaño mínimo de texto de los lineamientos', () => {
     expect(MINI.value).toBeGreaterThanOrEqual(13);
     expect(MINI.band).toBeGreaterThanOrEqual(MINI.value - 1);
+  });
+});
+
+/*
+ * Lineamientos de diseño, sección "Tablero": el número de orden va arriba a la izquierda de la casilla
+ * desde la que actúa el ninja. Ahí mismo va la miniatura de Fuego: con una carta en la casilla, baja.
+ */
+describe('El número de orden y las miniaturas', () => {
+  const tile = { x: 4, y: 2 };
+  const box = tileRect(tile);
+  /** El círculo del número, con su borde, como un cuadrado que lo contiene. */
+  const badge = (below: boolean) => {
+    const c = orderPoint(tile, below);
+    const r = ORDER_BADGE.r + ORDER_BADGE.stroke / 2;
+    return { cx: c.x, cy: c.y, r, left: c.x - r, right: c.x + r, top: c.y - r, bottom: c.y + r };
+  };
+  const mini = (el: (typeof ELEMENTS)[number]) => {
+    const r = miniRect(tile, el);
+    return { left: r.x - MINI.ring, right: r.x + r.w + MINI.ring, top: r.y - MINI.ring, bottom: r.y + r.h + MINI.ring };
+  };
+  const overlaps = (a: Box, b: Box) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  /** Distancia del centro del círculo al punto más cercano de una caja: menor que el radio, la pisa. */
+  const reaches = (c: { cx: number; cy: number; r: number }, b: Box) => {
+    const dx = Math.max(b.left - c.cx, 0, c.cx - b.right);
+    const dy = Math.max(b.top - c.cy, 0, c.cy - b.bottom);
+    return Math.hypot(dx, dy) < c.r;
+  };
+
+  it('arriba, el número pisa el lugar de la miniatura de Fuego: por eso no pueden ir juntos', () => {
+    expect(overlaps(badge(false), mini('fire'))).toBe(true);
+  });
+
+  it('abajo no pisa ninguna miniatura, y queda dentro de la casilla', () => {
+    const low = badge(true);
+    for (const el of ELEMENTS) expect(overlaps(low, mini(el))).toBe(false);
+    expect(low.top).toBeGreaterThan(mini('fire').bottom);
+    expect(low.left).toBeGreaterThanOrEqual(box.x);
+    expect(low.bottom).toBeLessThanOrEqual(box.y + TH);
+    // En la misma columna que arriba: solo cambia de esquina.
+    expect(low.cx).toBe(badge(false).cx);
+  });
+
+  it('abajo tampoco pisa la barra de vida ni su número', () => {
+    const low = badge(true);
+    const { bar, hpText } = UNIT_HUD;
+    const feet = { x: box.x + TW / 2, y: box.y + FOOT_Y };
+    const life = {
+      left: feet.x + bar.x - bar.frame,
+      right: feet.x + bar.x + bar.w + bar.frame,
+      top: feet.y + bar.y - bar.frame,
+      bottom: feet.y + bar.y + bar.h + bar.frame,
+    };
+    expect(reaches(low, life)).toBe(false);
+    expect(low.right).toBeLessThan(feet.x + hpText.x);
   });
 });

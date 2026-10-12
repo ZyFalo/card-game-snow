@@ -30,8 +30,18 @@ export const FIGURE_SINK = 2;
 export const footPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + FOOT_Y });
 /** Centro del cuerpo de una unidad: ahí van las marcas de objetivo y de ahí salen las líneas de mira. */
 export const aimPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + TW / 2, y: BOARD_Y + v.y * TH + FOOT_Y - 30 });
-/** Esquina de arriba a la izquierda de la casilla: ahí va el número de orden de quien actúa desde ella. */
-export const orderPoint = (v: Vec) => ({ x: BOARD_X + v.x * TW + 15, y: BOARD_Y + v.y * TH + 15 });
+/**
+ * El número de orden de quien actúa desde una casilla: un círculo de radio `r` con su borde, en la esquina
+ * de arriba a la izquierda. Ahí mismo va la miniatura de Fuego, así que con una carta en la casilla baja a
+ * la esquina de abajo, sobre el arranque de la barra de vida y sin pisarla.
+ */
+export const ORDER_BADGE = { r: 11, stroke: 2.5, x: 15, top: 15, bottom: 61 } as const;
+
+/** Centro del número de orden. `below`: en la casilla hay una carta colocada. */
+export const orderPoint = (v: Vec, below = false) => ({
+  x: BOARD_X + v.x * TW + ORDER_BADGE.x,
+  y: BOARD_Y + v.y * TH + (below ? ORDER_BADGE.bottom : ORDER_BADGE.top),
+});
 
 export function tileAt(x: number, y: number): Vec | null {
   const tx = Math.floor((x - BOARD_X) / TW);

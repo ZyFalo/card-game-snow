@@ -142,10 +142,6 @@ export interface AppState {
   active: ElementKind | null;
   pendingCard: string | null;
   hover: Vec | null;
-  /** R-09: el ninja que nombra el consejo de cómo revivir, la primera vez que alguien cae en la partida. */
-  reviveTip: ElementKind | null;
-  /** Ese consejo ya salió en esta partida. */
-  reviveTipSeen: boolean;
   timer: TimerState;
   overlay: Overlay;
   notice: { text: string; key: number } | null;
@@ -179,8 +175,6 @@ export const initialState = (): AppState => ({
   active: null,
   pendingCard: null,
   hover: null,
-  reviveTip: null,
-  reviveTipSeen: false,
   timer: { deadline: null, remaining: null, total: null },
   overlay: null,
   notice: null,

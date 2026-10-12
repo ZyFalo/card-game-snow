@@ -1,11 +1,21 @@
 import { BALANCE, type ElementKind, type Ninja, resolutionOrder } from '@ventisca/core';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { BONUS_SHORT, ES, HUD, NINJA_TEXT } from '../i18n/es';
-import { confirmTurn, selectCard, selectNinja, setBoost, setHelp, suggest, togglePause } from '../state/actions';
+import { BONUS_SHORT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n/es';
+import {
+  confirmTurn,
+  learnTip,
+  selectCard,
+  selectNinja,
+  setBoost,
+  setHelp,
+  suggest,
+  togglePause,
+} from '../state/actions';
 import { bonusProgress, contextualTip, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
+import { type BubbleSlot, bubbleSlot, type MomentTip, momentTip } from '../state/tips';
 import { ElementGlyph, Icon } from './common';
 
 export function BattleHud() {
@@ -31,6 +41,38 @@ function TipBar() {
       <span key={tip} className="tip-text">
         {tip}
       </span>
+    </div>
+  );
+}
+
+/** El consejo en el momento que toca mostrar ahora (D-80), o `null`. */
+function useMomentTip(): MomentTip | null {
+  const phase = useApp((s) => s.phase);
+  const settings = useApp((s) => s.settings);
+  const match = useApp((s) => s.match);
+  const plans = useApp((s) => s.plans);
+  const active = useApp((s) => s.active);
+  const pendingCard = useApp((s) => s.pendingCard);
+  return momentTip({ phase, settings, match, plans, active, pendingCard });
+}
+
+/**
+ * La burbuja de un consejo en el momento (D-80): va pegada a los paneles o a la mano, nunca sobre el
+ * tablero, y se cierra con "Entendido" o con Enter. `slot` dice dónde va y hacia dónde apunta su punta.
+ */
+function TipBubble({ tip, slot }: { tip: MomentTip; slot: BubbleSlot }) {
+  return (
+    <div className={`bubble paper interactive at-${slot}`} role="status" data-tip={tip.id}>
+      <p>{tip.text}</p>
+      <button
+        type="button"
+        className="link"
+        title={MOMENT_TIP.dismissTitle}
+        aria-keyshortcuts="Enter"
+        onClick={() => learnTip(tip.id)}
+      >
+        {MOMENT_TIP.dismiss}
+      </button>
     </div>
   );
 }
@@ -336,6 +378,7 @@ function NinjaPanels() {
   const ninjas = useApp((s) => s.view?.ninjas);
   const match = useApp((s) => s.match);
   const plans = useApp((s) => s.plans);
+  const tip = useMomentTip();
   if (!ninjas) return null;
   // D-32: el orden real de R-11 según los planes del momento; sin acción no hay número.
   const order = match ? resolutionOrder(match, plansArray(plans)) : {};
@@ -344,6 +387,8 @@ function NinjaPanels() {
       {ninjas.map((n) => (
         <NinjaPanel key={n.id} n={n} order={order[n.id]} />
       ))}
+      {/* Después de los paneles, para no mover su orden: la burbuja va sobre la fila, a la izquierda. */}
+      {tip?.anchor === 'panels' ? <TipBubble key={tip.id} tip={tip} slot="panels" /> : null}
     </div>
   );
 }
@@ -356,6 +401,7 @@ function Hand() {
   const phase = useApp((s) => s.phase);
   const incoming = useApp((s) => s.incoming);
   const arrived = useApp((s) => s.arrived);
+  const tip = useMomentTip();
   const last = useRef<ElementKind>('fire');
   if (active) last.current = active;
   const shown = active ?? last.current;
@@ -364,8 +410,10 @@ function Hand() {
   const plan = plans[shown];
   const placed = plan?.action?.type === 'card' ? plan.action.cardId : null;
   const usable = phase === 'planning' && ninja.hp > 0 && active === shown;
+  // La burbuja de la mano va al lado de las cartas, a partir de la última, o encima si no cabe.
+  const count = ninja.hand.length;
   return (
-    <div className={`hand interactive el-${shown}`}>
+    <div className={`hand interactive el-${shown}`} style={{ '--cards': count } as CSSProperties}>
       <div className="hand-head">
         {ES.hand(NINJA_TEXT[shown].name)}
         <span>{HUD.handHint}</span>
@@ -397,6 +445,7 @@ function Hand() {
           );
         })}
       </div>
+      {tip?.anchor === 'hand' ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot('hand', count)} /> : null}
     </div>
   );
 }

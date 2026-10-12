@@ -48,6 +48,68 @@ export async function suggestAll(page: Page) {
   }
 }
 
+export type NinjaId = 'fire' | 'water' | 'snow';
+
+/** Un tablero preparado: dónde va cada quien, con cuánta vida y, cada ninja, con qué cartas en la mano. */
+export interface Board {
+  ninjas: Record<NinjaId, { at: [number, number]; hp?: number; hand?: number[] }>;
+  golems: { kind: 'sniper' | 'artillery' | 'colossus'; at: [number, number] }[];
+}
+
+/**
+ * Una partida en un tablero preparado, también en el anfitrión (`__ventiscaLoad`): al confirmar, el turno
+ * se resuelve de verdad sobre ese tablero. Sin reloj, en Clásica. Los ajustes van con la marca de ya
+ * migrados (D-79) y se siembran una sola vez: al recargar vale lo que haya guardado el juego.
+ */
+export async function startBoard(page: Page, board: Board, settings: Record<string, unknown> = {}) {
+  await page.addInitScript(
+    (saved) => {
+      if (sessionStorage.getItem('sembrado')) return;
+      sessionStorage.setItem('sembrado', 'sí');
+      localStorage.setItem('ventisca:settings:v1', saved);
+    },
+    JSON.stringify({ pace: 'relaxed', ...settings, version: 2 }),
+  );
+  await startMatch(page);
+  await page.evaluate((board) => {
+    type Unit = { id: string; pos: { x: number; y: number }; hp: number; maxHp: number };
+    type Match = {
+      ninjas: (Unit & { everKo: boolean; hand: unknown[] })[];
+      enemies: unknown[];
+      nextEnemySeq: number;
+      difficulty: string;
+      round: number;
+      bonusCondition: string;
+    };
+    const w = window as unknown as { __ventisca: { getState(): { match: Match } }; __ventiscaLoad(m: Match): void };
+    const m = structuredClone(w.__ventisca.getState().match);
+    Object.assign(m, { difficulty: 'classic', round: 1, bonusCondition: 'noKo' });
+    for (const n of m.ninjas) {
+      const spec = board.ninjas[n.id as 'fire' | 'water' | 'snow'];
+      n.pos = { x: spec.at[0], y: spec.at[1] };
+      n.hp = spec.hp ?? n.maxHp;
+      n.everKo = n.hp <= 0;
+      n.hand = (spec.hand ?? []).map((value, i) => ({ id: `${n.id}-${i + 1}`, element: n.id, value }));
+    }
+    const life = { sniper: 30, artillery: 45, colossus: 60 };
+    m.enemies = board.golems.map((g, i) => ({
+      id: `e${i + 1}`,
+      kind: g.kind,
+      pos: { x: g.at[0], y: g.at[1] },
+      hp: life[g.kind],
+      maxHp: life[g.kind],
+      stunned: false,
+      burnTicks: 0,
+    }));
+    m.nextEnemySeq = m.enemies.length + 1;
+    w.__ventiscaLoad(m);
+  }, board);
+}
+
+/** Los ajustes tal como quedaron guardados en el navegador. */
+export const savedSettings = (page: Page) =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('ventisca:settings:v1') ?? 'null') as Record<string, unknown>);
+
 /**
  * Lineamientos de diseño, sección 8: los elementos visibles de la pantalla cuyo contenido es más ancho
  * que su caja y que no se pueden desplazar, es decir, texto cortado o que se sale. También los que

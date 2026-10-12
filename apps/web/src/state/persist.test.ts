@@ -57,6 +57,28 @@ describe('Ajustes guardados', () => {
     expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('D-80: los consejos aprendidos se guardan con los ajustes; al empezar no hay ninguno', () => {
+    expect(DEFAULT_SETTINGS.learnedTips).toEqual([]);
+    storeSettings();
+    expect(loadSettings().learnedTips).toEqual([]);
+    saveSettings({ ...DEFAULT_SETTINGS, learnedTips: ['switchNinja', 'firstCard'] });
+    expect(stored()).toMatchObject({ learnedTips: ['switchNinja', 'firstCard'] });
+    // Al leerlos quedan en el orden de siempre, el de los consejos.
+    expect(loadSettings().learnedTips).toEqual(['firstCard', 'switchNinja']);
+  });
+
+  it('D-80: de lo guardado solo valen los consejos que existen, una vez cada uno', () => {
+    storeSettings({ learnedTips: ['combo', 'inventado', 'combo', 7], version: 2 });
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, learnedTips: ['combo'] });
+    storeSettings({ learnedTips: 'todos', version: 2 });
+    expect(loadSettings()).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('D-79 y D-80: la migración que apaga "Pasar al siguiente ninja" conserva los consejos aprendidos', () => {
+    storeSettings({ autoAdvance: true, learnedTips: ['firstFall'] });
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, autoAdvance: false, learnedTips: ['firstFall'] });
+  });
+
   it('un ritmo que solo existe como propiedad heredada no es válido (dejaría el reloj en NaN)', () => {
     for (const pace of ['toString', 'constructor']) {
       storeSettings({ pace, difficulty: pace });

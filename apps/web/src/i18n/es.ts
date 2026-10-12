@@ -225,6 +225,9 @@ export const PLAN_TEXT = {
   moveThenSpoken: (action: string) => `Moverse y ${action}`,
 } as const;
 
+/** Cómo se pasa de ninja: una sola fórmula, igual en todos lados (D-79). */
+const SWITCH_NINJA = 'Elige otro ninja con un clic o con Tab.';
+
 /** Consejo en pantalla según la fase del turno (§9.5). */
 export const TIP_TEXT = {
   intro: 'Los gólems bajan de la montaña.',
@@ -236,18 +239,32 @@ export const TIP_TEXT = {
   enemy: (name: string, tip: string) => `${name}. ${tip}`,
   confirm: 'Confirma el turno.',
   placeCard: (name: string) => `Elige dónde colocar la carta de ${name}. Afecta un área de 3×3.`,
-  /** La primera vez que cae un ninja en la partida: cómo se revive (R-09). */
-  reviveHow: (name: string) =>
-    `Muévete junto a ${name} para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
   /** Al activar un ninja: sus casillas y sus objetivos valen a la vez. */
   plan: (name: string) => `Elige a dónde se mueve ${name}, o un objetivo desde donde está.`,
   /** Cuando ya eligió casilla y le falta la acción. */
   act: (name: string) =>
     `Elige qué hace ${name}: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.`,
   /** El ninja activo ya no tiene nada por decidir: cómo elegir otro, que el foco no salta solo (D-79). */
-  pending: (names: readonly string[]) =>
-    `Elige otro ninja con un clic o con Tab. Falta planear a ${names.join(' y ')}.`,
+  pending: (names: readonly string[]) => `${SWITCH_NINJA} Falta planear a ${names.join(' y ')}.`,
   ready: 'Todo listo. Confirma el turno con Espacio.',
+} as const;
+
+/**
+ * Consejos en el momento (D-80): cada uno sale una sola vez, en una burbuja pegada a los paneles o a la
+ * mano, y se cierra con "Entendido".
+ */
+export const MOMENT_TIP = {
+  /** La primera vez que un ninja completa su plan y a otro le falta el suyo. */
+  switchNinja: (name: string) => `${name} ya tiene su plan. ${SWITCH_NINJA}`,
+  /** La primera vez que el ninja activo tiene una carta. */
+  firstCard: 'Tu primera carta. Elígela con un clic (o la tecla 1) y colócala en una casilla roja.',
+  /** La primera vez que dos ninjas tienen carta (R-18). */
+  combo: 'Dos ninjas tienen carta. Si las juegan en el mismo turno, donde sea, hay combo.',
+  /** La primera vez que cae un ninja: cómo se le revive (R-09). `active` es el ninja que puede ir. */
+  firstFall: (fallen: string, active: string) =>
+    `${fallen} cayó. Mueve a ${active} junto a él para revivirlo. Se levanta al final del turno: protege a quien lo revive.`,
+  dismiss: 'Entendido',
+  dismissTitle: 'Entendido (Enter)',
 } as const;
 
 /** Progreso de la condición del bonus en la ficha de ronda (R-21). */
@@ -360,6 +377,7 @@ export const HELP = {
     ['1 a 4', 'Elegir carta'],
     ['Espacio', 'Confirmar turno'],
     ['S', 'Sugerir jugada para el ninja activo'],
+    ['Enter', 'Cerrar el consejo en pantalla'],
     ['Mantén Espacio', 'Acelerar la resolución del turno'],
     ['P', 'Pausa'],
   ],

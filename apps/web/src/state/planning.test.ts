@@ -11,6 +11,7 @@ import {
   type Plan,
 } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
+import { HELP } from '../i18n/es';
 import { bonusProgress, contextualTip, firstFallTip, planLabel, reviverOf, turnClockMs } from './planning';
 
 /* R-21: la ficha del bonus contra el reloj cuenta el turno que se planifica y los que quedan. */
@@ -121,7 +122,30 @@ describe('Revivir en la planificación (R-09)', () => {
     // salta tras moverse, pero ya no le queda nada por decidir.
     const m = match();
     expect(contextualTip(planning({ match: m, plans: { fire: step(m) } }))).toBe(
-      'Tab pasa al siguiente ninja. Falta planear a Marea y Escarcha.',
+      'Elige otro ninja con un clic o con Tab. Falta planear a Marea y Escarcha.',
+    );
+  });
+
+  it('D-79: cuando el ninja activo ya eligió su acción, la franja dice cómo pasar al siguiente', () => {
+    // El foco no salta solo: Brasa sigue activa con su acción elegida, y faltan Marea y Escarcha.
+    const m = match();
+    const acted: Plan = { ninjaId: 'fire', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    const tip = contextualTip(planning({ match: m, plans: { fire: acted } }));
+    expect(tip).toBe('Elige otro ninja con un clic o con Tab. Falta planear a Marea y Escarcha.');
+    // Si solo falta uno, lo nombra a él; y con los tres planeados, pide confirmar.
+    const water: Plan = { ninjaId: 'water', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    expect(contextualTip(planning({ match: m, plans: { fire: acted, water } }))).toBe(
+      'Elige otro ninja con un clic o con Tab. Falta planear a Escarcha.',
+    );
+    const snow: Plan = { ninjaId: 'snow', action: { type: 'attack', targetId: m.enemies[0]?.id ?? 'e1' } };
+    expect(contextualTip(planning({ match: m, plans: { fire: acted, water, snow } }))).toBe(
+      'Todo listo. Confirma el turno con Espacio.',
+    );
+  });
+
+  it('D-79: la ayuda lo dice con la misma fórmula, y agrega dónde hacer clic y qué hace la opción', () => {
+    expect(HELP.turn).toContain(
+      'Elige otro ninja con un clic, en el tablero o en su panel, o con Tab. Con la ayuda «Pasar al siguiente ninja», el juego pasa solo al elegir cada acción.',
     );
   });
 

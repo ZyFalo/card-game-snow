@@ -244,7 +244,9 @@ export const TIP_TEXT = {
   /** Cuando ya eligió casilla y le falta la acción. */
   act: (name: string) =>
     `Elige qué hace ${name}: un objetivo o una carta. Para cambiar a dónde se mueve, haz clic en otra casilla de su color.`,
-  pending: (names: readonly string[]) => `Tab pasa al siguiente ninja. Falta planear a ${names.join(' y ')}.`,
+  /** El ninja activo ya no tiene nada por decidir: cómo elegir otro, que el foco no salta solo (D-79). */
+  pending: (names: readonly string[]) =>
+    `Elige otro ninja con un clic o con Tab. Falta planear a ${names.join(' y ')}.`,
   ready: 'Todo listo. Confirma el turno con Espacio.',
 } as const;
 
@@ -330,6 +332,7 @@ export const HELP = {
     'Planea a cada ninja: a dónde se mueve y qué hace. Para moverlo, haz clic en una casilla de su color. Para cambiar a dónde se mueve, haz clic en otra; para dejarlo en su lugar, en su fantasma o en su casilla.',
     'Una mira marca a cada gólem que puede atacar desde donde está; una cruz, al aliado que puede curar (Escarcha), y una flecha, al que puede revivir. Haz clic en uno para elegirlo, sin moverse o después de moverse. El gólem elegido lleva un anillo con el color de cada ninja que lo ataca.',
     'También puedes elegir una carta y la casilla en el centro de su área.',
+    'Elige otro ninja con un clic, en el tablero o en su panel, o con Tab. Con la ayuda «Pasar al siguiente ninja», el juego pasa solo al elegir cada acción.',
     `Confirma el turno. Se resuelve en orden: ${ORDER_NAMES}; después actúan los gólems, que siempre atacan si pueden.`,
     'El reloj da 10 s por cada ninja en pie en ritmo Normal (5 s en Experto; sin reloj en Relajado). Si se acaba, se juega lo que hayas planeado.',
   ],

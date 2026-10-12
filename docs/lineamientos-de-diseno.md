@@ -118,6 +118,7 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 - Español neutro, frases cortas y verbos en los botones: "Entrar", "Crear cuenta", "Enviar código".
 - Los errores dicen qué pasó y cómo arreglarlo, en una frase, sin jerga técnica.
 - Se le habla siempre a quien juega, y el ninja se nombra en tercera persona: "Elige a dónde se mueve Brasa", no "Brasa: elige a dónde moverte".
+- Una sola fórmula para pasar de ninja, igual en todos lados: "Elige otro ninja con un clic o con Tab." (D-79). La ayuda agrega dónde va el clic: "con un clic, en el tablero o en su panel, o con Tab".
 
 ## 7. Movimiento y accesibilidad
 
@@ -195,7 +196,7 @@ Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y sus objet
 - **Un objetivo se elige sin moverse.** Un clic en un gólem a su alcance lo ataca desde donde está: no hace falta decir antes que se queda.
 - **Al moverse, los objetivos se recalculan** desde la casilla nueva. Si el que ya había elegido queda fuera de alcance, se quita y un aviso lo dice.
 - **Las casillas no se apagan después de moverse:** siguen a la vista, más tenues, y quien juega cambia de destino con otro clic, sin volver atrás.
-- **Pasa solo al siguiente ninja al elegir la acción:** el objetivo o la casilla de la carta. Tras moverse el foco no salta, aunque desde ahí no alcance a nadie; se pasa con Tab. Se apaga con "Pasar al siguiente ninja".
+- **El foco no salta solo** (D-79). Quien juega elige otro ninja con un clic, en el tablero o en su panel, o con Tab; cuando el ninja activo ya no tiene nada por decidir, la franja de arriba se lo dice: "Elige otro ninja con un clic o con Tab." Con la ayuda "Pasar al siguiente ninja", que viene apagada, el foco pasa solo al elegir la acción: el objetivo o la casilla de la carta. Tras moverse nunca salta, aunque desde ahí no alcance a nadie.
 - **Deshacer va hacia atrás, de a una cosa:** la carta en la mano, la acción, la casilla.
 - **La forma dice qué acción es:** atacar es una mira o un anillo, curar es una cruz y revivir es una flecha. **El color dice quién actúa:** el anillo de un ataque elegido lleva un arco del color de cada ninja que lo eligió. Nada depende solo del color.
 

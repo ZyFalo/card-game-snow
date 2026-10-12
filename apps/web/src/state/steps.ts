@@ -34,7 +34,7 @@ export interface StepOutcome {
   select?: ElementKind;
   /** Se sale del modo carta. */
   cardDone?: boolean;
-  /** El ninja activo eligió su acción: con "Pasar al siguiente ninja", le toca al que siga. */
+  /** El ninja activo eligió su acción: con la ayuda "Pasar al siguiente ninja" encendida, le toca al que siga. */
   finished?: true;
   notice?: string;
   sound?: StepSound;

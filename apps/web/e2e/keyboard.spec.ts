@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { phase, startMatch, type TestWindow } from './helpers';
+import { phase, startMatch, suggestAll, type TestWindow } from './helpers';
 
 /*
  * Estas pruebas mantienen una tecla pulsada, con unas 25 acciones por segundo, y miden lo que pasa
@@ -31,7 +31,7 @@ test('mantener Espacio acelera la resolución, pero no confirma el turno siguien
   page.on('pageerror', (e) => errors.push(e.message));
   await startMatch(page);
   await watchConfirms(page);
-  for (let i = 0; i < 3; i++) await page.keyboard.press('s');
+  await suggestAll(page);
   // No siempre son tres: una sugerencia puede ser quedarse quieto sin acción, y un plan vacío no se guarda.
   const planned = await page.evaluate(
     () => Object.keys((window as unknown as TestWindow).__ventisca.getState().plans).length,

@@ -288,6 +288,19 @@ export const DEMO_TEXT = {
     water: 'da Potencia a todo el equipo, y el siguiente golpe o cura hace un 50 % más.',
     snow: 'da Escudo a todo el equipo, que anula el siguiente golpe.',
   } satisfies Record<ElementKind, string>,
+  /** La demostración de un gólem (D-82): el botón de la franja, el título y lo que se lee sobre quien se salva. */
+  showAttack: 'Ver cómo ataca',
+  attackTitle: (name: string) => `${name}, cómo ataca`,
+  safe: 'a salvo',
+  /** La línea de cada gólem. Sus números los pone el motor (`golemCaption`): nunca van escritos a mano. */
+  golem: {
+    sniper: (range: number, near: number, mid: number, far: number) =>
+      `Dispara a un solo ninja a hasta ${range} casillas. Cuanto más lejos, más duele: ${near} de cerca, ${mid} a dos casillas y ${far} a tres.`,
+    artillery: (range: number, attack: number, splash: number) =>
+      `Lanza a hasta ${range} casillas: ${attack} al objetivo y ${splash} a cualquier ninja en las 8 casillas que lo rodean, también en diagonal.`,
+    colossus: (sweep: number) =>
+      `Golpea a quien tenga al lado y barre las dos casillas a los costados de su objetivo: ${sweep} a cada una. No se pongan hombro con hombro frente a él.`,
+  },
   /** Con animaciones reducidas: dos imágenes fijas. */
   before: 'Antes',
   after: 'Después',

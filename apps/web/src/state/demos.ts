@@ -6,21 +6,26 @@ import {
   type ElementKind,
   type Enemy,
   type EnemyKind,
+  enemyStrike,
   type GameEvent,
+  key,
   type MatchState,
   type Plan,
   resolveTurn,
   type StatusKind,
+  sniperDamage,
   type Vec,
 } from '@ventisca/core';
 import { DEMO_TEXT } from '../i18n/es';
+import { type BoardLayers, boardLayers } from './board';
+import { DEFAULT_SETTINGS } from './persist';
 import { applyEvent } from './present';
 
 /*
- * Demostraciones (D-81): qué hace una carta, enseñado en un tablero en miniatura. Cada una la juega el
- * propio motor sobre un tablero preparado: aquí se arma ese tablero, se le pide al motor que resuelva el
- * turno y se guarda lo que la demostración enseña. La escena lo anima con el arte y las animaciones del
- * juego; nada de esto mira la partida en curso.
+ * Demostraciones (D-81 y D-82): qué hace una carta y cómo ataca un gólem, enseñado en un tablero en
+ * miniatura. Cada una la juega el propio motor sobre un tablero preparado: aquí se arma ese tablero, se le
+ * pide al motor que lo resuelva y se guarda lo que la demostración enseña. La escena lo anima con el arte
+ * y las animaciones del juego; nada de esto mira la partida en curso.
  */
 
 /** Lo que se lee sobre una unidad cuando la demostración termina: "−9 · aturdido". */
@@ -39,6 +44,8 @@ export interface Demo {
   events: GameEvent[];
   after: MatchState;
   labels: DemoLabel[];
+  /** Las casillas que golpea un gólem, que se ven marcadas: quien está fuera está a salvo. */
+  marks: Vec[];
   /** `false` con la mano vacía: el efecto se enseña sin números. */
   numbers: boolean;
 }
@@ -104,18 +111,19 @@ const STATUS_WORD: Record<StatusKind, string> = {
 };
 
 /**
- * Lo que la carta de ese ninja le hizo a cada unidad que se ve, en el orden en que pasó: el daño o la
- * cura, y los estados que deja. Solo cuenta lo de su carta: en un combo, lo de la otra carta no es suyo.
+ * Lo que le pasó a cada unidad que se ve, en el orden en que pasó: el daño o la cura, y los estados que
+ * deja. Con `caster`, solo cuenta lo de la carta de ese ninja: en un combo, lo de la otra carta no es suyo.
+ * Con `safe`, el ninja al que no le pasó nada lo dice: está a salvo.
  */
-function cardLabels(demo: Omit<Demo, 'labels'>, caster: ElementKind): DemoLabel[] {
+function labelsOf(demo: Omit<Demo, 'labels'>, o: { caster?: ElementKind; safe?: boolean }): DemoLabel[] {
   const parts = new Map<string, string[]>();
   const add = (unitId: string, text: string | null) => {
     if (text) parts.set(unitId, [...(parts.get(unitId) ?? []), text]);
   };
   const amount = (sign: string, n: number) => (demo.numbers ? `${sign}${n}` : null);
-  let mine = false;
+  let mine = !o.caster;
   for (const e of demo.events) {
-    if (e.t === 'card') mine = e.ninjaId === caster;
+    if (e.t === 'card') mine = !o.caster || e.ninjaId === o.caster;
     if (!mine) continue;
     if (e.t === 'damage' && !e.blocked) add(e.targetId, amount('−', e.amount));
     if (e.t === 'heal') add(e.targetId, amount('+', e.amount));
@@ -127,10 +135,15 @@ function cardLabels(demo: Omit<Demo, 'labels'>, caster: ElementKind): DemoLabel[
     if (e.t === 'status') add(e.unitId, STATUS_WORD[e.status]);
   }
   const { view, after } = demo;
+  if (o.safe) for (const n of after.ninjas) if (!parts.has(n.id) && n.hp > 0) add(n.id, DEMO_TEXT.safe);
   const seen = (at: Vec) => at.x >= view.x && at.x < view.x + view.w && at.y >= view.y && at.y < view.y + view.h;
-  return [...after.enemies, ...after.ninjas]
-    .filter((u) => parts.has(u.id) && seen(u.pos))
-    .map((u) => ({ at: { x: u.pos.x, y: u.pos.y }, text: (parts.get(u.id) ?? []).join(' · ') }));
+  return (
+    [...after.enemies, ...after.ninjas]
+      .filter((u) => parts.has(u.id) && seen(u.pos))
+      .map((u) => ({ at: { x: u.pos.x, y: u.pos.y }, text: (parts.get(u.id) ?? []).join(' · ') }))
+      // En el orden del tablero, por si se leen de corrido: de arriba abajo.
+      .sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x)
+  );
 }
 
 /**
@@ -162,8 +175,112 @@ export function cardDemo(element: ElementKind, value: number | null, combo: bool
   // El turno ya lo abre la demostración, y los medidores no se ven: quedan fuera.
   const events = (end < 0 ? resolved : resolved.slice(0, end)).filter((e) => e.t !== 'turnStart' && e.t !== 'meter');
   const after = events.reduce(applyEvent, before);
-  const demo = { view: { ...CARD_VIEW }, before, plans, events, after, numbers: value !== null };
-  // Las etiquetas van en el orden del tablero, por si se leen de corrido: de arriba abajo.
-  const labels = cardLabels(demo, element).sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
-  return { ...demo, labels };
+  const demo = { view: { ...CARD_VIEW }, before, plans, events, after, marks: [], numbers: value !== null };
+  return { ...demo, labels: labelsOf(demo, { caster: element }) };
+}
+
+/*
+ * Los tableros en miniatura de los gólems. Cada uno enseña ataques elegidos (quién golpea a quién), con
+ * los tres ninjas a la vista: los que reciben el golpe y uno fuera del área, que está a salvo. Como en
+ * los de las cartas, nadie está justo debajo de otro al que se le lee algo encima.
+ */
+interface GolemScene {
+  view: Demo['view'];
+  ninjas: Record<ElementKind, Vec>;
+  golems: Vec[];
+  /** Cada ataque: qué gólem, por su lugar en `golems`, golpea a qué ninja. */
+  strikes: [number, ElementKind][];
+}
+
+const GOLEM_SCENES: Record<EnemyKind, GolemScene> = {
+  // Un disparo de lejos y otro de cerca. Escarcha queda a más de tres casillas de los dos.
+  sniper: {
+    view: { x: 2, y: 1, w: 5, h: 2 },
+    ninjas: { fire: { x: 3, y: 1 }, water: { x: 5, y: 2 }, snow: { x: 2, y: 2 } },
+    golems: [
+      { x: 6, y: 1 },
+      { x: 6, y: 2 },
+    ],
+    strikes: [
+      [0, 'fire'],
+      [1, 'water'],
+    ],
+  },
+  // Lanza a Brasa desde dos casillas y salpica a Marea, que está en diagonal. Escarcha no es vecina.
+  artillery: {
+    view: { x: 2, y: 1, w: 4, h: 3 },
+    ninjas: { fire: { x: 3, y: 2 }, water: { x: 2, y: 1 }, snow: { x: 5, y: 1 } },
+    golems: [{ x: 5, y: 2 }],
+    strikes: [[0, 'fire']],
+  },
+  // Golpea a Marea y barre a Brasa, que está hombro con hombro con ella. Escarcha quedó atrás.
+  colossus: {
+    view: { x: 3, y: 1, w: 3, h: 3 },
+    ninjas: { water: { x: 4, y: 2 }, fire: { x: 3, y: 2 }, snow: { x: 5, y: 1 } },
+    golems: [{ x: 4, y: 3 }],
+    strikes: [[0, 'water']],
+  },
+};
+
+/**
+ * La demostración de cómo ataca un gólem (D-82). Cada ataque lo resuelve el motor con `enemyStrike`, la
+ * misma función de la fase enemiga: de ahí salen el daño de cada golpe y las casillas que alcanza.
+ */
+export function golemDemo(kind: EnemyKind): Demo {
+  const scene = GOLEM_SCENES[kind];
+  const before = createMatch({ seed: 1, mapId: 'cumbre', bonusCondition: 'noKo' }).state;
+  for (const n of before.ninjas) {
+    n.pos = { ...scene.ninjas[n.id] };
+    n.hand = [];
+  }
+  before.enemies = scene.golems.map((at, i) => enemy(`e${i + 1}`, kind, at));
+  before.nextEnemySeq = before.enemies.length + 1;
+
+  let state = before;
+  const events: GameEvent[] = [];
+  for (const [golem, target] of scene.strikes) {
+    const strike = enemyStrike(state, `e${golem + 1}`, target);
+    state = strike.state;
+    // Los medidores no se ven: quedan fuera.
+    events.push(...strike.events.filter((e) => e.t !== 'meter'));
+  }
+  const after = events.reduce(applyEvent, before);
+  const hit = new Map(events.flatMap((e) => (e.t === 'enemyAttack' ? e.area : [])).map((t) => [key(t), t]));
+  const marks = [...hit.values()].sort((a, b) => a.y - b.y || a.x - b.x);
+  const demo = { view: { ...scene.view }, before, plans: [], events, after, marks, numbers: true };
+  return { ...demo, labels: labelsOf(demo, { safe: true }) };
+}
+
+/** La línea de texto de la demostración de un gólem, con los números del motor: nunca escritos a mano. */
+export function golemCaption(kind: EnemyKind): string {
+  const st = BALANCE.enemies[kind];
+  if (kind === 'sniper') {
+    const e = enemy('demo', kind, { x: 0, y: 0 });
+    const from = (tiles: number) => sniperDamage(e, e.pos, { x: tiles, y: 0 });
+    return DEMO_TEXT.golem.sniper(st.range, from(1), from(2), from(3));
+  }
+  if (kind === 'artillery') return DEMO_TEXT.golem.artillery(st.range, st.attack, st.splash ?? 0);
+  return DEMO_TEXT.golem.colossus(st.sweep ?? 0);
+}
+
+/**
+ * Lo que el tablero en miniatura muestra además de las unidades. Antes de jugar (`planned`), lo planeado,
+ * como en la partida: la miniatura de cada carta y su área. En la demostración de un gólem, las casillas
+ * que golpea van teñidas todo el bucle, con el tinte del alcance de los gólems: así se ve quién queda
+ * dentro y quién, a salvo. Ahí nadie planea nada.
+ */
+export function demoLayers(demo: Demo, planned: boolean): BoardLayers | null {
+  if (!planned && demo.marks.length === 0) return null;
+  const layers = boardLayers({
+    phase: 'planning',
+    screen: 'battle',
+    settings: DEFAULT_SETTINGS,
+    local: true,
+    match: demo.before,
+    plans: Object.fromEntries(demo.plans.map((p) => [p.ninjaId, p])),
+    active: null,
+    pendingCard: null,
+    hover: null,
+  });
+  return layers && { ...layers, threat: demo.marks.map((at) => ({ at, tint: true })) };
 }

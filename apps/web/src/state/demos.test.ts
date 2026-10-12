@@ -1,7 +1,18 @@
-import { ELEMENTS, type ElementKind, type GameEvent, isRock } from '@ventisca/core';
+import {
+  BALANCE,
+  ELEMENTS,
+  type ElementKind,
+  ENEMY_KINDS,
+  type GameEvent,
+  isRock,
+  manhattan,
+  neighbors8,
+  sniperDamage,
+  sweepTiles,
+} from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import { HELP } from '../i18n/es';
-import { cardDemo, type Demo } from './demos';
+import { cardDemo, type Demo, demoLayers, golemCaption, golemDemo } from './demos';
 
 /*
  * D-81: las demostraciones de las cartas. Cada una la juega el propio motor sobre un tablero preparado:
@@ -171,5 +182,167 @@ describe('Demostración de una carta (D-81)', () => {
 
   it('D-81: la ayuda dice dónde está el ▶ y qué muestra', () => {
     expect(HELP.cards).toContain('El ▶ junto a «Cartas de…» muestra qué hace la carta, sin combo y con combo.');
+  });
+});
+
+/*
+ * D-82: las demostraciones de los gólems. Cada una enseña ataques elegidos, que el motor resuelve con sus
+ * mismas funciones, y siempre deja a un ninja fuera del área, para enseñar dónde se está a salvo.
+ */
+describe('Demostración de un gólem (D-82)', () => {
+  const attacks = (d: Demo) =>
+    d.events
+      .filter((e): e is Extract<GameEvent, { t: 'enemyAttack' }> => e.t === 'enemyAttack')
+      .map((e) => [e.sourceId, e.targetId]);
+  const marks = (d: Demo) => d.marks.map((t) => `${t.x},${t.y}`).sort();
+  const golem = (d: Demo, id: string) => {
+    const e = d.before.enemies.find((x) => x.id === id);
+    if (!e) throw new Error(id);
+    return e;
+  };
+
+  it('D-82: Carámbano, un disparo de lejos y otro de cerca, y un ninja fuera de su alcance', () => {
+    const d = golemDemo('sniper');
+    // Dos Carámbanos: uno le dispara a Brasa desde tres casillas y otro a Marea, que lo tiene al lado.
+    expect(d.before.enemies.map((e) => e.kind)).toEqual(['sniper', 'sniper']);
+    expect(attacks(d)).toEqual([
+      ['e1', 'fire'],
+      ['e2', 'water'],
+    ]);
+    expect(damages(d).map((e) => [e.targetId, e.amount, e.cause])).toEqual([
+      ['fire', 5, 'enemy'],
+      ['water', 3, 'enemy'],
+    ]);
+    // Los números son los del motor: lo que da `sniperDamage` a esas distancias.
+    const [far, near] = [golem(d, 'e1'), golem(d, 'e2')];
+    expect(manhattan(far.pos, ninja(d, 'fire').pos)).toBe(3);
+    expect(manhattan(near.pos, ninja(d, 'water').pos)).toBe(1);
+    expect(damages(d).map((e) => e.amount)).toEqual([
+      sniperDamage(far, far.pos, ninja(d, 'fire').pos),
+      sniperDamage(near, near.pos, ninja(d, 'water').pos),
+    ]);
+    // Escarcha está fuera del alcance de los dos, y lo dice.
+    for (const e of d.before.enemies) {
+      expect(manhattan(e.pos, ninja(d, 'snow').pos)).toBeGreaterThan(BALANCE.enemies.sniper.range);
+    }
+    expect(labels(d)).toEqual({ '3,1': '−5', '5,2': '−3', '2,2': 'a salvo' });
+    // Se marca lo que golpea cada disparo: solo la casilla de su objetivo.
+    expect(marks(d)).toEqual(['3,1', '5,2']);
+    expect(d.view).toEqual({ x: 2, y: 1, w: 5, h: 2 });
+  });
+
+  it('D-82: Granizo, el objetivo, un vecino salpicado y un ninja a salvo', () => {
+    const d = golemDemo('artillery');
+    expect(attacks(d)).toEqual([['e1', 'fire']]);
+    const { attack, splash, range } = BALANCE.enemies.artillery;
+    expect(damages(d).map((e) => [e.targetId, e.amount, e.cause])).toEqual([
+      ['fire', attack, 'enemy'],
+      ['water', splash, 'splash'],
+    ]);
+    // Lanza desde lejos: al máximo de su alcance.
+    expect(manhattan(golem(d, 'e1').pos, ninja(d, 'fire').pos)).toBe(range);
+    expect(labels(d)).toEqual({ '3,2': '−8', '2,1': '−4', '5,1': 'a salvo' });
+    // El área es la del motor: el objetivo y sus 8 vecinas. Marea está en una, en diagonal; Escarcha, fuera.
+    const target = ninja(d, 'fire').pos;
+    const area = [target, ...neighbors8(target)].map((t) => `${t.x},${t.y}`).sort();
+    expect(marks(d)).toEqual(area);
+    expect(area).toContain('2,1');
+    expect(area).not.toContain('5,1');
+    expect(d.view).toEqual({ x: 2, y: 1, w: 4, h: 3 });
+  });
+
+  it('D-82: Témpano, el objetivo y el barrido a su costado, hombro con hombro', () => {
+    const d = golemDemo('colossus');
+    expect(attacks(d)).toEqual([['e1', 'water']]);
+    const { attack, sweep } = BALANCE.enemies.colossus;
+    expect(damages(d).map((e) => [e.targetId, e.amount, e.cause])).toEqual([
+      ['water', attack, 'enemy'],
+      ['fire', sweep, 'sweep'],
+    ]);
+    expect(labels(d)).toEqual({ '4,2': '−10', '3,2': '−10', '5,1': 'a salvo' });
+    // Barre las dos casillas a los costados de su objetivo, según `sweepTiles`: en una está Brasa.
+    const e = golem(d, 'e1');
+    const target = ninja(d, 'water').pos;
+    expect(marks(d)).toEqual([target, ...sweepTiles(e.pos, target)].map((t) => `${t.x},${t.y}`).sort());
+    expect(marks(d)).toEqual(['3,2', '4,2', '5,2']);
+    expect(d.view).toEqual({ x: 3, y: 1, w: 3, h: 3 });
+  });
+
+  it('D-82: enseña solo el ataque: nadie planea ni se mueve, nadie cae, y siempre queda un ninja a salvo', () => {
+    for (const kind of ENEMY_KINDS) {
+      const d = golemDemo(kind);
+      expect(d.plans).toEqual([]);
+      expect(d.numbers).toBe(true);
+      expect([...new Set(d.events.map((e) => e.t))].sort()).toEqual(['damage', 'enemyAttack']);
+      expect(d.after.enemies.map((e) => e.pos)).toEqual(d.before.enemies.map((e) => e.pos));
+      expect(d.after.ninjas.map((n) => n.pos)).toEqual(d.before.ninjas.map((n) => n.pos));
+      expect(d.after.ninjas.every((n) => n.hp > 0)).toBe(true);
+      // Los tres ninjas se ven, y exactamente uno queda a salvo, fuera de todo lo que se golpea.
+      for (const n of d.before.ninjas) expect(inView(d, n.pos), `${kind}: ${n.id}`).toBe(true);
+      const safe = d.labels.filter((l) => l.text === 'a salvo');
+      expect(safe).toHaveLength(1);
+      expect(d.marks.map((t) => `${t.x},${t.y}`)).not.toContain(`${safe[0]?.at.x},${safe[0]?.at.y}`);
+    }
+  });
+
+  it('D-82: cabe en su tablero en miniatura, sin rocas, y nada de lo que se lee tapa a una unidad', () => {
+    for (const kind of ENEMY_KINDS) {
+      const d = golemDemo(kind);
+      const units = [...d.after.ninjas, ...d.after.enemies];
+      for (const u of units) expect(inView(d, u.pos), `${kind}: ${u.id}`).toBe(true);
+      for (const t of d.marks) expect(inView(d, t)).toBe(true);
+      for (let x = d.view.x; x < d.view.x + d.view.w; x++) {
+        for (let y = d.view.y; y < d.view.y + d.view.h; y++) expect(isRock(d.before, { x, y })).toBe(false);
+      }
+      const at = units.map((u) => `${u.pos.x},${u.pos.y}`);
+      for (const l of d.labels)
+        expect(at, `${kind}: sobre (${l.at.x},${l.at.y})`).not.toContain(`${l.at.x},${l.at.y - 1}`);
+      expect(golemDemo(kind)).toEqual(d);
+    }
+  });
+
+  it('D-82: la línea de cada gólem lleva los números del motor, no escritos a mano', () => {
+    expect(golemCaption('sniper')).toBe(
+      'Dispara a un solo ninja a hasta 3 casillas. Cuanto más lejos, más duele: 3 de cerca, 4 a dos casillas y 5 a tres.',
+    );
+    expect(golemCaption('artillery')).toBe(
+      'Lanza a hasta 2 casillas: 8 al objetivo y 4 a cualquier ninja en las 8 casillas que lo rodean, también en diagonal.',
+    );
+    expect(golemCaption('colossus')).toBe(
+      'Golpea a quien tenga al lado y barre las dos casillas a los costados de su objetivo: 10 a cada una. No se pongan hombro con hombro frente a él.',
+    );
+    // Salen del balance y de las funciones del motor: si el balance cambia, la línea cambia con él.
+    const { sniper, artillery, colossus } = BALANCE.enemies;
+    expect(golemCaption('sniper')).toContain(`hasta ${sniper.range} casillas`);
+    expect(golemCaption('sniper')).toContain(`${sniper.attack} de cerca`);
+    expect(golemCaption('sniper')).toContain(`${sniper.maxAttack} a tres`);
+    expect(golemCaption('artillery')).toContain(`${artillery.attack} al objetivo y ${artillery.splash} a cualquier`);
+    expect(golemCaption('colossus')).toContain(`${colossus.sweep} a cada una`);
+  });
+
+  it('D-82: las demostraciones de las cartas no marcan casillas: su área ya se ve al planear', () => {
+    expect(cardDemo('fire', 9, true).marks).toEqual([]);
+  });
+
+  it('D-82: las casillas que golpea un gólem se ven teñidas todo el bucle, antes y después del ataque', () => {
+    for (const kind of ENEMY_KINDS) {
+      const d = golemDemo(kind);
+      for (const planned of [true, false]) {
+        const layers = demoLayers(d, planned);
+        expect(layers?.threat, `${kind}, ${planned}`).toEqual(d.marks.map((at) => ({ at, tint: true })));
+        // Nadie planea nada: no hay cartas colocadas, ni casillas de un ninja activo, ni vida por perder.
+        expect(layers?.cards).toEqual([]);
+        expect(layers?.active).toBeNull();
+        expect(layers?.losses).toEqual([]);
+      }
+    }
+  });
+
+  it('D-81: la de una carta enseña lo planeado antes de jugar, y nada mientras se juega', () => {
+    const d = cardDemo('fire', 9, true);
+    const before = demoLayers(d, true);
+    expect(before?.cards.flatMap((g) => g.cards.map((c) => c.ninja)).sort()).toEqual(['fire', 'water']);
+    expect(before?.threat).toEqual([]);
+    expect(demoLayers(d, false)).toBeNull();
   });
 });

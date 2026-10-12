@@ -1,7 +1,6 @@
 import type { MatchState } from '@ventisca/core';
-import { type BoardLayers, boardLayers } from '../state/board';
-import type { Demo } from '../state/demos';
-import { DEFAULT_SETTINGS } from '../state/persist';
+import type { BoardLayers } from '../state/board';
+import { type Demo, demoLayers } from '../state/demos';
 import type { Overlay } from '../state/store';
 import { BattleScene } from './BattleScene';
 import { BOARD_X, BOARD_Y, TH, TW } from './layout';
@@ -108,20 +107,9 @@ export class DemoScene extends BattleScene {
     this.setBeat('play');
   }
 
-  /** Antes de jugar se ve lo planeado, como en la partida: la miniatura de cada carta y su área. */
+  /** Lo planeado antes de jugar y, todo el bucle, las casillas que golpea un gólem (`state/demos.ts`). */
   protected override planning(): BoardLayers | null {
-    if (this.beat !== 'before') return null;
-    return boardLayers({
-      phase: 'planning',
-      screen: 'battle',
-      settings: DEFAULT_SETTINGS,
-      local: true,
-      match: this.demo.before,
-      plans: Object.fromEntries(this.demo.plans.map((p) => [p.ninjaId, p])),
-      active: null,
-      pendingCard: null,
-      hover: null,
-    });
+    return demoLayers(this.demo, this.beat === 'before');
   }
 
   /** Con la mano vacía, la demostración no muestra números. */

@@ -56,6 +56,11 @@ export function learnTip(id: TipId): void {
   if (!learnedTips.includes(id)) updateSettings({ learnedTips: [...learnedTips, id] });
 }
 
+/** Desde la ayuda: los consejos vuelven a salir, cada uno en su momento (D-80). */
+export function forgetTips(): void {
+  updateSettings({ learnedTips: [] });
+}
+
 function applyToView(e: GameEvent): void {
   const v = store.getState().view;
   if (v) store.setState({ view: applyEvent(v, e) });

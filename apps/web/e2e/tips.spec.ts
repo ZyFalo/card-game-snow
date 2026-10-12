@@ -1,5 +1,13 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { type Board, savedSettings, startBoard, type TestState, type TestWindow } from './helpers';
+import {
+  type Board,
+  clippedElements,
+  savedSettings,
+  smallText,
+  startBoard,
+  type TestState,
+  type TestWindow,
+} from './helpers';
 
 /*
  * Consejos en el momento (D-80): cuatro consejos, cada uno una sola vez, en una burbuja pegada a los
@@ -258,4 +266,40 @@ test('D-80: con "Consejos en pantalla" apagado no sale ninguna burbuja', async (
   await expect(bubble(page)).toHaveCount(0);
   // Sin consejos en pantalla tampoco hay franja.
   await expect(page.locator('.tip')).toHaveCount(0);
+});
+
+test('D-80: desde la ayuda se pueden volver a ver los consejos', async ({ page }) => {
+  await startBoard(page, QUIET, { learnedTips: ['switchNinja', 'firstFall'] });
+  await click(page, 2, 1);
+  await expect(bubble(page)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  await expect(help.getByRole('heading', { name: 'Consejos' })).toBeVisible();
+  const again = help.getByRole('button', { name: 'Volver a ver los consejos' });
+  await again.scrollIntoViewIfNeeded();
+  expect(await clippedElements(page)).toEqual([]);
+  // Lo nuevo de la ayuda respeta el tamaño mínimo de texto: el párrafo y el botón.
+  const small = (await smallText(page)).filter((found) => !found.startsWith('span.kbd'));
+  expect(small).toEqual([]);
+  await again.click();
+  // El botón dice que quedó hecho, y los ajustes ya no guardan ningún consejo aprendido.
+  await expect(help.getByRole('button', { name: 'Listo: volverán a salir' })).toBeDisabled();
+  expect(await savedSettings(page)).toMatchObject({ learnedTips: [] });
+  expect(await clippedElements(page)).toEqual([]);
+
+  // De vuelta en la partida, el consejo de ese momento sale otra vez.
+  await help.getByRole('button', { name: 'Volver a la pausa' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await expect(text(page)).toHaveText(SWITCH('Brasa'));
+});
+
+test('D-80: con los consejos apagados, la ayuda dice dónde se encienden', async ({ page }) => {
+  await startBoard(page, QUIET, { tips: false });
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  const note = help.getByText('Ahora están apagados: enciende «Consejos en pantalla» en la pausa o en «Tu equipo».');
+  await note.scrollIntoViewIfNeeded();
+  await expect(note).toBeVisible();
+  expect(await clippedElements(page)).toEqual([]);
 });

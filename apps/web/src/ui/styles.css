@@ -1781,6 +1781,16 @@ button {
   font: 500 14px / 1.4 var(--font-ui);
 }
 
+/* Los consejos en el momento, desde la ayuda (D-80). */
+.help h3 + p {
+  margin: 0 0 var(--gap-2);
+}
+
+.help-note {
+  margin: var(--gap-2) 0 0;
+  color: var(--ink-2);
+}
+
 /* Animaciones reducidas (ajuste del jugador; por defecto sigue prefers-reduced-motion). */
 .reduced .title-ninjas img,
 .reduced .folds i,

@@ -381,6 +381,13 @@ export const HELP = {
     ['Mantén Espacio', 'Acelerar la resolución del turno'],
     ['P', 'Pausa'],
   ],
+  /** Los consejos en el momento (D-80) salen una sola vez: desde aquí se vuelven a ver. */
+  tipsTitle: 'Consejos',
+  tipsIntro:
+    'Cada consejo sale una sola vez, la primera vez que hace falta, junto a los paneles o a la mano. Se cierra con «Entendido».',
+  tipsReset: 'Volver a ver los consejos',
+  tipsResetDone: 'Listo: volverán a salir',
+  tipsOff: 'Ahora están apagados: enciende «Consejos en pantalla» en la pausa o en «Tu equipo».',
   backToPause: 'Volver a la pausa',
 } as const;
 

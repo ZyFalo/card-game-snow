@@ -154,7 +154,7 @@ const fireNextToGolems = (page: Page) =>
     w.__ventiscaScene.setupMatch(m);
   });
 
-const NEXT_TIP = (names: string) => `Pasa al siguiente ninja con un clic en él o con Tab. Falta planear a ${names}.`;
+const NEXT_TIP = (names: string) => `Elige otro ninja con un clic o con Tab. Falta planear a ${names}.`;
 
 test('al planificar valen a la vez las casillas y los objetivos, y el foco no salta solo', async ({ page }) => {
   const errors: string[] = [];

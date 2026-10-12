@@ -317,14 +317,15 @@ Revivir se completa al final del turno (R-09), así que el tablero muestra la re
 
 Cuatro consejos salen una sola vez cada uno, la primera vez que hacen falta (D-80): cambiar de ninja, primera carta, combo posible y primera caída. Sus textos están en el §9.5 del PRD.
 
-- **La burbuja (`.bubble`):** un panel `.paper` con una punta que señala a lo que se refiere. El texto va en 14 px, como el de la franja, y abajo a la derecha lleva "Entendido", un `.link`. Se cierra con ese enlace o con Enter.
-- **Nunca sobre el tablero.** Entre el marco del tablero y los paneles quedan menos de 20 px: la burbuja no cabe encima del panel sin tapar la fila de abajo. Va a los lados, donde no tapa nada:
+- **La burbuja (`.bubble`):** un panel `.paper` con una franja a la izquierda del color del ninja del que habla, como la de los mensajes (`.notice`). El texto va en 14 px, como el de la franja de arriba, y abajo a la derecha lleva "Entendido", un `.link`. Se cierra con ese enlace o con Enter.
+- **Siempre en el mismo lugar, y nunca sobre el tablero:** la franja de abajo, a la derecha, en el espacio libre junto a la mano. Va pegada al borde derecho y mide 290 px de ancho como mucho, así se lee en dos o tres renglones. En la maqueta iba encima del panel o de la mano; ahí no cabe, porque entre el marco del tablero y los paneles quedan menos de 20 px.
+- **Lo que señala lleva el borde dorado (`.tip-mark`),** el aro de lo elegido (sección 2), sin levantar la carta: el panel del ninja, en cambiar de ninja y en la primera caída; su primera carta, en la primera carta; y todas las cartas de la mano, en el combo posible. Así la burbuja no se mueve y siempre señala al ninja correcto.
 
-| A qué se refiere | Dónde va | Su punta |
-| --- | --- | --- |
-| A los paneles: cambiar de ninja y primera caída | Sobre la fila de paneles, en el margen izquierdo del tablero, de 150 px de ancho. Queda encima del panel de Brasa | Hacia abajo, a la fila de paneles |
-| A la mano, con una o dos cartas: primera carta y combo posible | Dentro de la mano, a la derecha de la última carta | Hacia la izquierda, a la carta |
-| A la mano, con tres o cuatro cartas | Encima de la mano, en el margen derecho del tablero, de 150 px de ancho | Hacia abajo, a la mano |
+| En la mano | Dónde va la burbuja |
+| --- | --- |
+| Ninguna carta | Junto a la frase de la mano, que se parte en dos renglones para dejarle lugar |
+| Una o dos cartas | A la derecha de las cartas |
+| Tres o cuatro cartas | No queda espacio libre junto a la mano: sube encima de ella, al margen derecho del tablero, con 150 px de ancho. No tapa ninguna carta |
 
 - **Una a la vez.** Si coinciden varios consejos, sale primero la caída, después la primera carta, el combo y cambiar de ninja. Al cerrar uno sale el siguiente.
 - **No estorba.** La burbuja no pausa nada ni bloquea el tablero: se puede seguir jugando con ella abierta.

@@ -39,6 +39,7 @@ const state = (page: Page) =>
 const beat = (page: Page, name: string) => expect(page.locator('.demo')).toHaveAttribute('data-beat', name);
 
 interface Moment {
+  beat: string;
   labels: string[];
   combo: string | null;
   stunned: (boolean | null)[];
@@ -46,29 +47,43 @@ interface Moment {
 }
 
 /**
- * Lo que se ve en el tablero en miniatura en ese momento del bucle, leído en el mismo instante: el bucle no
- * espera a la prueba, y un momento puede durar menos de lo que tarda en preguntar dos veces.
+ * Lo que se ve en el tablero en miniatura en ese momento del bucle. El bucle no espera a la prueba, y un
+ * momento puede durar menos que un cuadro de un equipo lento: en vez de preguntar una y otra vez, la página
+ * anota lo que se ve cada vez que la burbuja cambia de momento, en ese mismo instante. Devuelve la
+ * siguiente vez que llega a ese momento.
  */
 async function at(page: Page, name: 'before' | 'combo' | 'after'): Promise<Moment> {
+  const from = await page.evaluate(() => {
+    type Img = { type: string; visible: boolean; texture?: { key: string } };
+    type Scene = { units: Map<string, { stunned: boolean }>; children: { list: Img[] } };
+    const w = window as unknown as { __beats?: Moment[]; __watched?: Element; __ventiscaDemo?: Scene };
+    const bubble = document.querySelector('.demo');
+    if (bubble && w.__watched !== bubble) {
+      const beats: Moment[] = [];
+      w.__beats = beats;
+      w.__watched = bubble;
+      new MutationObserver(() => {
+        const scene = w.__ventiscaDemo;
+        if (!scene) return;
+        beats.push({
+          beat: bubble.getAttribute('data-beat') ?? '',
+          labels: [...bubble.querySelectorAll('.demo-label')].map((l) => l.textContent ?? ''),
+          combo: bubble.querySelector('.demo-combo')?.textContent ?? null,
+          stunned: ['e1', 'e2'].map((id) => scene.units.get(id)?.stunned ?? null),
+          minis: scene.children.list
+            .filter((o) => o.type === 'Image' && o.visible && (o.texture?.key ?? '').startsWith('placed-'))
+            .map((o) => o.texture?.key ?? '')
+            .sort(),
+        });
+      }).observe(bubble, { attributes: true, attributeFilter: ['data-beat'] });
+    }
+    return w.__beats?.length ?? 0;
+  });
   const handle = await page.waitForFunction(
-    (name) => {
-      type Img = { type: string; visible: boolean; texture?: { key: string } };
-      type Scene = { beat: string; units: Map<string, { stunned: boolean }>; children: { list: Img[] } };
-      const scene = (window as unknown as { __ventiscaDemo: Scene }).__ventiscaDemo;
-      // La escena y la burbuja cambian de momento con un cuadro de diferencia: se lee cuando coinciden.
-      if (scene.beat !== name || document.querySelector('.demo')?.getAttribute('data-beat') !== name) return false;
-      return {
-        labels: [...document.querySelectorAll('.demo-label')].map((l) => l.textContent ?? ''),
-        combo: document.querySelector('.demo-combo')?.textContent ?? null,
-        stunned: ['e1', 'e2'].map((id) => scene.units.get(id)?.stunned ?? null),
-        minis: scene.children.list
-          .filter((o) => o.type === 'Image' && o.visible && (o.texture?.key ?? '').startsWith('placed-'))
-          .map((o) => o.texture?.key ?? '')
-          .sort(),
-      };
-    },
-    name,
-    { polling: 'raf', timeout: 30_000 },
+    ({ name, from }) =>
+      (window as unknown as { __beats?: Moment[] }).__beats?.slice(from).find((m) => m.beat === name) ?? false,
+    { name, from },
+    { timeout: 60_000 },
   );
   return (await handle.jsonValue()) as Moment;
 }
@@ -113,7 +128,6 @@ test('D-81: el ▶ junto al título de la mano abre la demostración de la carta
   // Se juega en bucle: lo planeado, el turno, el resultado, y otra vez.
   // Antes de jugar se ve lo planeado: la carta de Brasa colocada, y nada que leer todavía.
   expect(await at(page, 'before')).toMatchObject({ labels: [], stunned: [false, false], minis: ['placed-fire'] });
-  await beat(page, 'play');
   // El resultado lo resolvió el motor: 9 de daño a cada gólem del área, y aturdidos.
   expect(await at(page, 'after')).toMatchObject({
     labels: ['−9 · aturdido', '−9 · aturdido'],
@@ -137,7 +151,7 @@ test('D-81: con combo se ve también la carta de otro ninja, y la demostración 
     'Con combo, si otro ninja también juega carta este turno: además los quema, 3 de daño por turno durante 3 turnos.',
   );
   // Antes de jugar se ven las dos cartas colocadas: la de Brasa y la de otro ninja.
-  expect((await at(page, 'before')).minis).toEqual(['placed-fire', 'placed-water']);
+  await expect.poll(async () => (await at(page, 'before')).minis).toEqual(['placed-fire', 'placed-water']);
   // El tablero en miniatura dice "¡Combo!" un momento.
   expect((await at(page, 'combo')).combo).toBe('¡Combo!');
   // El cartel del combo de la partida no sale: la demostración no toca su interfaz.

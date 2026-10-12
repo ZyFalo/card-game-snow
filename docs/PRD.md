@@ -529,6 +529,7 @@ La franja de arriba es la línea de contexto: dice el estado del turno y, con el
 - **La juega el motor,** sobre un tablero preparado, y la anima la escena del juego, con su arte y sus animaciones. No hay videos, y no mira la partida en curso: muestra qué hace una carta, nunca cuánto daño hará una jugada. Por eso funciona igual en línea.
 - **Una a la vez.** Esc o un clic fuera la cierran. No pausa el reloj. Mientras está abierta tapa parte del tablero, las teclas del juego esperan y el consejo en pantalla también.
 - **Con animaciones reducidas** se ven el antes y el después como dos imágenes fijas, con la línea de texto de la carta.
+- **La ayuda lo dice,** en "Cartas y combos": "El ▶ junto a «Cartas de…» muestra qué hace la carta, sin combo y con combo."
 
 ### 9.6 Logros locales (nombres propios)
 

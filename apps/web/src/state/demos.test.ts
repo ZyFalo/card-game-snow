@@ -1,5 +1,6 @@
 import { ELEMENTS, type ElementKind, type GameEvent, isRock } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
+import { HELP } from '../i18n/es';
 import { cardDemo, type Demo } from './demos';
 
 /*
@@ -166,5 +167,9 @@ describe('Demostración de una carta (D-81)', () => {
       ['water', 'card'],
     ]);
     expect(cardDemo('fire', 9, false).plans.map((p) => p.ninjaId)).toEqual(['fire']);
+  });
+
+  it('D-81: la ayuda dice dónde está el ▶ y qué muestra', () => {
+    expect(HELP.cards).toContain('El ▶ junto a «Cartas de…» muestra qué hace la carta, sin combo y con combo.');
   });
 });

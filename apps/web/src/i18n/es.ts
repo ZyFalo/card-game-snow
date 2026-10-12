@@ -395,6 +395,7 @@ export const HELP = {
     'El medidor sube con cada movimiento, acción o golpe recibido. Al llenarse, ganas una carta (máximo 4).',
     'Las cartas afectan un área de 3×3 y se colocan dentro del alcance de movimiento del ninja.',
     'Si dos o tres ninjas juegan carta el mismo turno, hay combo: Fuego quema, Agua da Potencia y Nieve da Escudo.',
+    'El ▶ junto a «Cartas de…» muestra qué hace la carta, sin combo y con combo.',
   ],
   koTitle: 'Caer y revivir',
   ko: [

@@ -52,7 +52,7 @@ export class Fx {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    private readonly opts: { speed(): number; calm(): boolean },
+    private readonly opts: { speed(): number; calm(): boolean; zoom?(): number },
   ) {}
 
   /** Registra un objeto pasajero; sale del registro al destruirse. */
@@ -126,13 +126,15 @@ export class Fx {
   punch(strength = 0.025): void {
     if (this.calm) return;
     const cam = this.scene.cameras.main;
+    // Vuelve al acercamiento de reposo de su escena: el del escenario entero o el de una demostración.
+    const rest = this.opts.zoom?.() ?? RES;
     cam.zoomTo(
-      RES * (1 + strength),
+      rest * (1 + strength),
       70,
       'Quad.easeOut',
       true,
       (_c: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) cam.zoomTo(RES, 190, 'Quad.easeInOut', true);
+        if (progress === 1) cam.zoomTo(rest, 190, 'Quad.easeInOut', true);
       },
     );
   }

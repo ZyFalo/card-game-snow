@@ -9,12 +9,12 @@ import {
 import * as Phaser from 'phaser';
 import { ELEMENT_COLORS, hex, ICE, PALETTE } from '../art/palette';
 import { golemRig, ninjaRig } from '../art/rigs';
-import { audio } from '../audio/audio';
+import { audio, type SfxName } from '../audio/audio';
 import { ES, NINJA_TEXT, REVIVE_TEXT } from '../i18n/es';
 import { clickTile, notify, setHover, undo } from '../state/actions';
-import { type AimLine, boardLayers, type PlacedCards, type TargetMark } from '../state/board';
+import { type AimLine, type BoardLayers, boardLayers, type PlacedCards, type TargetMark } from '../state/board';
 import { bridge } from '../state/bridge';
-import { type AppState, type Overlay, type ResolveStep, store } from '../state/store';
+import { type CardFlight, type Overlay, type ResolveStep, store } from '../state/store';
 import { Fx } from './fx';
 import {
   aimPoint,
@@ -72,7 +72,7 @@ export class BattleScene extends Phaser.Scene {
   private ov!: Phaser.GameObjects.Graphics;
   private labels: Phaser.GameObjects.GameObject[] = [];
   private readonly ghosts = new Map<ElementKind, Phaser.GameObjects.Image>();
-  private readonly units = new Map<string, UnitSprite>();
+  protected readonly units = new Map<string, UnitSprite>();
   private rocks: Phaser.GameObjects.Image[] = [];
   private readonly channels = new Map<string, Phaser.GameObjects.Image>();
   /** Reanimaciones en curso (R-09): a cada caído, quién lo revive. */
@@ -83,17 +83,17 @@ export class BattleScene extends Phaser.Scene {
   private overlayKey = 0;
   private flightKey = 0;
   private fx!: Fx;
+  /** El acercamiento de la cámara en reposo: a él vuelve después de cada golpe de cámara. */
+  protected baseZoom = RES;
 
-  constructor(images: Map<string, HTMLImageElement>) {
-    super({ key: 'battle' });
+  constructor(images: Map<string, HTMLImageElement>, key = 'battle') {
+    super({ key });
     this.images = images;
   }
 
   create(): void {
     for (const [k, img] of this.images) if (!this.textures.exists(k)) this.textures.addImage(k, img);
-    const cam = this.cameras.main;
-    cam.setZoom(RES);
-    cam.centerOn(640, 360);
+    this.frame();
 
     this.bg = this.add.image(640, 360, 'bg-cumbre').setDepth(-100);
     this.bg.setDisplaySize(1280, 720);
@@ -107,6 +107,25 @@ export class BattleScene extends Phaser.Scene {
       this.ghosts.set(el, g);
     }
 
+    this.fx = new Fx(this, { speed: () => this.speed, calm: () => this.calm(), zoom: () => this.baseZoom });
+    this.connect();
+  }
+
+  /*
+   * Lo que la escena necesita de la aplicación va en los métodos que siguen. En la partida, la escena se
+   * conecta al estado, al sonido y a la interfaz. Una demostración (`DemoScene`, D-81) usa esta misma
+   * escena, con su arte y sus animaciones, y los reemplaza: no suena, no toca la partida ni la interfaz.
+   */
+
+  /** La cámara: en la partida, el escenario entero. */
+  protected frame(): void {
+    const cam = this.cameras.main;
+    cam.setZoom(this.baseZoom);
+    cam.centerOn(640, 360);
+  }
+
+  /** Conecta la escena con la partida: el ratón, el estado y el puente con la interfaz. */
+  protected connect(): void {
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const w = this.cameras.main.getWorldPoint(p.x, p.y);
       setHover(tileAt(w.x, w.y));
@@ -142,28 +161,75 @@ export class BattleScene extends Phaser.Scene {
         s.settings.reducedMotion !== prev.settings.reducedMotion ||
         s.settings.fastAnimations !== prev.settings.fastAnimations
       ) {
-        this.applyMotionSetting(s);
+        this.applyMotion();
       }
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
-    this.applyMotionSetting(store.getState());
-    this.fx = new Fx(this, { speed: () => this.speed, calm: () => this.calm() });
+    this.applyMotion();
     bridge.setScene(this);
     // Acceso para depurar poses y para las pruebas visuales (solo en desarrollo).
     if (import.meta.env.DEV) (window as unknown as { __ventiscaScene?: BattleScene }).__ventiscaScene = this;
   }
 
-  private applyMotionSetting(s: AppState): void {
-    this.speed = (s.settings.reducedMotion ? 0.55 : 1) * (s.settings.fastAnimations ? FAST_FACTOR : 1) * URL_SPEED;
+  /** Los ajustes de movimiento: animaciones reducidas y animaciones rápidas. */
+  protected motion(): { reduced: boolean; fast: boolean } {
+    const { settings } = store.getState();
+    return { reduced: settings.reducedMotion, fast: settings.fastAnimations };
+  }
+
+  /** ¿Se está acelerando la resolución del turno? */
+  protected boosting(): boolean {
+    return store.getState().boosting;
+  }
+
+  /** Un efecto de sonido. */
+  protected sfx(name: SfxName): void {
+    audio.play(name);
+  }
+
+  /** Un aviso corto en la interfaz. */
+  protected say(text: string): void {
+    notify(text);
+  }
+
+  /** Lo que el tablero muestra al planificar; `null` fuera de la planificación. */
+  protected planning(): BoardLayers | null {
+    return boardLayers(store.getState());
+  }
+
+  /** Un cartel sobre el tablero (ronda, combo o bonus), o `null` para quitarlo. */
+  protected setOverlay(overlay: Overlay): void {
+    store.setState({ overlay });
+  }
+
+  /** En qué parte de la resolución va el turno, para la franja de arriba. */
+  protected setStep(step: NonNullable<ResolveStep>): void {
+    const st = store.getState();
+    if (st.phase === 'resolving' && st.resolveStep !== step) store.setState({ resolveStep: step });
+  }
+
+  /** Una carta robada vuela del ninja a su mano, en la interfaz. */
+  protected sendFlight(flight: CardFlight): void {
+    store.setState((st) => ({ flights: [...st.flights, flight], incoming: [...st.incoming, flight.cardId] }));
+  }
+
+  /** Al interrumpir las animaciones: la interfaz queda sin carteles ni cartas en vuelo. */
+  protected resetInterface(): void {
+    store.setState({ overlay: null, flights: [], incoming: [], arrived: [] });
+  }
+
+  protected applyMotion(): void {
+    const { reduced, fast } = this.motion();
+    this.speed = (reduced ? 0.55 : 1) * (fast ? FAST_FACTOR : 1) * URL_SPEED;
     for (const u of this.units.values()) {
       u.speed = this.speed;
-      u.calm = s.settings.reducedMotion;
+      u.calm = reduced;
       if (!u.ko) u.startIdle();
     }
   }
 
-  private calm(): boolean {
-    return store.getState().settings.reducedMotion;
+  protected calm(): boolean {
+    return this.motion().reduced;
   }
 
   /* ---------- Tablero ---------- */
@@ -211,7 +277,7 @@ export class BattleScene extends Phaser.Scene {
     // Los efectos se destruían al terminar sus animaciones, que acaban de morir.
     this.fx?.clear();
     if (this.scene.isPaused()) this.scene.resume();
-    store.setState({ overlay: null, flights: [], incoming: [], arrived: [] });
+    this.resetInterface();
   }
 
   setPaused(paused: boolean): void {
@@ -222,7 +288,7 @@ export class BattleScene extends Phaser.Scene {
   /** Prepara el tablero para una partida nueva. Devuelve su generación. */
   setupMatch(view: MatchState): number {
     this.abort();
-    this.applyMotionSetting(store.getState());
+    this.applyMotion();
     for (const u of this.units.values()) u.destroy();
     this.units.clear();
     for (const r of this.rocks) r.destroy();
@@ -530,7 +596,7 @@ export class BattleScene extends Phaser.Scene {
     ov.clear();
     this.clearLabels();
     for (const g of this.ghosts.values()) g.setVisible(false);
-    const layers = boardLayers(store.getState());
+    const layers = this.planning();
     // Ayuda de daño: la vida que perdería cada gólem, en su barra. Fuera de la planificación, nada.
     const losses = new Map(layers?.losses.map((l) => [l.id, l.loss]));
     for (const u of this.units.values()) u.setLoss(losses.get(u.id) ?? 0);
@@ -643,7 +709,7 @@ export class BattleScene extends Phaser.Scene {
 
   /* ---------- Animador de eventos (§10.2) ---------- */
 
-  private wait(ms: number): Promise<void> {
+  protected wait(ms: number): Promise<void> {
     return new Promise((resolve) => {
       const done = () => {
         this.pending.delete(done);
@@ -666,16 +732,16 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  private async showOverlay(overlay: NonNullable<Overlay>, ms: number): Promise<void> {
+  protected async showOverlay(overlay: NonNullable<Overlay>, ms: number): Promise<void> {
     // Mientras se acelera, los carteles se omiten.
-    if (store.getState().boosting) {
+    if (this.boosting()) {
       await this.wait(ms * 0.2);
       return;
     }
     this.overlayKey += 1;
-    store.setState({ overlay: { ...overlay, key: this.overlayKey, ms: ms * this.speed } });
+    this.setOverlay({ ...overlay, key: this.overlayKey, ms: ms * this.speed });
     await this.wait(ms);
-    store.setState({ overlay: null });
+    this.setOverlay(null);
   }
 
   /** Acelerar la resolución (mantener Espacio o el botón). */
@@ -696,8 +762,7 @@ export class BattleScene extends Phaser.Scene {
     ) {
       step = 'end';
     }
-    const st = store.getState();
-    if (step && st.phase === 'resolving' && st.resolveStep !== step) store.setState({ resolveStep: step });
+    if (step) this.setStep(step);
   }
 
   /** Anillo breve bajo quien actúa. */
@@ -728,7 +793,7 @@ export class BattleScene extends Phaser.Scene {
           group.push(x);
           i += 1;
         }
-        audio.play('move');
+        this.sfx('move');
         await Promise.all(group.map((g) => this.animMove(g.unitId, g.path, TIMING.ninjaStep)));
         for (const g of group) apply(g);
         continue;
@@ -758,7 +823,7 @@ export class BattleScene extends Phaser.Scene {
           primed.add(c.card.id);
           this.units.get(c.ninjaId)?.act('power');
         }
-        audio.play('combo');
+        this.sfx('combo');
         await this.showOverlay({ kind: 'combo', elements: e.elements, key: 0, ms: 0 }, TIMING.comboOverlay);
         apply(e);
         continue;
@@ -772,7 +837,7 @@ export class BattleScene extends Phaser.Scene {
         this.units.get(e.unitId)?.setStatus(e.status, e.on);
         apply(e);
         if (e.on) {
-          audio.play(e.status === 'stun' ? 'stun' : e.status === 'burn' ? 'burn' : 'shield');
+          this.sfx(e.status === 'stun' ? 'stun' : e.status === 'burn' ? 'burn' : 'shield');
           // Varios estados seguidos comparten una sola pausa.
           if ((events[i] as GameEvent | undefined)?.t !== 'status') await this.wait(TIMING.statusHold);
         }
@@ -810,7 +875,7 @@ export class BattleScene extends Phaser.Scene {
       }
     }
     if (hit) {
-      audio.play('burn');
+      this.sfx('burn');
       await this.wait(TIMING.damageHold);
     }
     if (kos.length > 0) {
@@ -826,7 +891,7 @@ export class BattleScene extends Phaser.Scene {
         apply(e);
         return;
       case 'move':
-        audio.play('move');
+        this.sfx('move');
         this.actorRing(this.units.get(e.unitId));
         await this.animMove(e.unitId, e.path, TIMING.enemyStep);
         apply(e);
@@ -858,8 +923,8 @@ export class BattleScene extends Phaser.Scene {
       case 'reviveInterrupted':
         // Cayó quien revivía: el anillo se apaga y el aliado sigue caído.
         this.endRevive(e.targetId);
-        audio.play('error');
-        notify(REVIVE_TEXT.interrupted);
+        this.sfx('error');
+        this.say(REVIVE_TEXT.interrupted);
         apply(e);
         await this.wait(TIMING.reviveInterrupted);
         return;
@@ -872,12 +937,12 @@ export class BattleScene extends Phaser.Scene {
         apply(e);
         return;
       case 'draw': {
-        audio.play('draw');
+        this.sfx('draw');
         // La carta vuela del ninja a su mano (o a su panel) en la interfaz.
         const u = this.units.get(e.ninjaId);
-        if (u && !this.calm() && !store.getState().boosting) {
+        if (u && !this.calm() && !this.boosting()) {
           this.flightKey += 1;
-          const flight = {
+          this.sendFlight({
             id: this.flightKey,
             ninja: e.ninjaId,
             cardId: e.card.id,
@@ -885,8 +950,7 @@ export class BattleScene extends Phaser.Scene {
             value: e.card.value,
             from: { x: u.container.x, y: u.headY - 4 },
             ms: 640 * this.speed,
-          };
-          store.setState((st) => ({ flights: [...st.flights, flight], incoming: [...st.incoming, e.card.id] }));
+          });
         }
         apply(e);
         return;
@@ -906,7 +970,7 @@ export class BattleScene extends Phaser.Scene {
       case 'roundStart': {
         apply(e);
         const view = store.getState().view;
-        audio.play(e.round === 'bonus' ? 'bonus' : 'round');
+        this.sfx(e.round === 'bonus' ? 'bonus' : 'round');
         await this.showOverlay(
           {
             kind: 'round',
@@ -924,7 +988,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       case 'bonusCheck':
-        if (e.met) audio.play('bonus');
+        if (e.met) this.sfx('bonus');
         await this.showOverlay(
           { kind: 'bonus', met: e.met, condition: e.condition, key: 0, ms: 0 },
           TIMING.bonusBanner,
@@ -1010,7 +1074,7 @@ export class BattleScene extends Phaser.Scene {
     this.fx.burst(at, 'fx-bit', colors, count, { speed });
   }
 
-  private floatText(u: UnitSprite, text: string, color: string, big = false): void {
+  protected floatText(u: UnitSprite, text: string, color: string, big = false): void {
     this.fx.number(u, text, color, big);
   }
 
@@ -1051,7 +1115,7 @@ export class BattleScene extends Phaser.Scene {
     if (e.sourceId === 'fire') {
       // El dardo sale del abanico justo en el latigazo, dejando una estela de brasas.
       await pb.marker('release');
-      audio.play('attack-fire');
+      this.sfx('attack-fire');
       await this.projectile('fx-dart', src.handPoint(), dst.center(), TIMING.projectile.fire, {
         arc: -40,
         rotate: true,
@@ -1065,7 +1129,7 @@ export class BattleScene extends Phaser.Scene {
       // Marea avanza mientras recoge el puño y golpea en el marcador.
       const lunge = this.lunge(src, dst, 0.45, TIMING.waterLunge);
       await pb.marker('release');
-      audio.play('attack-water');
+      this.sfx('attack-water');
       this.fx.impact(dst.center(), base, size + 8);
       this.fx.burst(dst.center(), 'fx-drop', colors, 10, { up: true, gravity: 520, scale: 0.55 });
       this.fx.hitStop(75);
@@ -1073,7 +1137,7 @@ export class BattleScene extends Phaser.Scene {
       await lunge;
     } else {
       await pb.marker('release');
-      audio.play('attack-snow');
+      this.sfx('attack-snow');
       await this.projectile('fx-star', src.handPoint(), dst.center(), TIMING.projectile.snow, {
         spin: 900,
         size: [20, 20],
@@ -1106,7 +1170,7 @@ export class BattleScene extends Phaser.Scene {
       );
       await Promise.all(flights);
     }
-    audio.play('heal');
+    this.sfx('heal');
     this.fx.groundRing({ x: dst.container.x, y: dst.container.y }, MINT, 76);
     this.fx.burst(dst.center(), 'fx-spark', [MINT, 0xffffff, hex(ELEMENT_COLORS.snow.accent)], 10, {
       up: true,
@@ -1150,9 +1214,9 @@ export class BattleScene extends Phaser.Scene {
   private async animRevive(e: Extract<GameEvent, { t: 'revive' }>): Promise<void> {
     const u = this.units.get(e.targetId);
     if (!u) return;
-    audio.play('revive');
+    this.sfx('revive');
     // La reanimación que se completa al final del turno lo dice; la de una carta ya se ve en el acto.
-    if (e.cause === 'basic') notify(REVIVE_TEXT.back(NINJA_TEXT[e.targetId].name, e.hp));
+    if (e.cause === 'basic') this.say(REVIVE_TEXT.back(NINJA_TEXT[e.targetId].name, e.hp));
     const foot = { x: u.container.x, y: u.container.y };
     this.fx.beam(foot, GOLD);
     this.fx.groundRing(foot, GOLD, 76);
@@ -1167,14 +1231,14 @@ export class BattleScene extends Phaser.Scene {
     const u = this.units.get(e.targetId);
     if (!u) return;
     if (e.blocked) {
-      audio.play('block');
+      this.sfx('block');
       u.crackShield();
       this.fx.impact(u.center(), MINT, 54);
       this.floatText(u, ES.blocked, ELEMENT_COLORS.snow.accent);
       await this.wait(TIMING.blockedHold);
       return;
     }
-    audio.play(e.cause === 'burn' ? 'burn' : 'hit');
+    this.sfx(e.cause === 'burn' ? 'burn' : 'hit');
     u.flash();
     u.act('hit');
     u.setHp(e.hp);
@@ -1196,7 +1260,7 @@ export class BattleScene extends Phaser.Scene {
     if (!u) return;
     if (u.kind === 'enemy') {
       // El gólem se hace pedazos: cada pieza sale despedida.
-      audio.play('shatter');
+      this.sfx('shatter');
       this.fx.impact(u.center(), hex(ICE.glow), 78);
       this.fx.hitStop(70);
       this.fx.shake(120, 0.003);
@@ -1207,7 +1271,7 @@ export class BattleScene extends Phaser.Scene {
       await this.wait(TIMING.enemyKo);
       return;
     }
-    audio.play('ko');
+    this.sfx('ko');
     this.stopChannel(id);
     this.fx.burst(u.center(), 'fx-bit', isNinjaId(id) ? elementColors(id) : ICE_COLORS, 14, { gravity: 300 });
     this.fx.dust({ x: u.container.x, y: u.container.y }, 4);
@@ -1221,7 +1285,7 @@ export class BattleScene extends Phaser.Scene {
     const colors = elementColors(el);
     const src = this.units.get(e.ninjaId);
     const center = tileCenter(e.at);
-    audio.play(`card-${el}`);
+    this.sfx(`card-${el}`);
     if (primed) {
       // En un combo la carta ya se alzó durante el cartel: aterriza directo.
       this.fx.impact(center, col, 86);
@@ -1351,7 +1415,7 @@ export class BattleScene extends Phaser.Scene {
     await pb.marker('release');
     const origin = tileAt(dst.container.x, dst.container.y - 20) ?? e.area[0] ?? { x: 0, y: 0 };
     if (e.kind === 'sniper') {
-      audio.play('enemy-sniper');
+      this.sfx('enemy-sniper');
       await this.projectile('fx-icicle', src.handPoint(), dst.center(), TIMING.projectile.sniper, {
         rotate: true,
         size: [32, 9],
@@ -1361,7 +1425,7 @@ export class BattleScene extends Phaser.Scene {
       this.burst(dst.center(), ICE_COLORS, 6, 0.6);
       this.fx.hitStop(45);
     } else if (e.kind === 'artillery') {
-      audio.play('enemy-artillery');
+      this.sfx('enemy-artillery');
       await this.projectile('fx-hail', src.handPoint(), dst.center(), TIMING.projectile.artillery, {
         arc: -110,
         spin: 540,
@@ -1376,7 +1440,7 @@ export class BattleScene extends Phaser.Scene {
       this.fx.hitStop(60);
     } else {
       // Témpano golpea el suelo: barrido en media luna y casillas en cascada.
-      audio.play('enemy-colossus');
+      this.sfx('enemy-colossus');
       this.swipe(e.area);
       this.fx.cascade(e.area, origin, RED, { step: 40, hold: 180, alpha: 0.32 });
       for (const t of e.area) this.fx.impact(tileCenter(t), hex(ICE.base), 56);
@@ -1417,14 +1481,14 @@ export class BattleScene extends Phaser.Scene {
   private async animSkip(id: string): Promise<void> {
     const u = this.units.get(id);
     if (!u) return;
-    audio.play('stun');
+    this.sfx('stun');
     this.actorRing(u);
     await u.act('dazedTurn').done;
   }
 
   private async spawnEnemies(list: Extract<GameEvent, { t: 'roundStart' }>['enemies']): Promise<void> {
     if (list.length === 0) return;
-    audio.play('spawn');
+    this.sfx('spawn');
     const step = TIMING.spawn.stagger;
     list.forEach((e, i) => {
       const u = this.makeEnemy(e.id, e.kind, e.pos, e.hp, e.maxHp);
@@ -1443,7 +1507,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private async animMatchEnd(victory: boolean): Promise<void> {
-    audio.play(victory ? 'victory' : 'defeat');
+    this.sfx(victory ? 'victory' : 'defeat');
     if (victory) {
       for (const u of this.units.values()) {
         if (u.kind !== 'ninja' || u.ko) continue;

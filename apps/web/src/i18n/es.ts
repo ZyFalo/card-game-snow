@@ -409,6 +409,8 @@ export const HELP = {
   ninjaStats: (hp: number, attack: number, range: number, move: number) =>
     `Vida ${hp}, daño ${attack}, alcance ${range}, paso ${move}.`,
   golemsTitle: 'Los gólems',
+  /** Dónde está la demostración de cada gólem (D-82). */
+  golemsDemo: 'Pasa el ratón sobre un gólem: «Ver cómo ataca» muestra su ataque y dónde se está a salvo.',
   golemStats: (hp: number, range: number, move: number) => `Vida ${hp}, alcance ${range}, paso ${move}.`,
   cardsTitle: 'Cartas y combos',
   cards: [

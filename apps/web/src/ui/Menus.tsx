@@ -171,6 +171,7 @@ export function HelpModal() {
           );
         })}
       </div>
+      <p className="help-note">{HELP.golemsDemo}</p>
 
       <h3>{HELP.cardsTitle}</h3>
       <ul>

@@ -11,7 +11,7 @@ import {
   sweepTiles,
 } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
-import { HELP } from '../i18n/es';
+import { DEMO_TEXT, ENEMY_TEXT, HELP } from '../i18n/es';
 import { cardDemo, type Demo, demoLayers, golemCaption, golemDemo } from './demos';
 
 /*
@@ -322,6 +322,15 @@ describe('Demostración de un gólem (D-82)', () => {
 
   it('D-82: las demostraciones de las cartas no marcan casillas: su área ya se ve al planear', () => {
     expect(cardDemo('fire', 9, true).marks).toEqual([]);
+  });
+
+  it('D-82: la ayuda dice cómo ver el ataque de un gólem, y conserva sus números', () => {
+    expect(HELP.golemsDemo).toBe(
+      'Pasa el ratón sobre un gólem: «Ver cómo ataca» muestra su ataque y dónde se está a salvo.',
+    );
+    expect(HELP.golemsDemo).toContain(DEMO_TEXT.showAttack);
+    expect(ENEMY_TEXT.sniper.tip).toMatch(/\d/);
+    expect(ENEMY_TEXT.artillery.tip).toMatch(/\d/);
   });
 
   it('D-82: las casillas que golpea un gólem se ven teñidas todo el bucle, antes y después del ataque', () => {

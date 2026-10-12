@@ -46,6 +46,8 @@ interface Moment {
   minis: string[];
   /** La escena tiene casillas pintadas: las de lo planeado o las que golpea un gólem. */
   tinted: boolean;
+  /** Los números flotantes del daño que siguen a la vista. */
+  floats: number;
 }
 
 /**
@@ -56,7 +58,7 @@ interface Moment {
  */
 async function at(page: Page, name: 'before' | 'combo' | 'after'): Promise<Moment> {
   const from = await page.evaluate(() => {
-    type Img = { type: string; visible: boolean; texture?: { key: string } };
+    type Img = { type: string; visible: boolean; alpha: number; depth: number; texture?: { key: string } };
     type Scene = {
       units: Map<string, { stunned: boolean }>;
       children: { list: Img[] };
@@ -77,6 +79,7 @@ async function at(page: Page, name: 'before' | 'combo' | 'after'): Promise<Momen
           combo: bubble.querySelector('.demo-combo')?.textContent ?? null,
           stunned: ['e1', 'e2'].map((id) => scene.units.get(id)?.stunned ?? null),
           tinted: (scene.hl?.commandBuffer.length ?? 0) > 0,
+          floats: scene.children.list.filter((o) => o.type === 'Text' && o.depth === 3000 && o.alpha > 0).length,
           minis: scene.children.list
             .filter((o) => o.type === 'Image' && o.visible && (o.texture?.key ?? '').startsWith('placed-'))
             .map((o) => o.texture?.key ?? '')
@@ -196,6 +199,7 @@ test('D-81: el ▶ junto al título de la mano abre la demostración de la carta
     stunned: [true, true],
     minis: [],
     tinted: false,
+    floats: 0,
   });
   // Y vuelve a empezar, con el tablero como al principio.
   expect(await at(page, 'before')).toMatchObject({ labels: [], stunned: [false, false], minis: ['placed-fire'] });
@@ -501,6 +505,8 @@ test('D-82: "Ver cómo ataca" abre la demostración de cada gólem, con los núm
     const after = await at(page, 'after');
     expect(after.labels).toEqual(expected[kind].labels);
     expect(after.tinted).toBe(true);
+    // El resultado se lee cuando ya se fue el número flotante del golpe: si no, quedaría bajo su etiqueta.
+    expect(after.floats).toBe(0);
     await page.keyboard.press('Escape');
     await expect(attack(page)).toHaveCount(0);
   }

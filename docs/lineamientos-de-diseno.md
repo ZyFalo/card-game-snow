@@ -330,13 +330,13 @@ Cuatro consejos salen una sola vez cada uno, la primera vez que hacen falta (D-8
 - **Una a la vez.** Si coinciden varios consejos, sale primero la caída, después la primera carta, el combo y cambiar de ninja. Al cerrar uno sale el siguiente.
 - **No estorba.** La burbuja no pausa nada ni bloquea el tablero: se puede seguir jugando con ella abierta.
 - **Aprendidos.** El consejo que se cierra se guarda con los ajustes y no vuelve a salir. La ayuda trae "Volver a ver los consejos". Con "Consejos en pantalla" apagado no sale ninguno.
-- **La franja de arriba es la línea de contexto:** el estado del turno y, con el ratón sobre un gólem, su nombre y su consejo. Lo que se enseña una sola vez va en una burbuja, no en la franja.
+- **La franja de arriba es la línea de contexto:** el estado del turno y, al mirar a un gólem, su nombre y cómo ataca, sin números. Lo que se enseña una sola vez va en una burbuja, no en la franja.
 
 `state/tips.ts` decide qué consejo sale, cuándo y dónde, con pruebas. Una prueba e2e mide que ninguna burbuja pise el marco del tablero.
 
 ### Demostraciones
 
-Qué hace una carta se enseña en un tablero en miniatura, donde la carta se juega en bucle (D-81). El detalle está en el §9.5 del PRD.
+Qué hace una carta y cómo ataca un gólem se enseñan en un tablero en miniatura, donde la carta se juega, o el gólem ataca, en bucle (D-81 y D-82). El detalle está en el §9.5 del PRD.
 
 - **El ▶ (`.demo-open`):** un botón redondo de tinta junto al título de la mano. Uno solo para toda la mano. Abierto, lleva el aro dorado de lo elegido. No cambia el alto del título.
 - **La burbuja (`.demo`):** un panel `.paper` sobre la mano, pegado a su borde derecho, de 400 px de ancho. Arriba, el título ("Carta de Fuego · 9") y una ✕; debajo, el selector "Sin combo | Con combo", que es el `.seg` de las opciones en chico; el tablero en miniatura; y la línea de texto de la carta, que guarda el alto de dos renglones para que la burbuja no salte.
@@ -346,6 +346,15 @@ Qué hace una carta se enseña en un tablero en miniatura, donde la carta se jue
 - **El combo** se anuncia con un "¡Combo!" corto sobre el tablero en miniatura, en vez del cartel a pantalla completa. Las dos cartas llevan el borde dorado.
 - **En miniatura no van los números de vida:** no se leerían. La barra basta. Con la mano vacía tampoco van los números del daño.
 - **Con animaciones reducidas** van dos tableros fijos, "Antes" y "Después", lado a lado, a 0,55 de su tamaño, en una burbuja de 484 px.
+- **El resultado espera** a que se vaya el número flotante del último golpe: así no queda bajo su etiqueta.
+
+Las de los gólems usan la misma burbuja:
+
+- **"Ver cómo ataca" (`.tip-demo`):** un botón chico de papel con borde de tinta y un ▶, a la derecha de la franja de arriba. Sale solo mientras la franja nombra a un gólem, y nunca con una carta en la mano. Con él, el texto de la franja puede pasar a dos renglones; la franja sigue sin pisar el marco del tablero.
+- **La franja se queda:** sigue nombrando al gólem 2,5 s después de que el ratón lo deja, y todo el tiempo que el ratón esté sobre ella, para que se alcance el botón. Un clic en el tablero, deshacer o cambiar de ninja la devuelven enseguida al estado del turno. Con la demostración abierta sigue nombrando a ese gólem, y el botón lleva el aro dorado de lo elegido, como el ▶ de las cartas.
+- **La burbuja** no lleva selector, y su título es "Carámbano, cómo ataca". La línea de texto lleva los números del motor.
+- **El tablero en miniatura** tiene el tamaño que pide cada ataque, siempre dentro de 368 px de ancho: 5×2 casillas para Carámbano, 4×3 para Granizo y 3×3 para Témpano. Las casillas golpeadas van teñidas todo el bucle, con el tinte del alcance de los gólems, y siempre hay un ninja fuera de ellas, que al final dice "a salvo".
+- **Con animaciones reducidas,** el tablero de Carámbano, ancho y bajo, va una vez sobre otra en vez de lado a lado, a su tamaño del bucle. Los otros dos van lado a lado.
 
 `state/demos.ts` arma el tablero y le pide al motor que lo resuelva; `game/DemoScene.ts` es la escena del juego sin sonido ni conexión con la partida.
 

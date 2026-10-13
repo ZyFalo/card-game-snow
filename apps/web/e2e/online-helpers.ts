@@ -1,4 +1,4 @@
-import { type Browser, type BrowserContext, expect, type Page } from '@playwright/test';
+import { type Browser, type BrowserContext, expect, type Page, test } from '@playwright/test';
 import { codeOf, lastMail, person } from './account-helpers';
 import { type Board, prepareBoard } from './control';
 import type { TestWindow } from './helpers';
@@ -48,33 +48,28 @@ export const online = (page: Page) =>
 /**
  * Una persona nueva, con su cuenta verificada y su camino, y el juego abierto en la portada. Con `track`,
  * la prueba puede cortarle la conexión (`dropLink`).
+ *
+ * La cuenta se crea antes de abrir el juego, con peticiones que salen del propio navegador de esa persona:
+ * comparten sus cookies, así que la página abre ya con la sesión. Cargar el juego es lo más lento de estas
+ * pruebas, sobre todo sin tarjeta gráfica, y así se carga una sola vez por persona.
  */
 export async function newPlayer(browser: Browser, camino: Element, { track = false } = {}): Promise<Player> {
-  const speed = 0.3;
   const context = await browser.newContext();
+  const who = person();
+  // Lo que cambia estado solo se acepta desde el origen del juego (D-65): el mismo que mandaría su página.
+  const origin = new URL(test.info().project.use.baseURL ?? '').origin;
+  const post = async (path: string, data: object) => {
+    const res = await context.request.post(path, { data, headers: { origin } });
+    // El registro responde lo mismo exista o no la cuenta (D-59): basta con que no falle.
+    expect(res.status(), path).toBeLessThan(300);
+  };
+  await post('/api/auth/register', { ...who, acceptPrivacy: true, captchaToken: 'XXXX.DUMMY.TOKEN.XXXX' });
+  const code = codeOf(await lastMail(who.email, /Tu código para Ventisca/));
+  await post('/api/auth/verify', { email: who.email, code });
+  await post('/api/progress/camino', { element: camino });
   const page = await context.newPage();
   if (track) await trackLink(page);
-  const who = person();
-  await page.goto(`/?speed=${speed}`);
-  const post = (path: string, body: object) =>
-    page.evaluate(
-      async ([p, b]) => {
-        const res = await fetch(p as string, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(b),
-        });
-        return res.status;
-      },
-      [path, body] as const,
-    );
-  // El registro responde lo mismo exista o no la cuenta (D-59): basta con que no falle.
-  const ok = async (status: Promise<number>) => expect(await status).toBeLessThan(300);
-  await ok(post('/api/auth/register', { ...who, acceptPrivacy: true, captchaToken: 'XXXX.DUMMY.TOKEN.XXXX' }));
-  const code = codeOf(await lastMail(who.email, /Tu código para Ventisca/));
-  await ok(post('/api/auth/verify', { email: who.email, code }));
-  await ok(post('/api/progress/camino', { element: camino }));
-  await page.reload();
+  await page.goto('/?speed=0.3');
   await expect(page.getByRole('button', { name: 'Mi cuenta' })).toBeVisible();
   return { context, page, email: who.email, displayName: who.displayName };
 }
@@ -249,6 +244,42 @@ export async function restoreLink(player: Player): Promise<void> {
   await player.context.setOffline(false);
   await expect.poll(async () => (await online(player.page)).online.link, { timeout: 30_000 }).toBe('open');
 }
+
+/** Cómo estaba la partida de una persona al volver a ella, y en qué turno retomó a su ninja. */
+export interface ReturnSeen {
+  /** El turno que se estaba planeando cuando volvió, o `null` si volvió entre un turno y otro. */
+  turn: number | null;
+  /** Si en ese momento ya llevaba a su ninja. */
+  plays: boolean;
+  /** El primer turno en que volvió a llevarlo, o `null` si todavía no. */
+  resumed: number | null;
+}
+
+/**
+ * La propia página anota cómo estaba la partida de esa persona en el momento en que volvió, y en qué turno
+ * retomó a su ninja. Leerlo después desde la prueba llega tarde: para entonces el turno pudo haber cambiado.
+ */
+export async function watchReturn(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    type Seen = { turn: number | null; plays: boolean; resumed: number | null };
+    type State = { online: { back: boolean; match: { turn: number | null; plays: boolean } | null } };
+    const w = window as unknown as {
+      __ventisca: { subscribe(listener: (state: State, prev: State) => void): () => void };
+      __return: Seen | null;
+    };
+    w.__return = null;
+    w.__ventisca.subscribe((state, prev) => {
+      const match = state.online.match;
+      if (!match) return;
+      if (state.online.back && !prev.online.back) w.__return = { turn: match.turn, plays: match.plays, resumed: null };
+      else if (w.__return && w.__return.resumed === null && match.plays) w.__return.resumed = match.turn;
+    });
+  });
+}
+
+/** Lo que anotó la página desde `watchReturn`. */
+export const returnSeen = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __return: ReturnSeen | null }).__return);
 
 /** Un clic en una casilla del tablero, que se dibuja en un escenario de 1280×720 a escala. */
 export async function clickTile(page: Page, x: number, y: number) {

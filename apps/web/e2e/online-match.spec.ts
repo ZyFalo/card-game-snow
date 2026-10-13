@@ -17,7 +17,9 @@ import {
   planning,
   progressOf,
   restoreLink,
+  returnSeen,
   startRoomMatch,
+  watchReturn,
 } from './online-helpers';
 
 /*
@@ -180,20 +182,33 @@ test('R-38: quien pierde la conexión deja a su ninja quieto, y el turno no lo e
   await expect.poll(async () => (await online(ana.page)).match?.turn, { timeout: 30_000 }).toBe(1);
 
   // Beto recupera la red y vuelve solo a su partida. La franja le dice desde cuándo juega.
+  await watchReturn(beto.page);
   await restoreLink(beto);
   await expect(beto.page.locator('.net-strip.back')).toHaveText('Volviste. Retomas a tu ninja desde el próximo turno.');
   await expect(panel(ana.page, 'water')).not.toHaveAttribute('data-seat-state', 'away');
-  const returned = (await online(beto.page)).online.match;
-  // Si volvió con un turno ya empezado, en ese turno Marea sigue quieto.
-  if (returned?.turn !== null) expect(returned?.plays).toBe(false);
 
-  // Desde el turno siguiente lo lleva de nuevo: lo mueve, y Ana ve su plan.
+  // Ana sigue confirmando hasta que Beto lleva de nuevo a Marea.
   await passUntil([ana, beto], ([, b]) => b?.online.match?.plays === true);
+  const seen = await returnSeen(beto.page);
+  // Al volver no lo llevaba: si había un turno en curso, ese turno Marea siguió quieto, y lo retomó después.
+  expect(seen).toMatchObject({ plays: false });
+  expect(seen?.resumed).toBeGreaterThan(seen?.turn ?? 1);
+
+  // Ya lo lleva: lo mueve a una casilla vecina que esté libre, y Ana ve su plan. Marea sigue donde empezó,
+  // en (0, 2); el bot sí se movió, y puede estar o ir a cualquiera de sus vecinas.
   const state = await online(beto.page);
-  expect(state.online.match?.turn).toBeGreaterThan(returned?.turn ?? 1);
-  const me = state.match?.ninjas.find((n) => n.id === 'water');
-  const to = { x: (me?.pos.x ?? 0) + 1, y: me?.pos.y ?? 0 };
-  await clickTile(beto.page, to.x, to.y);
+  const taken = new Set([
+    ...(state.match?.ninjas ?? []).map((n) => `${n.pos.x},${n.pos.y}`),
+    ...Object.values(state.plans).flatMap((plan) => (plan?.moveTo ? [`${plan.moveTo.x},${plan.moveTo.y}`] : [])),
+  ]);
+  const to = [
+    { x: 0, y: 1 },
+    { x: 0, y: 3 },
+    { x: 1, y: 1 },
+    { x: 1, y: 3 },
+  ].find((tile) => !taken.has(`${tile.x},${tile.y}`));
+  expect(to).toBeDefined();
+  await clickTile(beto.page, to?.x ?? 0, to?.y ?? 0);
   await expect.poll(async () => (await online(ana.page)).plans.water?.moveTo).toEqual(to);
   await closeAll([ana, beto]);
 });

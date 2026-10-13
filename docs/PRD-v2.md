@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.15: aprobada para implementar · 12 de octubre de 2026 · William Andrés Peña Vargas
+Versión 1.16: aprobada para implementar · 13 de octubre de 2026 · William Andrés Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8, y la 1.13 (el mismo día) agrega D-75: Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal. El primer párrafo del aviso de privacidad cambia como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas. También anota, como idea para después y sin compromiso, que las ayudas de las partidas locales podrían ofrecerse en línea (`docs/ideas/`). La 1.14 (el mismo día) pone esa nota en presente: las ayudas ya existen en las partidas locales, con su decisión (D-78, en `docs/PRD.md`). La 1.15 (12 de octubre de 2026) registra el multijugador en línea, que se publica como Beta: las decisiones D-83 a D-103, las reglas R-52 a R-55, y las enmiendas a R-33 a R-42. Cambian el reloj (10 s, D-90), la desconexión (el ninja queda quieto, D-92), el abandono (pierde las monedas de la partida, D-93) y el reinicio del servidor (la partida en curso se pierde, D-94), que reemplazan a D-46, D-45, D-31 y D-49. El M8 y el M9 se entregan juntos (D-84).
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8, y la 1.13 (el mismo día) agrega D-75: Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal. El primer párrafo del aviso de privacidad cambia como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas. También anota, como idea para después y sin compromiso, que las ayudas de las partidas locales podrían ofrecerse en línea (`docs/ideas/`). La 1.14 (el mismo día) pone esa nota en presente: las ayudas ya existen en las partidas locales, con su decisión (D-78, en `docs/PRD.md`). La 1.15 (12 de octubre de 2026) registra el multijugador en línea, que se publica como Beta: las decisiones D-83 a D-103, las reglas R-52 a R-55, y las enmiendas a R-33 a R-42. Cambian el reloj (10 s, D-90), la desconexión (el ninja queda quieto, D-92), el abandono (pierde las monedas de la partida, D-93) y el reinicio del servidor (la partida en curso se pierde, D-94), que reemplazan a D-46, D-45, D-31 y D-49. El M8 y el M9 se entregan juntos (D-84). La 1.16 (13 de octubre de 2026) cierra la Beta: pone al día los hitos M8 y M9 con lo que se entregó y lo que quedó para después, y anota en D-96 lo que precisó la revisión del aviso de privacidad.
 
 ## Resumen y alcance
 
@@ -77,7 +77,7 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-93 | Abandonar es salir con el botón "Salir", que pide confirmación, o desconectarse y no volver antes del final. Quien abandona pierde las monedas de esa partida: las de cada ronda quedan pendientes y se acreditan al terminarla. Reemplaza en el modo en línea a D-31 (`docs/PRD.md`) y a la R-39 anterior, y responde P-22 para la Beta. | Tomada |
 | D-94 | Si el servidor se reinicia, la partida en curso se pierde. Reemplaza a D-49: el estado ya no se guarda por turno ni se reconstruyen las salas. Se acreditan las monedas de las rondas ya terminadas, y la partida no cuenta como abandono ni como derrota. | Tomada |
 | D-95 | La Beta se publica sin interruptor: queda abierta al fusionar su PR, cuando nadie esté jugando. | Tomada |
-| D-96 | Antes de publicar la Beta se revisa que el aviso de privacidad cubra todo lo que hace el multijugador, y lo que falte se corrige en el mismo PR. Después, el aviso queda congelado hasta que exista el mecanismo para avisar sus cambios, que llega después de la Beta. | Tomada |
+| D-96 | Antes de publicar la Beta se revisa que el aviso de privacidad cubra todo lo que hace el multijugador, y lo que falte se corrige en el mismo PR. Después, el aviso queda congelado hasta que exista el mecanismo para avisar sus cambios, que llega después de la Beta. **Revisado el 13 de octubre de 2026:** el aviso ya nombraba las partidas, los logros y las estadísticas, y se precisaron tres cosas. El nombre visible lo ven también las personas con quienes se busca equipo. De cada partida se guardan, además del ninja y de cuándo se entró y se salió, las rondas superadas y cómo terminó para la persona. Y mientras se juega, el equipo ve lo que cada quien planea y si sigue conectado, y eso no se guarda. | Tomada |
 | D-97 | Teléfono: las pantallas nuevas del modo en línea que están fuera del combate son adaptables. El combate en línea es para computador (D-73). | Tomada |
 | D-98 | El logro "Tormenta perfecta" (golpear a 3 gólems con una carta) pasa a llamarse "Barrido perfecto", para que nadie crea que pide jugar en Tormenta. | Tomada |
 | D-99 | Toda pantalla se compone sobre una grilla de 12 columnas a 1280×720, con 16 px entre columnas, 56 px de margen y ritmo vertical de 8 px. Tiene cuatro plantillas (menú, batalla, lectura y diálogo) y reglas de simetría, de respiro y de detalles. En las pantallas adaptables pasa a 8 columnas entre 600 y 1023 px, y a 4 por debajo de 600. Está en la sección 12 de `docs/lineamientos-de-diseno.md` y, como variables, en el código. | Tomada |
@@ -278,7 +278,7 @@ Las migraciones viven en el repositorio y se aplican al desplegar. Se generan co
 
 ## Hitos M7 a M9
 
-Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, luego la partida en línea y al final el emparejamiento. Un hito termina cuando su lista está completa y `pnpm run ci` y `pnpm e2e` están en verde.
+Tres hitos en orden: primero las cuentas, luego la partida en línea y al final el emparejamiento. El M8 y el M9 se entregaron juntos, como la Beta del modo en línea (D-84). Un hito termina cuando su lista está completa y `pnpm run ci` y `pnpm e2e` están en verde.
 
 **M7: Cuentas y servidor** (todavía sin multijugador)
 
@@ -291,27 +291,29 @@ Tres hitos en orden, cada uno publicable por sí solo: primero las cuentas, lueg
 
 **M8: Partida en línea**
 
-Antes del M8 va una ronda de ajustes de jugabilidad. Después, el M8 empieza por su especificación técnica y por la investigación del teléfono, y no se programa hasta que el dueño de producto revise la especificación.
+La ronda de ajustes de jugabilidad fue antes (D-74). El M8 se construyó sobre el encargo del 12 de octubre de 2026 y sus maquetas aprobadas, que fijaron las decisiones D-83 a D-100. Lo que iba a decir su especificación técnica quedó en "Arquitectura técnica", en "Protocolo de mensajes" y en D-102 y D-103, que el dueño de producto todavía tiene por revisar.
 
-- [x] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas. Medido el 1 de octubre de 2026 (`docs/balance-report.md`) y decidido el 6 de octubre (D-69 a D-72). Al terminar la ronda de ajustes de jugabilidad hay que volver a correr esas tablas, porque los ajustes pueden mover sus números
-- [ ] Especificación técnica del M8, en un PR de documentación que el dueño de producto revisa antes de programar. Se escribe después de la ronda de ajustes de jugabilidad, porque los ajustes pueden cambiar reglas que ella usa
-- [ ] Investigación del teléfono (D-73): capturas de la portada, las cuentas, la colección y el tablero en 390×844 y 844×390, prueba de los controles táctiles del tablero, y qué se rompe y qué haría falta. Con eso se decide el alcance del teléfono y lo que se suma a los lineamientos de diseño
-- [ ] Salas con código para 2 o 3 personas, con el bot en el ninja libre
-- [ ] Mínimo para Tormenta en las salas (R-51): la pantalla muestra cuánto falta y sugiere jugar Clásica
-- [ ] El cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes (D-68)
-- [ ] La conexión WebSocket comprueba su propio `Origin`, con su prueba: la comprobación de D-65 no revisa las lecturas, y un WebSocket empieza con una (`GET`)
-- [ ] Reloj del servidor de 15 s (D-46) y planificación simultánea con fantasmas compartidos
-- [ ] Cobro por ronda solo para quien estaba conectado (D-31 y D-48) y logros por persona. Si una ronda paga el doble (R-29), lo decide el servidor contando los 9 logros en su propia tabla; nunca lo recibe del cliente
-- [ ] Desconexión y reconexión, estado guardado por turno y recuperación tras un reinicio
-- [ ] Pruebas con dos y tres clientes en local, reconexión y reinicio del servidor a mitad de partida
+- [x] Medir en el simulador cómo les va a los equipos de colecciones mezcladas y decidir la curva (P-20), antes de programar las partidas. Medido el 1 de octubre de 2026 (`docs/balance-report.md`) y decidido el 6 de octubre (D-69 a D-72). Las tablas se volvieron a correr al cerrar la ronda de ajustes de jugabilidad, sin cambios, y otra vez con el bot afinado al revivir (D-101): las de ahora están en ese reporte
+- [x] Salas con código para 2 o 3 personas, con el bot en el ninja libre (R-53, D-89)
+- [x] El cliente vuelve a leer el progreso tras un rechazo por monedas insuficientes (D-68)
+- [x] La conexión WebSocket comprueba su propio `Origin`, con su prueba: la comprobación de D-65 no revisa las lecturas, y un WebSocket empieza con una (`GET`)
+- [x] Reloj del servidor, de 10 s (D-90, que reemplaza los 15 s de D-46), y planificación simultánea con los planes de los compañeros a la vista (R-35)
+- [x] Cobro por ronda solo para quien estaba conectado (D-48), acreditado al terminar la partida (D-93), y logros por persona (R-55). Si una ronda paga el doble (R-29), lo decide el servidor contando los 9 logros en su propia tabla; nunca lo recibe del cliente
+- [x] Desconexión y vuelta (R-38), abandono (R-39) y reinicio del servidor (R-54). El estado ya no se guarda por turno: si el servidor se reinicia, la partida se pierde y se acreditan sus rondas terminadas (D-94, que reemplaza a D-49)
+- [x] Pruebas con dos y tres clientes: del servidor, con conexiones de verdad, y e2e con dos y tres navegadores a la vez, que cubren la cola, las salas, una partida completa, la desconexión y la vuelta, el abandono y el reinicio del servidor a mitad de partida
+- [ ] Especificación técnica del M8, en un PR de documentación. No se escribió aparte: ver el párrafo de arriba. Queda por decidir si hace falta, ahora que el código existe
+- [ ] Investigación del teléfono (D-73): capturas de la portada, las cuentas, la colección y el tablero en 390×844 y 844×390, prueba de los controles táctiles del tablero, y qué se rompe y qué haría falta. No se hizo: para la Beta, D-97 fijó el alcance (las pantallas en línea de fuera del combate son adaptables, y el combate es para computador). Sigue pendiente para decidir el combate en teléfono
+- [ ] Mínimo para Tormenta en las salas (R-51): la pantalla muestra cuánto falta y sugiere jugar Clásica. Llega con Tormenta en línea: en la Beta solo se juega Clásica (D-85)
 
 **M9: Emparejamiento y estadísticas**
 
-- [ ] Cola por dificultad y ninja: solo junta personas con ninjas distintos y muestra qué ninjas faltan (D-43). Dentro de la dificultad elegida junta a cualquiera (D-70), y la cola de Tormenta pide el mismo mínimo que las salas (R-51)
-- [ ] A los 30 s sin tercer jugador, las dos personas pueden aceptar empezar con un bot (D-44)
-- [ ] Estadísticas privadas por persona, en su perfil (R-42)
-- [ ] Aviso de privacidad publicado y pruebas con personas
-- [ ] Un mecanismo para avisar los cambios del aviso de privacidad: un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes de que haya cuentas de otras personas: desde entonces, cualquier cambio del aviso pasa por él, porque el aviso lo promete en "Cambios" (D-75)
+- [x] Cola por ninja: solo junta personas con ninjas distintos y muestra qué ninjas faltan (R-52, D-43). En la Beta hay una sola cola, la de Clásica (D-85), y dentro de ella junta a cualquiera (D-70)
+- [x] A los 30 s de estar juntas en la cola, las dos personas pueden aceptar empezar con un bot (D-88, que precisa D-44)
+- [x] Estadísticas privadas por persona (R-42): las básicas de la Beta (D-86), en la Libreta ninja. El resto de R-42 llega después
+- [x] Aviso de privacidad publicado, y revisado contra lo que hace el multijugador (D-96)
+- [ ] Prueba con personas: la primera prueba de la Beta, con `docs/guia-beta.md`. De ella sale la revisión del reloj (D-90) y la del abandono (P-22)
+- [ ] La cola de Tormenta, con el mismo mínimo que las salas (R-51). Llega con Tormenta en línea (D-85)
+- [ ] Un mecanismo para avisar los cambios del aviso de privacidad: un aviso en el juego al entrar y un correo a todas las cuentas. Llega después de la Beta; hasta entonces el aviso queda congelado (D-96), porque el aviso lo promete en "Cambios" (D-75)
 
 ## Preguntas abiertas y riesgos
 

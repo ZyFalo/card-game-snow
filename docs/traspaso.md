@@ -1,8 +1,8 @@
 # Traspaso a Claude Code
 
-Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) está cerrada: sus siete PRs están fusionados y las tablas de P-20, vueltas a correr, no cambiaron. Queda propuesta una segunda prueba con personas, centrada en los consejos y las demostraciones. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
+Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M7 trajo las cuentas y el progreso en el servidor. El M8 y el M9, que se entregan juntos (D-84), traen el juego en línea: la cola pública, las salas con código, la partida en el servidor, las recompensas y sus pantallas. Lo que sigue es la primera prueba de la Beta con personas (`docs/guia-beta.md`). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
-> **En curso, en la rama `multijugador` (PR #29, en borrador): el multijugador en línea (Beta).** Al 12 de octubre de 2026 están hechas las fases 1 a 6 del encargo: el protocolo y la conexión, la cola y las salas, la partida en el servidor, las recompensas y las pantallas del cliente (la ficha, la cola, las salas, la carga, el combate en línea, los avisos, los resultados y la Libreta ninja). **Falta la fase 7:** las e2e de la partida completa, la desconexión, el abandono y el reinicio; las mutaciones contra las e2e de seguridad y de monedas; `check:prod` ampliado; la revisión del aviso de privacidad; la ayuda con las reglas en línea; y poner al día este traspaso, que todavía describe el juego de antes de la rama. El detalle, las decisiones tomadas en el camino y los textos por revisar están en la descripción del PR.
+> **La Beta se publica al fusionar su PR (#29, rama `multijugador`),** cuando nadie esté jugando (D-95). No tiene interruptor: desde ese momento, toda cuenta verificada puede jugar en línea. Hasta entonces, producción corre la versión anterior. Los pasos para publicar y comprobar están en "Lo que sigue".
 
 ## Qué hay
 
@@ -14,18 +14,28 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
   - La portada ofrece "Jugar sin cuenta" y "Entrar"; con sesión, "Mi cuenta".
   - Pantallas de registro con el aviso de privacidad, verificación, entrada, recuperación, deshacer un cambio de correo y perfil (contraseña, correo, cierre de sesión y borrado).
   - Los resultados del sandbox invitan a crear una cuenta.
-  - Las pantallas siguen `docs/lineamientos-de-diseno.md`. El beneficio de la cuenta que todavía no existe, "Juega en línea con amigos", lleva la etiqueta "Próximamente" (`BENEFITS` en `ui/Account.tsx`).
+  - Las pantallas siguen `docs/lineamientos-de-diseno.md`.
   - El script de Turnstile se carga solo en la vista de registro, como promete el aviso de privacidad.
   - Sin servidor (por ejemplo, con `pnpm dev` solo), la portada no muestra la cuenta y se juega igual.
-- **Progreso en el cliente (`apps/web/src/state/progress.ts`, `ui/Progress.tsx` y `ui/CardFace.tsx`):**
+- **Progreso en el cliente (`apps/web/src/state/progress.ts`, `ui/Notebook.tsx`, `ui/Progress.tsx` y `ui/CardFace.tsx`):**
   - El cliente no calcula el progreso: pide `/api/progress` y muestra lo que respondió el servidor (D-34).
-  - Al verificar la cuenta o al entrar, quien todavía no eligió su carta de camino llega a elegirla (R-30). Puede dejarlo para después, y el perfil se lo recuerda (D-67).
-  - El perfil hace de inicio en línea durante el M7 (D-67): a la derecha muestra el camino, las monedas, las cartas por elemento y las cajas abiertas, y su botón primario lleva a la colección y la tienda.
-  - La colección muestra las 20 cartas de cada elemento, con las que faltan como siluetas (R-25). La tienda vende cajas de 1, 2 o 3 cartas del elemento elegido y revela lo que salió (R-28).
+  - Al verificar la cuenta o al entrar, quien todavía no eligió su carta de camino llega a elegirla (R-30). Puede dejarlo para después, y el perfil se lo recuerda (D-67). Sin camino no se juega en línea: "Jugar en línea" lleva a elegirlo.
+  - **La Libreta ninja** (D-100) reemplaza a "Tu progreso" y a "Colección y tienda". Se abre desde el perfil y desde los resultados de una partida en línea.
+    - "Mi progreso": las estadísticas privadas de Clásica (R-42), una tarjeta por elemento con sus cartas y los tres logros de su pliegue, y el amuleto de papel, que se colorea pliegue a pliegue y, completo, dice que las monedas dobles están activas (R-29).
+    - "Mis cartas": la colección en páginas de 2 × 5, con las que faltan como siluetas (R-25), y "Abrir cajas", que vende cajas de 1, 2 o 3 cartas del elemento elegido y revela lo que salió (R-28).
+  - El perfil conserva un resumen corto, con el camino y las monedas, y su botón principal abre la Libreta ninja.
   - Cada compra lleva un identificador que genera el cliente (D-66). Mientras espera la respuesta, los botones de compra quedan deshabilitados.
-  - El cliente conserva ese identificador solo si la respuesta se pierde (D-68): comprar de nuevo la misma caja no cobra dos veces. Entonces vuelve a leer el progreso, para mostrar el saldo real, y esa caja se puede reintentar aunque el saldo ya no alcance. Cualquier respuesta definitiva, sea la caja o un rechazo, borra el identificador.
+  - El cliente conserva ese identificador solo si la respuesta se pierde (D-68): comprar de nuevo la misma caja no cobra dos veces. Entonces vuelve a leer el progreso, para mostrar el saldo real, y esa caja se puede reintentar aunque el saldo ya no alcance. Cualquier respuesta definitiva, sea la caja o un rechazo, borra el identificador. Tras un rechazo por monedas insuficientes también vuelve a leer el progreso.
   - En el código (`purchaseLost` en `state/progress.ts`), una respuesta perdida es que no llegó ninguna o que el servidor falló con un 500, porque un 500 tampoco dice si cobró.
-  - **Hoy nadie puede ganar monedas:** se ganarán en las partidas en línea (M8). La tienda lo dice en futuro y con "Próximamente". Las e2e le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e; el servidor no tiene ninguna ruta que regale monedas.
+  - **Las monedas se ganan en las partidas en línea** (R-40). Las e2e de la tienda le pagan partidas a su cuenta con `apps/server/test/support/e2e-coins.ts`, que usa `creditRound` sobre la base de las e2e, para no jugar una partida entera; el servidor no tiene ninguna ruta que regale monedas ni logros.
+- **Juego en línea en el cliente (Beta):**
+  - **Tres capas.** `src/net/socket.ts` es la conexión: numera lo que sale, comprueba lo que entra con el protocolo y vuelve a conectarse, cada vez con más espera. `src/state/online.ts` lleva lo de fuera del tablero (la ficha, la cola, las salas y los avisos) y guarda lo que dice el servidor, sin calcular nada. La partida la lleva `src/state/actions.ts` con un `NetworkHost` (`src/host/`), que traduce los mensajes del servidor a los que la interfaz ya sabía mostrar.
+  - **Las pantallas** (`ui/Online.tsx`, `ui/OnlineMatch.tsx` y `ui/online.css`), sobre las maquetas aprobadas: la ficha para elegir ninja (D-87), "Buscando equipo" con la oferta del bot (R-52), las salas con código (R-53), la carga con el consejo ninja, el combate y los resultados en pergamino. Fuera del combate son adaptables (D-97): una consulta de contenedor mide el ancho en que se dibujan (lineamientos, sección 13).
+  - **En el combate:** el reloj es del servidor, una tarta que pierde una porción por segundo. Cada persona planea solo a su ninja y ve solo su mano; los planes de los demás llegan al tablero con las mismas marcas del sandbox (R-35), y la franja anuncia el combo. Quien confirmó lleva una marca verde, y el ninja de quien no está queda gris y dormido. No hay pausa, "Sugerir jugada" ni ayudas de daño y alcance (D-78): la ✕ es "Salir".
+  - **Los avisos** (D-100): un diálogo cuando hay que decidir o enterarse de algo ("¿Salir de la partida?", "La partida terminó sin ti", "La partida terminó", "Abriste el juego en otra pestaña", "Tu sesión terminó"), y una franja arriba para lo pasajero ("Se perdió la conexión", "Volviste").
+  - Al abrir el juego, quien se había desconectado de una partida en curso vuelve derecho a ella (R-38).
+  - **La ayuda** tiene una sección "En línea" con lo que cambia: el equipo y el bot, el reloj, el ninja quieto, el abandono, las monedas y los reinicios. Los segundos del reloj salen de `PLAY_TURN_SECONDS` (`packages/protocol`), la misma constante que usa el servidor.
+  - Lo que es puro del equipo (quién está listo, quién duerme y qué dice la franja) vive en `src/state/team.ts`, con sus pruebas.
 - **Portada y créditos:**
   - El pie de la portada dice "Piloto de un proyecto personal" (D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
   - La pantalla de créditos (`CreditsScreen` en `ui/Screens.tsx`) muestra el texto corto de `CREDITOS.md` (D-76); una prueba los compara. Es el único lugar del juego que nombra al original.
@@ -41,7 +51,7 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
   - Demostraciones de los gólems (D-82): la franja que nombra a un gólem ofrece "Ver cómo ataca", que abre la misma burbuja con su ataque en bucle, las casillas golpeadas teñidas y un ninja a salvo. La franja se queda con el gólem un momento, para que se alcance el botón. Los números los pone el motor (`enemyStrike`, `sniperDamage` y `balance.json`).
   - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
-- **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
+- **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usa tal cual para resolver las partidas en línea (D-02).
 - **En línea:** https://ventisca.wpena.dev, en Railway (ver "Despliegue").
 - **Servidor (`apps/server`):**
   - Fastify con Postgres (Drizzle).
@@ -60,13 +70,21 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
     - `POST /api/progress/camino`: elige la carta de camino, que es permanente, y da el inventario inicial (R-30);
     - `POST /api/progress/boxes`: compra una caja; el servidor cobra y sortea las cartas (R-27, R-28). El cliente manda un identificador por compra: si reintenta con el mismo, recibe el resultado original y no paga de nuevo (D-66).
     - El libro de monedas (`coin_ledger`) guarda todos los movimientos del saldo: los cobros de rondas, positivos, y las compras, negativas, con sus cartas.
-    - El cobro de las rondas no tiene ruta: `creditRound` (`apps/server/src/progress/store.ts`) lo hará al resolver las partidas en línea (M8). El libro de monedas impide pagar dos veces la misma ronda (D-31).
-    - Los logros y las estadísticas llegan con las partidas (M8 y M9).
-- **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor.
+    - El cobro de las rondas no tiene ruta: lo hace el servidor al cerrar cada partida en línea, con `creditRound` (`apps/server/src/progress/store.ts`). El libro de monedas impide pagar dos veces la misma ronda.
+    - `GET /api/progress` trae también los logros y las estadísticas privadas de su dueño (R-42 y R-55).
+  - Juego en línea (`apps/server/src/play/`), R-33 a R-40 y R-52 a R-55:
+    - **La conexión** (`routes.ts`): un WebSocket en `/api/play`. Antes de abrirla comprueba, en este orden, que viene del propio juego (su `Origin`, D-65), que trae una sesión vigente y que la cuenta verificó su correo. Limita el tamaño de cada mensaje y los mensajes por segundo. `GET /api/play/status` dice si la cuenta tiene una partida en curso.
+    - **El centro del juego** (`hub.ts`): sabe quién está conectado y dónde está cada persona. Una conexión por cuenta: la nueva reemplaza a la anterior (D-102). Todo vive en la memoria del proceso, porque hay una sola instancia.
+    - **La cola** (`queue.ts`) arma equipos con un ninja de cada elemento y, a los 30 s, ofrece el bot a dos personas (D-88). **Las salas** (`rooms.ts`) tienen un código de 6 caracteres y un asiento por elemento.
+    - **La partida** (`match.ts`): el motor resuelve cada turno. El reloj da 10 s (D-90) y empieza cuando todas las personas terminaron de mirar el turno anterior. Cada plan se valida al llegar y se comparte con el equipo; confirmar es definitivo. El ninja de quien se desconecta queda quieto (D-92).
+    - **Las cuentas de una partida** (`store.ts`): las monedas de cada ronda quedan pendientes y entran al libro al terminar (D-93). Quien abandona las pierde. Si el servidor se reinicia, se acreditan las rondas terminadas (D-94). El doble de monedas lo decide el servidor contando los logros de su tabla (R-29).
+    - **El arranque** (`start.ts`): al levantarse, da por interrumpidas las partidas que un reinicio dejó vivas; al apagarse con SIGTERM, interrumpe las que tiene en curso y les dice a los clientes por qué se cierra.
+    - Los registros de una partida dicen su identificador, sus turnos y cuántas personas quedaron: sin nombres, correos ni IPs.
+- **Protocolo (`packages/protocol`):** esquemas de Zod que comparten el cliente y el servidor: la API y los mensajes del juego en línea, en los dos sentidos.
 - **Animación en cuatro fases:** esqueletos articulados, efectos, coreografía medida con metas de ritmo e interfaz animada.
 - **Calidad:**
-  - Pruebas unitarias con Vitest, que incluyen las del servidor contra Postgres.
-  - e2e con Playwright, lint con Biome y tipos con TypeScript 7.
+  - Pruebas unitarias con Vitest, que incluyen las del servidor contra Postgres y con conexiones WebSocket de verdad.
+  - e2e con Playwright, también con dos y tres navegadores a la vez para el juego en línea; lint con Biome y tipos con TypeScript 7.
   - Un simulador de balance y un estimador de ritmo.
   - La CI de GitHub Actions corre todo eso y además construye y prueba la imagen de Docker.
 
@@ -81,7 +99,8 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
 
 - **Jugar el sandbox:** `pnpm dev` y abre http://localhost:5173. No necesita el servidor.
 - **Probar las cuentas en el navegador:** además de `pnpm dev`, corre `pnpm dev:server`. Vite pasa `/api` al puerto 3000 y el código de cada correo aparece en la consola del servidor. El `.env` debe tener `DEV_ORIGIN=http://localhost:5173`, como en `.env.example`: sin él, el servidor rechaza lo que llegue desde el puerto de Vite (D-65).
-- **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Sirve la API y, si antes corriste `pnpm build`, también el juego.
+- **Jugar en línea en tu máquina:** con `pnpm dev` y `pnpm dev:server` corriendo, abre el juego en dos ventanas que no compartan sesión (una normal y una privada, o dos perfiles del navegador) y crea una cuenta en cada una. Con dos personas: una sala con código y "Empezar con el bot", o la cola, que ofrece el bot a los 30 s. Con tres, una ventana más.
+- **Servidor en desarrollo:** `pnpm dev:server` sirve en http://localhost:3000 y se recarga al guardar. Al recargarse se pierden las partidas en curso, como en un despliegue (R-54). Sirve la API y, si antes corriste `pnpm build`, también el juego.
 - **Correos en desarrollo:** sin `RESEND_API_KEY`, el servidor no los envía: los muestra en su consola, con el código. El captcha usa las claves de prueba públicas de Turnstile de `.env.example`, que siempre pasan.
 - **Todo como en producción:** `docker compose up --build` y abre http://localhost:3000. Es la misma imagen que se despliega.
 - **Verificación completa:** `pnpm run ci` corre lint, tipos, pruebas y build. Con Postgres levantado, las pruebas del servidor usan la base de `DATABASE_URL_TEST`: cada corrida crea su propia base temporal y la borra al terminar. Sin esa variable, esas pruebas se saltan.
@@ -93,6 +112,12 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
   - Necesitan Postgres (`docker compose up -d db`): levantan Vite en el puerto 5174 y el servidor de verdad en el 3100.
   - El servidor de las e2e usa su propia base, `ventisca_e2e`, que recrea en cada corrida en el Postgres de `DATABASE_URL_TEST`. La base de desarrollo no se toca.
   - Los correos no se envían: el servidor los guarda en `apps/web/.e2e-outbox/` (ignorada por git y vaciada en cada corrida), y de ahí las pruebas leen los códigos. El script de Turnstile se reemplaza por uno falso.
+  - **Las del juego en línea** (`e2e/online*.spec.ts` y `e2e/restart.spec.ts`) abren un navegador por persona, con su cuenta creada por la API.
+    - El servidor de las pruebas (`apps/server/test/support/e2e-server.ts`) arranca con sus propios plazos: un turno de 60 s, para que una prueba no dependa del reloj, y la oferta del bot a los 4 s.
+    - Tiene además un control, en el puerto 3101 y solo en esa máquina (`e2e/control.ts`). Con él una prueba le pide el tablero de su sala (`prepareBoard`), para que su partida termine en pocos turnos, o un reinicio del servidor (`restartServer`). Las partidas de las demás salas salen del motor, como en producción.
+    - La del reinicio corta a todo el que esté conectado, así que corre sola, al final: es el proyecto `reinicio` de `playwright.config.ts`, que espera al proyecto `juego`. Para correrla sin repetir las demás: `pnpm --filter @ventisca/web exec playwright test --project reinicio --no-deps`. Con un filtro (`--grep` o `--grep-invert`) hay que pedir el proyecto (`--project juego`): si no, Playwright corre entero el proyecto del que depende el del reinicio. La CI corre los dos por separado.
+    - La cola pública es una sola para todo el servidor: las pruebas que entran a ella viven en `online.spec.ts`, donde corren una tras otra. Las demás usan salas.
+    - Cortar la red del navegador no cierra un WebSocket ya abierto: `dropLink` (`e2e/online-helpers.ts`) la corta y además cierra la conexión desde la página.
 - **Cambiar la base de datos:**
   1. Edita `apps/server/src/schema.ts`.
   2. Corre `pnpm db:generate`.
@@ -129,85 +154,68 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
   - la redirección de HTTP a HTTPS;
   - la salud y el 404;
   - que corra el último commit de main (`/api/health` lo informa); la lectura de `main` se reintenta, porque a veces falla sin que el despliegue tenga nada que ver;
+  - el juego en línea: que pregunte por la sesión (401) al pedir la conexión desde el propio juego, y que la rechace (403) desde otro origen o sin decir de dónde viene (D-65). Sin una cuenta no puede abrir la conexión: eso se comprueba a mano, entrando a "Jugar en línea";
   - un turno jugado en Chromium sin pedir nada a otros dominios.
 
   Sale con código 1 si algo falla.
-- **Registros:** en el panel de Railway, en cada despliegue; se pueden consultar 7 días. Los del servidor no guardan IPs; los de acceso de Railway sí, y el aviso de privacidad lo declara.
+- **Registros:** en el panel de Railway, en cada despliegue; se pueden consultar 7 días. Los del servidor no guardan IPs; los de acceso de Railway sí, y el aviso de privacidad lo declara. Cada partida en línea deja "Empieza una partida" y "Termina una partida", con su identificador, sus turnos y cuántas personas quedaron.
+- **Desplegar con gente jugando:** cada despliegue reinicia el servidor, y las partidas en curso se pierden (R-54): cada persona conserva las monedas de sus rondas terminadas y ve un aviso. Por eso se fusiona cuando nadie esté jugando (D-95). En Railway, el servidor nuevo puede arrancar antes de que el anterior se apague: entonces es él quien da por interrumpidas las partidas, y el anterior, al notarlo, las termina sin pagar de nuevo.
 - **Volver atrás:** en Deployments, "Rollback" sobre un despliegue anterior.
 
 ## Herramientas útiles
 
 - `?speed=0.2` en la URL acelera las animaciones (pruebas y demos).
-- En desarrollo están expuestos `window.__ventisca` (store), `window.__ventiscaScene` (escena de Phaser) y `window.__ventiscaGame`. `window.__ventiscaLoad(estado)` deja la partida en curso en un tablero preparado, también en el anfitrión: así una prueba e2e resuelve un turno de verdad sobre el tablero que necesita.
+- En desarrollo están expuestos `window.__ventisca` (store), `window.__ventiscaScene` (escena de Phaser) y `window.__ventiscaGame`. `window.__ventiscaLoad(estado)` deja la partida local en curso en un tablero preparado, también en el anfitrión: así una prueba e2e resuelve un turno de verdad sobre el tablero que necesita. En línea el tablero es del servidor: las e2e se lo piden con `prepareBoard` (ver "Pruebas en el navegador").
 - Las capturas de la escena se toman con la tarjeta gráfica (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist` al lanzar Chromium). Con el render por software (SwiftShader), las piezas giradas de las figuras salen recortadas: es un defecto de ese render, no del juego.
 - `pnpm sim -- --matches 2000 --skill 1 [--storm]` mide el balance con el bot, sin render. Con `--team fire=new,water=full,snow=bot` arma un equipo en línea asiento por asiento, y con `--mixed` reproduce las tablas de equipos de colecciones mezcladas del reporte de balance (P-20).
 - `pnpm pacing` mide cuánto dura la animación de cada turno sobre partidas del bot.
 
 ## Lo que sigue
 
-El M7 y P-20 están cerrados. Va en este orden:
+El M7, P-20, la ronda de claridad del tablero y la Beta del modo en línea están hechos. Va en este orden:
 
-1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en siete PRs pequeños, cada uno con capturas a 1280×720 junto a "Tu equipo" y, desde el quinto, junto a su maqueta aprobada. **Cerrada el 12 de octubre de 2026:**
-   1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
-   2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, y elegir una carta cambia el tablero a modo carta. Ajustado después dos veces, como en el original. Primero: tras moverse, las casillas siguen a la vista y otro clic cambia el destino; el foco no salta tras moverse; y los objetivos elegidos llevan la marca del equipo, con un arco por atacante. Después se quitó el paso de moverse: al activar un ninja se ven a la vez sus casillas y sus objetivos, y un clic en un objetivo lo elige sin moverse.
-   3. **La reanimación vuelve a la regla del original.** Hecho (D-77, que reemplaza a D-18): quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. La medición del balance de antes y después está en `docs/balance-report.md`.
-   4. **Información a pedido.** Hecho (D-74 y D-78): el panel de cada ninja resume su plan sin números; con el ratón sobre un gólem, la franja dice su nombre y cómo ataca, sin pintar casillas; las cartas colocadas quedan en miniatura, siempre al frente, con un lugar fijo por elemento, un solo contorno para el área compartida y un borde dorado cuando hay combo; ningún tinte se mezcla con otro; y "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos" son ayudas opcionales de las partidas locales, apagadas por defecto.
-   5. **Consejos en el momento.** Hecho (D-80), con un alcance más chico que el previsto: cuatro consejos, cada uno una sola vez, en una burbuja que va siempre junto a la mano y marca con un borde dorado el panel o la carta de la que habla. El de la primera caída salió de la franja y pasó a este sistema. La franja de arriba queda como línea de contexto. Ver "Consejos en el momento" en la sección 11 de los lineamientos.
-   6. **Demostraciones de las cartas.** Hecho (D-81): un solo ▶ junto al título de la mano abre un tablero en miniatura donde la carta se juega en bucle, con el selector "Sin combo | Con combo". Usa el valor de la carta elegida o el de la primera; con la mano vacía, va sin números. La juega el motor (`state/demos.ts`) y la anima la escena del juego (`game/DemoScene.ts`). Con animaciones reducidas, dos imágenes fijas. El consejo de la primera carta ya dice que el ▶ muestra qué hace.
-   7. **Demostraciones de los gólems.** Hecho (D-82):
-      - La franja que aparece con el ratón sobre un gólem suma "Ver cómo ataca", y un clic abre la misma burbuja con su ataque en bucle. La franja va sin números y se queda con el gólem un momento, para que se alcance el botón.
-      - Los números salen del motor, nunca escritos a mano: el motor resuelve cada ataque (`enemyStrike`), con la salpicadura a las 8 vecinas y `sweepTiles`, y la línea de texto se arma con `sniperDamage` y con `balance.json`.
-      - Cada una muestra un ninja fuera del área, con la etiqueta "a salvo", y las casillas golpeadas, teñidas. Carámbano: un disparo de lejos y otro de cerca. Granizo: el objetivo, un vecino salpicado y un ninja a salvo. Témpano: el objetivo y el barrido a su costado.
+1. **Publicar la Beta.**
+   1. Revisar el PR #29: su descripción trae las decisiones tomadas en el camino, los textos por revisar y las capturas.
+   2. Fusionarlo cuando nadie esté jugando (D-95), con merge commit y sin squash. No hay variables nuevas que cargar en Railway.
+   3. Esperar el despliegue (la CI de `main` y un minuto más) y correr `pnpm check:prod`: todo debe pasar, incluidas las dos comprobaciones del juego en línea.
+   4. Mirar en los registros de Railway que el arranque diga "Migraciones al día". La migración `0004_partidas_en_linea` crea las cuatro tablas del juego en línea.
+   5. Entrar con una cuenta verificada a "Jugar en línea": la ficha debe aparecer sin quedarse en "Conectando…". Eso prueba que la conexión WebSocket pasa por Railway, lo único que `check:prod` no puede ver sin una cuenta.
+   6. Con otra persona, o en dos ventanas con dos cuentas: una sala con código, "Empezar con el bot" y un turno.
+2. **La primera prueba de la Beta con personas,** con `docs/guia-beta.md`. De ella salen tres decisiones: si el reloj se queda en 10 s (D-90), si el abandono se siente justo (D-93, P-22) y si las marcas del tablero bastan para coordinarse sin chat (D-91).
+3. **Después de la Beta,** sin orden decidido:
+   - el mecanismo para avisar los cambios del aviso de privacidad (D-96): hasta que exista, el aviso queda congelado;
+   - Tormenta en línea (D-85), con su mínimo de 5 cartas por elemento (R-51) en las salas y en la cola;
+   - el resto de las estadísticas de R-42 (D-86);
+   - el teléfono: la investigación de D-73 y el combate en línea, que hoy es para computador (D-97);
+   - la revisión de D-102 y D-103, que se tomaron al implementar.
 
-   **Hallazgo de la prueba con personas** (octubre de 2026): el juego se siente muy bien. Lo único: la gente elige por su cuenta al siguiente ninja, y el paso automático la confunde. Por eso "Pasar al siguiente ninja" viene apagado (D-79).
+### Rondas cerradas
 
-   **Reglas de las demostraciones, cumplidas en las de las cartas y en las de los gólems:**
-   - Una burbuja a la vez; Esc o un clic fuera la cierran.
-   - No pausan el reloj y funcionan igual en línea: muestran qué hace algo, nunca cuánto daño hará la jugada.
-   - Sin videos: cada demostración la juega el propio motor, con el arte y las animaciones del juego, en un tablero en miniatura preparado. `state/demos.ts` prepara el tablero y `game/DemoScene.ts` lo anima.
-   - Con animaciones reducidas, se muestran el antes y el después como dos imágenes fijas, con una línea de texto.
-   - Cada PR registra su decisión con el siguiente número libre, e incluye capturas de cada demostración junto a su maqueta aprobada. Las formas de las maquetas son aproximadas: se usan el arte y las animaciones reales del juego.
-
-   **Cierre de la ronda:**
-   - **Las tablas de P-20 no cambiaron.** `pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`, con la ronda ya fusionada, dan las mismas cifras que la sección de D-77 de `docs/balance-report.md`. De la ronda, solo D-77 cambió una regla.
-   - **Las demostraciones de los gólems se abren también desde la ayuda,** con un "Ver cómo ataca" junto a cada gólem: sirve con el teclado, sin ratón y con "Consejos en pantalla" apagado.
-   - **Segunda prueba con personas, propuesta y por decidir.** Cuatro a seis personas, la mitad sin haber jugado nunca, una partida de Clásica en el sandbox con los ajustes por defecto, pensando en voz alta y sin explicación previa. Se mira, sin preguntar: si leen los consejos o los cierran, si después de cada uno hacen lo que dice, si encuentran solas el ▶ de la mano y "Ver cómo ataca", y si tras ver a Granizo y a Témpano dejan de amontonarse. Al final, tres preguntas: qué hace cada gólem, cómo se logra un combo y qué fue lo más confuso. La primera prueba dejó D-79.
-
-   Para toda la ronda:
-   - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;
-   - si afecta el balance, va con una simulación antes y otra después;
-   - la sección "Tablero" de los lineamientos crece con cada paso: qué capas existen, sus colores, cuándo se ve cada una y qué modo es exclusivo.
-2. **M8: partida en línea.** No se programa hasta que el dueño de producto revise su especificación técnica.
-   - **Especificación técnica,** en un PR de documentación. Se escribe después de la ronda de jugabilidad, porque los ajustes pueden cambiar reglas que ella usa. Debe cubrir:
-     - **Protocolo:** los mensajes y sus esquemas, la frecuencia de los fantasmas de los compañeros, el reloj y los plazos en el servidor, y el ciclo de vida de una sala.
-     - **Desconexiones:** qué plan juega el bot si alguien se desconecta a mitad de la planificación; cómo vuelve una persona a una partida en curso; y qué pasa con las partidas cuando Railway redespliega (aviso a los clientes, reconexión automática y restauración desde la foto de cada turno, D-49).
-     - **Emparejamiento y salas:** el ninja de cada persona (D-43), la espera de 30 s con el bot (D-44), el mínimo de 5 cartas para Tormenta (R-51) y las salas con código.
-     - **Recompensas:** el pago por ronda con el libro de monedas (D-48), los logros calculados por el servidor desde su propia tabla, incluido el doble de monedas, y las estadísticas (R-42).
-     - **Seguridad:** la comprobación de `Origin` en la conexión WebSocket, con su prueba; sesión obligatoria en esa conexión; límites de mensajes por segundo y de tamaño por conexión; y la validación de cada plan en el servidor con `packages/core`.
-     - **Pruebas:** con dos y tres clientes, e2e con varios navegadores a la vez y un plan para una partida de prueba con personas reales.
-   - **Investigación del teléfono** (D-73), en ese PR o en uno aparte: capturar la portada, las cuentas, la colección y el tablero en 390×844 (vertical) y 844×390 (horizontal), probar los controles táctiles del tablero, y decir qué se rompe y qué haría falta. Con eso se decide el alcance del teléfono y lo que hay que sumar a los lineamientos de diseño.
-   - **Dispositivos (D-73):** el combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720.
-3. **M9: emparejamiento y estadísticas.**
+- **Ronda de claridad del tablero** (D-74 y D-77 a D-82), cerrada el 12 de octubre de 2026 en siete PRs. Lo que dejó está en "Qué hay", en el PRD y en la sección 11 de `docs/lineamientos-de-diseno.md`.
+  - **Hallazgo de la primera prueba con personas** (octubre de 2026): el juego se siente muy bien. Lo único: la gente elige por su cuenta al siguiente ninja, y el paso automático la confunde. Por eso "Pasar al siguiente ninja" viene apagado (D-79).
+  - **Las tablas de P-20** se volvieron a correr al cerrarla, sin cambios, y otra vez con el bot afinado al revivir (D-101): las de ahora están en `docs/balance-report.md`.
+  - **Reglas de las demostraciones** (D-81 y D-82), que valen para las que se agreguen:
+    - una burbuja a la vez; Esc o un clic fuera la cierran;
+    - no pausan el reloj y funcionan igual en línea: muestran qué hace algo, nunca cuánto daño hará la jugada;
+    - sin videos: cada demostración la juega el propio motor, con el arte y las animaciones del juego, en un tablero en miniatura (`state/demos.ts` lo prepara y `game/DemoScene.ts` lo anima);
+    - con animaciones reducidas, el antes y el después como dos imágenes fijas, con una línea de texto;
+    - los números salen del motor, nunca escritos a mano.
+- **Segunda prueba con personas del tablero,** aprobada el 12 de octubre de 2026. La hace el dueño de producto por su cuenta, y no frena lo demás. Cuatro a seis personas, la mitad sin haber jugado nunca, una partida de Clásica en el sandbox con los ajustes por defecto, pensando en voz alta y sin explicación previa. Se mira, sin preguntar: si leen los consejos o los cierran, si después de cada uno hacen lo que dice, si encuentran solas el ▶ de la mano y "Ver cómo ataca", y si tras ver a Granizo y a Témpano dejan de amontonarse. Al final, tres preguntas: qué hace cada gólem, cómo se logra un combo y qué fue lo más confuso.
 
 ## Pendientes anotados
 
-Para que no se pierdan. Los seis primeros están también en su hito del PRD de v2.
+Para que no se pierdan. Los que tienen hito están también en el PRD de v2.
 
-- **Releer el progreso tras un rechazo por monedas insuficientes** (D-68). Hoy el cliente solo lo relee tras una respuesta perdida, así que tras ese rechazo el saldo en pantalla queda viejo. Va en el próximo PR del cliente.
-- **Comprobación de `Origin` en la conexión WebSocket** (M8). `originGuard` no revisa los `GET`, y la conexión WebSocket empieza con uno: necesita su propia comprobación, con su prueba (D-65).
-- **Logros calculados por el servidor** (M8). Hoy `creditRound` recibe si la persona ya tiene los 9 logros. En el M8 el servidor los calcula desde su propia tabla al resolver la partida, incluido el doble de monedas; nunca llegan del cliente.
-- **Mínimo para Tormenta** (R-51): en las salas con código (M8) y en la cola (M9).
-- **Mecanismo para avisar los cambios del aviso de privacidad** (M9): un aviso en el juego al entrar y un correo a todas las cuentas. Debe existir antes de que haya cuentas de otras personas: desde entonces, cualquier cambio del aviso pasa por él, porque el aviso lo promete en "Cambios". El cambio del 6 de octubre de 2026 (D-75) fue una corrección previa a la apertura, sin aviso previo, porque todas las cuentas seguían siendo internas.
-- **Investigación del teléfono** (D-73), antes de programar el M8.
-- **Afinar el bot al revivir, antes del M8.** Hoy mira si a quien revive lo alcanza algún gólem, en la casilla desde donde revive (D-77). Debe evaluar si quien revive podría caer, no solo si un gólem lo alcanza: un ninja con mucha vida aguanta un golpe y completa la reanimación. Se mide con el simulador antes del M8, porque en línea el bot cubrirá a personas (D-35). Sigue pendiente: el dueño de producto pidió dejar el bot como está por ahora.
-- **Dos personas que eligen revivir al mismo caído** (M8). En el sandbox lo impide la planificación: un caído solo puede tener un reanimador (R-09). En línea cada persona planifica su ninja a la vez, así que pueden llegar los dos planes: el motor hace valer al primero en el orden de R-11 y el otro pierde su acción. La especificación del M8 debe decir si el servidor lo avisa antes de cerrar el turno.
-- **Con el M8:**
-  - "Juega en línea con amigos" deja de decir "Próximamente" en los beneficios de la cuenta (`BENEFITS` en `ui/Account.tsx`);
-  - la pista de las monedas de la tienda deja de decir "Próximamente" (`earnHint` en `i18n/es.ts`);
-  - el perfil, que hace de inicio en línea (D-67), suma "Jugar";
-  - las ayudas de daño y de alcance no existen en línea (D-78): el anfitrión de una partida en línea dice que no es local (`GameHost.local`), con lo que el tablero las ignora, y su pantalla de equipo no las muestra. La especificación del M8 debe recogerlo.
-- **Textos en futuro:** la introducción de "Entrar" y la invitación de los resultados dicen en presente que la cuenta guarda el progreso, y en futuro que "pronto podrás jugar en línea" (`loginIntro` e `invite` en `i18n/es.ts`). Esa mitad vuelve al presente cuando llegue el juego en línea, con el M8. Lo mismo vale para los textos del progreso que hablan de las partidas en línea: `caminoIntro`, `collectionIntro`, `repeatedNote`, `revealNote`, `earnHint` y `profileIntro`.
-- Validar con personas: balance, ritmo y animaciones están calibrados con datos, pero nadie lo ha jugado todavía.
+- **Mecanismo para avisar los cambios del aviso de privacidad** (D-96): un aviso en el juego al entrar y un correo a todas las cuentas. El aviso lo promete en "Cambios". Llega después de la Beta, y hasta entonces el aviso no se toca. Sus dos correcciones se hicieron sin aviso previo: la del 6 de octubre de 2026 (D-75), cuando todas las cuentas eran internas, y la del multijugador, en el PR de la Beta, por decisión del dueño de producto (D-96).
+- **Mínimo para Tormenta** (R-51), en las salas y en la cola: llega con Tormenta en línea (D-85).
+- **Investigación del teléfono** (D-73): no se hizo antes de la Beta. Hace falta para decidir el combate en teléfono.
+- **La pantalla de carga en línea no se adapta** a ventanas angostas: lleva al combate, que es para computador (D-73).
+- **D-102 y D-103** están "por revisar": cómo corre una partida en el servidor y cómo se dan las recompensas por persona.
+- **Dos pruebas que fallan a veces, sin relación con lo que se esté cambiando:**
+  - la e2e de `tips.spec.ts` que mide la burbuja de "cambiar de ninja" junto a la mano falló una vez en la CI por 2 px, al parecer en plena animación de entrada;
+  - la prueba del servidor `D-61: 50 intentos fallidos por IP` puede pasarse de sus 5 s con el equipo muy cargado.
+- **La base de producción no tiene copias de seguridad** (ver "Despliegue"). Con la Beta guarda monedas y logros de otras personas: conviene decidirlo antes de que crezca.
+- Validar con personas: balance, ritmo y animaciones están calibrados con datos; la primera prueba dejó D-79.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.
 
 ## Cómo se trabaja

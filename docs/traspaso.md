@@ -219,9 +219,8 @@ Para que no se pierdan. Los que tienen hito están también en el PRD de v2.
 - **Medir el ritmo real del amuleto tras unas semanas de Beta y ajustar las metas** (D-107 y P-25). Las metas salieron del simulador, cuyo bot casi no cae: "De pie otra vez" y "Reanimador" quedaron en una sola vez, y "Nadie se queda atrás" cambió de regla para entrar en el ritmo (`docs/balance-report.md`, "Logros: metas y ritmo"). El servidor todavía no guarda cuánto cae cada persona: es de las estadísticas de R-42 que faltan.
 - **Defensas contra el abuso del juego en línea** (P-26, abierta): varias cuentas de una misma persona, programas que juegan solos y abandonos a propósito. Queda por revisar si existe un límite de conexiones por IP y un tope de intentos de unirse a salas.
 - **La ficha de "Jugar en línea" quedó justa de alto:** con los dos pliegues al pie, ocupa los 652 px que tiene a 1280×720. Si se le agrega algo más, hay que quitarle otra cosa o darle otra forma.
-- **Dos pruebas que fallan a veces, sin relación con lo que se esté cambiando:**
-  - la e2e de `tips.spec.ts` que mide la burbuja de "cambiar de ninja" junto a la mano falló una vez en la CI por 2 px, al parecer en plena animación de entrada;
-  - la prueba del servidor `D-61: 50 intentos fallidos por IP` puede pasarse de sus 5 s con el equipo muy cargado.
+- **Una prueba que falla a veces, sin relación con lo que se esté cambiando:** la prueba del servidor `D-61: 50 intentos fallidos por IP` puede pasarse de sus 5 s con el equipo muy cargado.
+  - La e2e de `tips.spec.ts` que mide la burbuja de "cambiar de ninja" junto a la mano fallaba a veces en la CI, por 2 px: medía la mano y la burbuja mientras todavía entraban (18 y 4 px más abajo de donde quedan). Desde el PR #30 espera a que terminen de entrar antes de medir.
 - **La CI tarda unos 20 minutos,** unos 6 más que antes de la Beta, por las e2e del juego en línea, y Railway espera a la CI para desplegar. Si estorba, hay dos salidas sin quitar pruebas: correr las e2e con tres procesos en vez de dos, o repartirlas en dos trabajos de la CI. Ninguna está probada.
 - **La base de producción no tiene copias de seguridad** (ver "Despliegue"). Con la Beta guarda monedas y logros de otras personas: conviene decidirlo antes de que crezca.
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos; la primera prueba dejó D-79.

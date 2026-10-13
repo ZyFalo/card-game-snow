@@ -62,8 +62,22 @@ async function boxOf(el: Locator) {
   return { left: box.x, top: box.y, right: box.x + box.width, bottom: box.y + box.height };
 }
 
+/**
+ * La mano entra subiendo 18 px, medio segundo después que el resto de la franja, y la burbuja, 4 px. En un
+ * equipo lento, la prueba llegaba a medirlas a medio camino: 22 px más abajo de donde quedan. Se miden cuando
+ * ya terminaron de entrar.
+ */
+const settled = (page: Page) =>
+  page.locator('.hand').evaluate(async (hand) => {
+    const entering = hand
+      .getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Number.POSITIVE_INFINITY);
+    await Promise.all(entering.map((a) => a.finished.catch(() => undefined)));
+  });
+
 /** La burbuja, con su sombra de 4 px, no tapa el tablero, cabe en la pantalla y muestra su texto entero. */
 async function expectClearOfBoard(page: Page) {
+  await settled(page);
   const b = await boxOf(bubble(page));
   const apart = b.right + 4 <= FRAME.left || b.left >= FRAME.right || b.top >= FRAME.bottom;
   expect(apart, `la burbuja (${JSON.stringify(b)}) pisa el tablero`).toBe(true);

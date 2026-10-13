@@ -4,9 +4,9 @@ import {
   attackTargets,
   cardTiles,
   enemyStats,
+  enemyThreatTiles,
   getNinja,
   healTargets,
-  isThreatened,
   livingEnemies,
   livingNinjas,
   moveOptions,
@@ -84,9 +84,9 @@ function bestPlanFor(s: MatchState, n: Ninja, others: readonly Plan[], comboJoin
 
     for (const t of reviveTargets(s, n.id, pos, others)) {
       // R-09 (D-77): el aliado se levanta al final del turno, si quien lo revive sigue en pie. Lo que
-      // importa es si a quien revive lo alcanzan en la casilla desde donde revive: ahí solo vale la
-      // pena si no hay nada mejor que hacer.
-      consider({ type: 'revive', targetId: t.id }, isThreatened(s, pos) ? 4 : 45);
+      // importa es si quien revive podría caer en la casilla desde donde revive (D-101), no solo si lo
+      // alcanzan: ahí solo vale la pena si no hay nada mejor que hacer.
+      consider({ type: 'revive', targetId: t.id }, couldFallAt(s, n, pos) ? 4 : 45);
     }
 
     for (const ally of healTargets(s, n.id, pos)) {
@@ -128,6 +128,23 @@ function bestPlanFor(s: MatchState, n: Ninja, others: readonly Plan[], comboJoin
 }
 
 const boosted = (n: Ninja, base: number): number => (n.boost ? Math.floor(base * BALANCE.boostMultiplier) : base);
+
+/**
+ * D-101: ¿podría caer ese ninja en esa casilla durante la próxima fase de los gólems? Se mira el peor
+ * caso: cada gólem que la alcanza y no está aturdido le pega con su golpe más fuerte. Su Escudo anula un
+ * golpe, y se supone que anula el más flojo. Un ninja con mucha vida aguanta y completa la reanimación.
+ */
+function couldFallAt(s: MatchState, n: Ninja, pos: Vec): boolean {
+  const hits: number[] = [];
+  for (const e of livingEnemies(s)) {
+    if (e.stunned || !enemyThreatTiles(s, e).some((t) => eq(t, pos))) continue;
+    const st = enemyStats(e);
+    hits.push(Math.max(st.attack, st.maxAttack ?? 0, st.splash ?? 0, st.sweep ?? 0));
+  }
+  hits.sort((a, b) => a - b);
+  if (n.shield) hits.shift();
+  return hits.reduce((sum, hit) => sum + hit, 0) >= n.hp;
+}
 
 function bestCard(n: Ninja): Card | undefined {
   let best: Card | undefined;

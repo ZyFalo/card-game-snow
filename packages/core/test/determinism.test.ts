@@ -87,16 +87,47 @@ describe('Bot de ninjas (§8)', () => {
     expect(isThreatened(s, plan?.moveTo ?? { x: 0, y: 2 })).toBe(false);
   });
 
-  it('R-09 no revive desde una casilla donde lo alcanzan si tiene algo mejor que hacer, aunque al caído no lo alcancen', () => {
+  it('R-09 (D-101): no revive desde una casilla donde podría caer si tiene algo mejor que hacer, aunque al caído no lo alcancen', () => {
     const s = blank();
     place(s, 'water', 1, 2, { hp: 0, everKo: true });
-    place(s, 'fire', 4, 2);
+    // A Brasa le quedan 5 de vida: el disparo más fuerte del francotirador la tumba.
+    place(s, 'fire', 4, 2, { hp: 5 });
     place(s, 'snow', 0, 4);
     const sniper = addEnemy(s, 'sniper', 8, 2);
     // A Marea no la alcanza el francotirador; a Brasa, en la única casilla vecina a la que llega, sí.
     expect(isThreatened(s, { x: 1, y: 2 })).toBe(false);
     expect(isThreatened(s, { x: 2, y: 2 })).toBe(true);
     expect(suggestPlan(s, 'fire', [])?.action).toEqual({ type: 'attack', targetId: sniper.id });
+  });
+
+  it('R-09 (D-101): revive aunque lo alcancen, si con su vida aguanta el golpe', () => {
+    const s = blank();
+    place(s, 'water', 1, 2, { hp: 0, everKo: true });
+    // El mismo tablero, con Brasa a vida completa: el francotirador la alcanza, pero no la tumba.
+    place(s, 'fire', 4, 2);
+    place(s, 'snow', 0, 4);
+    addEnemy(s, 'sniper', 8, 2);
+    const plan = suggestPlan(s, 'fire', []);
+    expect(plan?.action).toEqual({ type: 'revive', targetId: 'water' });
+    expect(isThreatened(s, plan?.moveTo ?? { x: 4, y: 2 })).toBe(true);
+    // Y la reanimación se completa: al final del turno, Marea está de pie y Brasa también.
+    const after = resolveTurn(s, plan ? [plan] : []).state;
+    expect(after.ninjas.find((n) => n.id === 'water')?.hp).toBe(1);
+    expect(after.ninjas.find((n) => n.id === 'fire')?.hp).toBeGreaterThan(0);
+  });
+
+  it('R-09 (D-101): cuenta a todos los gólems que lo alcanzan, y su Escudo anula un golpe', () => {
+    const s = blank();
+    place(s, 'water', 1, 2, { hp: 0, everKo: true });
+    place(s, 'fire', 4, 2, { hp: 9 });
+    place(s, 'snow', 0, 4);
+    // Dos francotiradores alcanzan la casilla vecina: entre los dos pueden quitarle 10, y tiene 9.
+    addEnemy(s, 'sniper', 8, 2);
+    addEnemy(s, 'sniper', 7, 2);
+    expect(suggestPlan(s, 'fire', [])?.action?.type).toBe('attack');
+    // Con Escudo, uno de los dos golpes no cuenta: aguanta, y revive.
+    place(s, 'fire', 4, 2, { hp: 9, shield: true });
+    expect(suggestPlan(s, 'fire', [])?.action).toEqual({ type: 'revive', targetId: 'water' });
   });
 
   it('R-09 no manda a dos ninjas a revivir al mismo caído', () => {

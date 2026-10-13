@@ -1,10 +1,24 @@
+import { rmSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { codeOf, lastMail, logIn, person, signUp, stubTurnstile } from './account-helpers';
+import { codeOf, lastMail, logIn, OUTBOX, person, signUp, stubTurnstile } from './account-helpers';
 import { clippedElements, FULL_TRACE, startMatch, type TestWindow } from './helpers';
 
 /* Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). */
 
 test.use(FULL_TRACE);
+
+test('un correo que el servidor todavía está escribiendo no tumba la lectura de los códigos', async ({ page }) => {
+  // Otra prueba, en otro proceso, puede estar creando su cuenta en ese instante: su correo aparece primero
+  // vacío en la carpeta, y se completa enseguida. Quien busca el suyo lo salta y sigue.
+  const partial = `${OUTBOX}/0000-a-medio-escribir.json`;
+  writeFileSync(partial, '');
+  try {
+    const who = await signUp(page);
+    expect(codeOf(await lastMail(who.email, /Tu código para Ventisca/))).toMatch(/^\d{6}$/);
+  } finally {
+    rmSync(partial, { force: true });
+  }
+});
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
   const errors: string[] = [];

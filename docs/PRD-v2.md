@@ -166,8 +166,11 @@ Con público abierto, el servidor no confía en nada que llegue del cliente y gu
 | Verificación | Código de 6 dígitos que vence en 15 min (R-43 y R-44). Sin verificar no se juega en línea. |
 | Recuperación | Código de 6 dígitos por correo (R-43 y R-46). Al terminar se cierran todas las sesiones. |
 | Sesiones | Cookie HttpOnly, Secure y SameSite=Lax, respaldada en Postgres, con 30 días de duración. El WebSocket se autentica con la misma cookie, porque todo va por el mismo origen. Las peticiones que cambian estado solo se aceptan desde el origen del juego (D-65). |
+| Conexión del juego | Antes de abrir el WebSocket, el servidor comprueba, en este orden: que viene del origen del juego, que trae una sesión vigente y que la cuenta verificó su correo. La comprobación de origen es propia y más estricta que la de D-65, que no revisa las lecturas: sin `Origin`, o con otro, la conexión no se abre. Si algo falla, responde con un error HTTP. Hay una sola conexión por cuenta: una nueva cierra la anterior (D-102). |
 | Abuso | Hasta 5 intentos fallidos de contraseña cada 15 min por cuenta y 50 por IP (D-61); solo cuentan los fallos. Hasta 3 correos por hora por dirección, salvo los avisos de seguridad (R-50). Captcha en el registro (Turnstile de Cloudflare funciona sin alojar en Cloudflare). |
-| Mensajes del juego | Cada mensaje se valida con un esquema (D-53), y el servidor verifica cada plan con el motor antes de aceptarlo. |
+| Mensajes del juego | Cada mensaje se valida con un esquema (D-53), y el servidor verifica cada plan con el motor antes de aceptarlo. Un mensaje no puede pasar de 2 KiB, y una conexión, de 15 mensajes por segundo, con ráfagas de 30: lo que no cumple el protocolo o pasa esos límites cierra la conexión (D-102). Nadie dice de qué ninja es su plan: lo sabe el servidor por el asiento de la conexión. |
+| Lo que sabe cada cliente | Cada persona recibe el estado de la partida sin la semilla ni el azar, y sin las cartas de las manos y los mazos de los demás (D-102). Así nadie puede calcular por adelantado qué harán los gólems, ni ver más que su mano. |
+| Registros | Sin datos personales: de cada petición, solo el método y la ruta. Del juego en línea no se registran nombres, correos, cuentas, direcciones IP ni códigos de sala. |
 | Correo | Resend, con el subdominio ventisca.wpena.dev verificado en la región São Paulo (sa-east-1). Remitente: Ventisca <no-responder@ventisca.wpena.dev>. Sin seguimiento de aperturas ni de clics. Ningún correo lleva texto escrito por quien llena un formulario. |
 | Privacidad | Datos mínimos: correo, nombre visible, progreso y estadísticas. Aviso de privacidad visible y borrado de la cuenta desde el perfil (D-56). |
 
@@ -198,7 +201,7 @@ flowchart LR
   resend["Resend<br/>Correos de verificación<br/>y de recuperación"]
   subgraph railway["Railway · ventisca.wpena.dev"]
     srv["Servidor Node (imagen de Docker)<br/>Sirve el juego y la API HTTP: cuentas, tienda y perfil<br/>Salas, reloj y emparejamiento por WebSocket<br/>Resuelve cada turno con packages/core, sin cambios"]
-    pg[("Postgres de Railway<br/>Cuentas, progreso, monedas y estadísticas<br/>Estado de cada partida al final de cada turno")]
+    pg[("Postgres de Railway<br/>Cuentas, progreso, monedas, logros y estadísticas<br/>Partidas jugadas y rondas por cobrar")]
   end
   nav <-->|HTTPS y WSS| srv
   srv <-->|SQL| pg
@@ -208,39 +211,51 @@ flowchart LR
 El sandbox no toca el servidor: su motor corre en el navegador, como hoy.
 
 - **`GameHost` asíncrono.** Enviar un plan devuelve una promesa y los resultados llegan como eventos, en el sandbox y en línea. Es el cambio que Claude Code señaló en su análisis.
-- **Servidor autoritativo.** El servidor valida cada plan, resuelve el turno con `resolveTurn` y envía los eventos con su hash; el cliente solo anima.
-- **Reloj por hora límite.** El servidor fija la hora límite de cada turno, y el cliente muestra la cuenta regresiva corrigiendo la diferencia de relojes.
-- **Una sola instancia al principio.** Las salas viven en memoria, y el estado por turno en Postgres permite reconstruirlas tras un reinicio (D-49). Escalar a varias instancias queda para después.
+- **Servidor autoritativo.** El servidor valida cada plan, resuelve el turno con `resolveTurn` y envía a cada persona los eventos y el estado que queda (D-102); el cliente solo anima, y nunca resuelve un turno en línea.
+- **Reloj del servidor.** El servidor fija cuándo vence cada turno y le dice a cada cliente cuánto falta; el cliente muestra la cuenta regresiva desde que le llega, sin depender de la hora del equipo.
+- **Una sola instancia al principio.** La cola, las salas y las partidas viven en la memoria del servidor (`apps/server/src/play/`). Si se reinicia, las partidas en curso se pierden (D-94): en Postgres quedan las rondas que cada persona tiene por cobrar, y se acreditan al apagarse o al volver a arrancar. Escalar a varias instancias queda para después.
 - **Monorepo.** `packages/core` sin cambios, `packages/protocol` y `apps/server` nuevos, y `apps/web` con el `NetworkHost`.
 - **Configuración.** Variables de entorno en Railway: `DATABASE_URL`, `RESEND_API_KEY`, `SESSION_SECRET` y `APP_URL`.
 
-## Protocolo de mensajes (borrador)
+## Protocolo de mensajes
 
-La partida viaja por WebSocket con mensajes tipados en un paquete compartido (`packages/protocol`); todo lo demás es una API HTTP. Cada mensaje lleva su tipo, la versión del protocolo y un número de secuencia.
+La partida viaja por una sola conexión WebSocket, en `/api/play`, con mensajes en JSON; todo lo demás es una API HTTP. Los mensajes están tipados y validados con Zod en `packages/protocol` (`src/play.ts`), que comparten el cliente y el servidor (D-53). Cada mensaje lleva la versión del protocolo (`v`), un número de secuencia (`seq`) y su tipo (`type`); la respuesta a un mensaje dice además a cuál responde (`re`).
 
 | Dirección | Mensaje | Contenido |
 | --- | --- | --- |
-| Cliente → servidor | `room.create` | Dificultad |
-| Cliente → servidor | `room.join` | Código de la sala |
-| Cliente → servidor | `queue.join` / `queue.leave` | Dificultad y ninja elegido |
-| Cliente → servidor | `queue.acceptBot` | Acepta empezar con un bot tras 30 s de espera |
-| Cliente → servidor | `lobby.pick` | Ninja elegido en la sala |
-| Cliente → servidor | `lobby.start` | Solo el anfitrión |
-| Cliente → servidor | `plan.update` | Plan en curso, para el fantasma que ven los compañeros |
-| Cliente → servidor | `plan.confirm` | Plan final del turno |
-| Servidor → cliente | `queue.state` | Ninjas que faltan y oferta de empezar con un bot |
-| Servidor → cliente | `lobby.state` | Personas, ninjas, código y dificultad |
-| Servidor → cliente | `match.start` | Estado inicial y ninja de cada persona |
-| Servidor → cliente | `turn.start` | Número de turno y hora límite del servidor |
-| Servidor → cliente | `team.plans` | Fantasmas de los compañeros |
-| Servidor → cliente | `turn.result` | Eventos del turno y hash del estado |
-| Servidor → cliente | `player.status` | Persona conectada o reemplazada por el bot |
-| Servidor → cliente | `match.end` | Resultados y monedas cobradas |
+| Cliente → servidor | `queue.join` | El ninja con que entra a la cola (R-52) |
+| Cliente → servidor | `queue.leave` | Cancela la búsqueda |
+| Cliente → servidor | `queue.acceptBot` | Acepta empezar con el bot (D-88) |
+| Cliente → servidor | `room.create` | Crea una sala y se sienta con ese ninja (R-53) |
+| Cliente → servidor | `room.join` | El código de la sala y el ninja que trae |
+| Cliente → servidor | `room.pick` | Elige un ninja libre de la sala |
+| Cliente → servidor | `room.start` | Solo quien creó la sala: empieza la partida |
+| Cliente → servidor | `room.leave` | Sale de la sala |
+| Cliente → servidor | `plan.update` | El turno y el plan en curso de su ninja, para que lo vean los compañeros (R-35) |
+| Cliente → servidor | `plan.confirm` | El plan final del turno. Es definitivo (R-36) |
+| Cliente → servidor | `turn.ready` | Terminó de ver ese turno: el reloj del siguiente puede empezar (R-36) |
+| Cliente → servidor | `match.leave` | Sale de la partida: es abandonar (R-39) |
+| Cliente → servidor | `notice.seen` | Ya vio el aviso de su última partida |
+| Servidor → cliente | `welcome` | La conexión quedó abierta; el nombre visible de la persona |
+| Servidor → cliente | `idle` | Está en el inicio en línea. Si lo hay, por qué volvió ahí (la sala se cerró) y el aviso pendiente de su última partida (terminó sin ella, o el servidor se reinició) |
+| Servidor → cliente | `queue.state` | Los tres asientos con quién hay en cada uno, la oferta del bot y cuánto lleva buscando |
+| Servidor → cliente | `room.state` | El código, quién la creó, los tres asientos, quién falta por elegir ninja y si la partida puede empezar |
+| Servidor → cliente | `match.start` | El asiento de la persona, los tres asientos, el estado inicial y los eventos de la entrada |
+| Servidor → cliente | `match.resume` | Lo mismo, sin eventos, para quien vuelve a una partida en curso (R-38) |
+| Servidor → cliente | `turn.start` | El número de turno, cuánto falta para que venza, quién está y el plan del bot |
+| Servidor → cliente | `team.plan` | El plan de un compañero, el valor de la carta que planea y si ya confirmó |
+| Servidor → cliente | `plan.fix` | Lo que quedó de su plan cuando el servidor no aceptó una parte, y por qué: la casilla ya está reservada, a ese caído ya lo reviven o el plan no vale |
+| Servidor → cliente | `turn.result` | Los eventos del turno y el estado que queda |
+| Servidor → cliente | `player.status` | Una persona se desconectó, volvió o abandonó |
+| Servidor → cliente | `match.end` | Para cada persona: sus monedas, ya acreditadas, los logros que ganó, todos los que tiene, su saldo y la sala a la que vuelve |
 | Servidor → cliente | `error` | Código de error |
 
-**API HTTP:** registro, inicio y cierre de sesión, verificación con código, recuperación, cambio de contraseña, cambio de correo y borrado de cuenta; perfil, colección, compra de cajas y estadísticas.
+**API HTTP:** registro, inicio y cierre de sesión, verificación con código, recuperación, cambio de contraseña, cambio de correo y borrado de cuenta; el progreso, con la colección, los logros y las estadísticas, y la compra de cajas.
 
-El cliente anima los eventos de `turn.result` con la misma escena de hoy y compara el hash con el que calcula; si no coincide, pide el estado completo.
+- **El cliente no simula.** Anima los eventos de `turn.result` con la misma escena del sandbox y se queda con el estado que mandó el servidor: no hay nada que pueda desincronizarse.
+- **Lo que no se abre.** Antes de aceptar la conexión, el servidor responde con un error HTTP si viene de otro origen (403, `bad_origin`), si no trae sesión (401, `unauthorized`) o si la cuenta no verificó su correo (403, `email_not_verified`).
+- **Lo que la cierra.** El servidor cierra la conexión con un código propio: 4000, la cuenta abrió el juego en otra pestaña; 4001, un mensaje que no cumple el protocolo o de otra versión; 4002, demasiados mensajes; 4003, la sesión terminó; y 1012, el servidor se reinicia. Un mensaje de más de 2 KiB la cierra con el 1009.
+- **La versión.** Si cambia el protocolo, los clientes ya abiertos reciben `protocol_version` y piden recargar la página.
 
 ## Modelo de datos en Postgres
 
@@ -253,13 +268,13 @@ Diez tablas cubren cuentas, progreso, partidas y estadísticas. Las monedas pasa
 | `email_codes` | hash del código, user_id, propósito (verificar, recuperar o cambiar correo), correo nuevo (solo al cambiarlo), intentos, expires_at y used_at | Códigos de un solo uso (R-43) |
 | `profiles` | user_id, coins, camino_element, boxes_opened | Estado del progreso. La fila nace al elegir la carta de camino (R-30), y el saldo no puede ser negativo |
 | `collection` | user_id, card_id, count | Cartas y duplicados (R-26) |
-| `coin_ledger` | user_id y amount; en un cobro, match_id y round, única por (user_id, match_id, round); en una compra, purchase_id y cards, única por (user_id, purchase_id) | Todos los movimientos del saldo: los cobros por ronda, sin duplicados (D-31), y las compras de cajas, que un reintento no cobra dos veces (D-66). `match_id` apuntará a `matches` cuando existan las partidas (M8) |
-| `achievements` | user_id, achievement_id, unlocked_at | Logros |
-| `matches` | id, room_code, difficulty, seed, status, turn, state_snapshot (jsonb), hash | Partidas y su estado por turno (D-49) |
-| `match_players` | match_id, user_id (vacío para el bot o para una cuenta borrada, D-56), ninja, joined_at, left_at | Quién jugó qué ninja |
-| `player_stats` | user_id y un contador por cada estadística de R-42; los desgloses por gólem y por elemento en jsonb | Estadísticas en línea |
+| `coin_ledger` | user_id y amount; en un cobro, match_id y round, única por (user_id, match_id, round); en una compra, purchase_id y cards, única por (user_id, purchase_id) | Todos los movimientos del saldo: los cobros por ronda, sin duplicados, y las compras de cajas, que un reintento no cobra dos veces (D-66). `match_id` apunta a `matches`. Las monedas de una partida entran al libro cuando termina (D-93) |
+| `achievements` | user_id, achievement_id, match_id, unlocked_at | Los logros de cada persona, guardados cuando ocurren (R-55). El doble de monedas se decide contando estas filas |
+| `matches` | id, room_code (vacío si salió de la cola), difficulty, seed, status (`playing`, `finished`, `abandoned` o `interrupted`), outcome, bonus_outcome, turns, started_at, ended_at | Las partidas. Una partida sale de `playing` una sola vez, y quien la saca hace las cuentas. El estado de cada turno no se guarda (D-94) |
+| `match_players` | match_id, seat (el ninja), user_id (vacío para el bot o para una cuenta borrada, D-56), rounds, exit, notice, joined_at, left_at | Quién jugó qué ninja. `rounds` son las rondas que la persona tiene por cobrar; `exit`, cómo salió (terminó, abandonó o el servidor se reinició); y `notice`, el aviso que verá una sola vez |
+| `player_stats` | user_id, difficulty, matches, rounds y wins | Las estadísticas básicas de la Beta, por dificultad (D-86). El resto de R-42 llegará con sus propias columnas |
 
-Las migraciones viven en el repositorio y se aplican al desplegar. Se generan con drizzle-kit (D-52). Cada tabla llega con la función que la usa: en el M7 existen las de cuentas y `profiles`, `collection` y `coin_ledger`; `achievements` llega con los logros por persona (M8).
+Las migraciones viven en el repositorio y se aplican al desplegar. Se generan con drizzle-kit (D-52). Cada tabla llega con la función que la usa: en el M7 llegaron las de cuentas y `profiles`, `collection` y `coin_ledger`; con el multijugador, `matches`, `match_players`, `achievements` y `player_stats`.
 
 ## Hitos M7 a M9
 

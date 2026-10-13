@@ -5,6 +5,8 @@ import { apiError, type Health, type PublicConfig } from '@ventisca/protocol';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { type AccountsOptions, accountsRoutes } from './accounts/routes';
 import { originGuard } from './origin';
+import { Hub } from './play/hub';
+import { playRoutes } from './play/routes';
 import { progressRoutes } from './progress/routes';
 
 export interface AppOptions {
@@ -45,8 +47,10 @@ export function buildApp(options: AppOptions) {
   // Se confía solo en el salto 0 (el proxy de Railway, conectado directo); equivale a un salto.
   const app = Fastify({ logger, trustProxy: (_address: string, hop: number) => hop === 0 });
 
+  /** Los orígenes desde los que se sirve el juego: `APP_URL` y, en desarrollo, el del cliente de Vite. */
+  const origins = accounts ? [new URL(accounts.appUrl).origin, ...(devOrigin ? [devOrigin] : [])] : [];
   // Antes que cualquier ruta: lo que cambia estado solo se acepta desde el propio juego (D-65).
-  if (accounts) originGuard(app, [new URL(accounts.appUrl).origin, ...(devOrigin ? [devOrigin] : [])]);
+  if (accounts) originGuard(app, origins);
 
   app.get('/api/health', async (req, reply) => {
     try {
@@ -71,6 +75,9 @@ export function buildApp(options: AppOptions) {
     app.register(accountsRoutes, accounts);
     // El progreso vive en la cuenta (D-34): usa la misma base, el mismo secreto y el mismo reloj.
     app.register(progressRoutes, { db: accounts.db, secret: accounts.secret, now: accounts.now, seed: boxSeed });
+    // El juego en línea: una conexión WebSocket con la misma sesión, y su propia comprobación de origen.
+    const hub = new Hub({ log: app.log });
+    app.register(playRoutes, { db: accounts.db, secret: accounts.secret, now: accounts.now, origins, hub });
   }
 
   if (webDist && existsSync(webDist)) {

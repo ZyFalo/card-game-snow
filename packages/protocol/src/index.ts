@@ -197,3 +197,5 @@ export type BuyBoxBody = z.infer<typeof buyBoxSchema>;
 /** Respuesta de comprar una caja: las cartas que salieron, en orden, y el progreso ya actualizado. */
 export const boxResultSchema = z.object({ cards: z.array(z.string()), progress: progressSchema });
 export type BoxResult = z.infer<typeof boxResultSchema>;
+
+export * from './play';

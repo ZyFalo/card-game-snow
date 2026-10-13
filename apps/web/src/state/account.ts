@@ -88,11 +88,10 @@ export function closeAccount(): void {
   patch({ error: null, errorField: null, info: null });
 }
 
-/** Abre una pantalla del progreso: elegir el camino (R-30) o la colección con la tienda. */
-export function openProgress(view: 'camino' | 'collection'): void {
+/** Abre la pantalla de elegir el camino (R-30). El progreso y las cartas están en la Libreta ninja (D-100). */
+export function openProgress(view: 'camino'): void {
   clearProgressError();
   showView(view);
-  if (view === 'collection') void loadProgress();
 }
 
 /**

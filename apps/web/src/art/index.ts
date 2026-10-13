@@ -1,4 +1,6 @@
 import { ELEMENTS, ENEMY_KINDS, MAPS } from '@ventisca/core';
+import { NINJA_CLIPS } from '../game/rig/clips';
+import type { Pose } from '../game/rig/Rig';
 import {
   bitSvg,
   craneSvg,
@@ -25,6 +27,7 @@ import {
 } from './effects';
 import { golemBustSvg, golemPartSvg, golemSvg } from './golems';
 import { ninjaBustSvg, ninjaKoSvg, ninjaOutlineSvg, ninjaPartSvg, ninjaStandSvg } from './ninjas';
+import { ninjaAsleepSvg, ninjaDottedSvg, ninjaPoseSvg, ninjaSilhouetteSvg } from './poses';
 import { golemRig, ninjaRig, partKey, rigParts } from './rigs';
 import { backgroundSvg, rockSvg } from './scenery';
 import { toDataUri } from './svg';
@@ -38,6 +41,7 @@ export function artEntries(): { key: string; svg: string }[] {
     ...ELEMENTS.flatMap((el) => [
       { key: `ninja-${el}-outline`, svg: ninjaOutlineSvg(el) },
       { key: `ninja-${el}-ko`, svg: ninjaKoSvg(el) },
+      { key: `ninja-${el}-asleep`, svg: ninjaAsleepSvg(el) },
       { key: `card-${el}`, svg: miniCardSvg(el) },
       { key: `placed-${el}`, svg: placedCardSvg(el) },
     ]),
@@ -120,10 +124,63 @@ const cached = (key: string, make: () => string): string => {
   return v;
 };
 
+type Ninja = (typeof ELEMENTS)[number];
+
+/** Las dos poses entre las que respira un ninja en reposo: las mismas del tablero. */
+const idlePoses = (el: Ninja): [Pose, Pose] => {
+  const frames = NINJA_CLIPS[el].idle.frames;
+  return [frames[0]?.pose ?? {}, frames[1]?.pose ?? {}];
+};
+
+/**
+ * La pose de acción de quien ya eligió: en guardia, con las piernas abiertas y el arma al frente. Va y
+ * vuelve en un vaivén corto, como quien espera la señal.
+ */
+const ACTION_POSES: [Pose, Pose] = [
+  {
+    root: { sy: 0.96, r: -3 },
+    torso: { r: -4 },
+    head: { r: 3 },
+    armFront: { r: -38 },
+    armBack: { r: 26 },
+    legFront: { r: -12 },
+    legBack: { r: 12 },
+    tails: { r: 14 },
+  },
+  {
+    root: { sy: 0.99, r: -3, y: -2 },
+    torso: { r: -3 },
+    head: { r: 1 },
+    armFront: { r: -48 },
+    armBack: { r: 32 },
+    legFront: { r: -10 },
+    legBack: { r: 10 },
+    tails: { r: 22 },
+  },
+];
+
 /** Data URIs para usar el mismo arte en React (<img src>). */
 export const art = {
-  bust: (el: (typeof ELEMENTS)[number]) => cached(`bust-${el}`, () => ninjaBustSvg(el)),
-  ninja: (el: (typeof ELEMENTS)[number]) => cached(`ninja-${el}`, () => ninjaStandSvg(el)),
+  bust: (el: Ninja) => cached(`bust-${el}`, () => ninjaBustSvg(el)),
+  ninja: (el: Ninja) => cached(`ninja-${el}`, () => ninjaStandSvg(el)),
+  /** El ninja en reposo, con las poses del tablero. `moving`: respira; si no, queda quieto. */
+  idle: (el: Ninja, moving = true) =>
+    cached(`idle-${el}-${moving}`, () => {
+      const [a, b] = idlePoses(el);
+      return ninjaPoseSvg(el, a, moving ? b : null, 760);
+    }),
+  /** El ninja en pose de acción: el que eligió quien juega. */
+  action: (el: Ninja, moving = true) =>
+    cached(`action-${el}-${moving}`, () => {
+      const [a, b] = ACTION_POSES;
+      return ninjaPoseSvg(el, a, moving ? b : null, 620);
+    }),
+  /** La silueta de tinta de un asiento que todavía no tiene a nadie. */
+  silhouette: (el: Ninja) => cached(`silhouette-${el}`, () => ninjaSilhouetteSvg(el)),
+  /** La silueta punteada de un asiento libre. */
+  dotted: (el: Ninja) => cached(`dotted-${el}`, () => ninjaDottedSvg(el)),
+  /** El ninja de quien no está: gris y dormido. */
+  asleep: (el: Ninja) => cached(`asleep-${el}`, () => ninjaAsleepSvg(el)),
   golem: (k: (typeof ENEMY_KINDS)[number]) => cached(`golem-${k}`, () => golemBustSvg(k)),
   icon: (n: IconName) => cached(`icon-${n}`, () => iconSvg(n)),
   background: (m: (typeof MAPS)[number]) => cached(`bg-${m}`, () => backgroundSvg(m, 1)),

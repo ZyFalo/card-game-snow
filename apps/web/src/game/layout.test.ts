@@ -6,10 +6,13 @@ import { golemRig, ninjaRig } from '../art/rigs';
 import {
   FIGURE_SINK,
   FOOT_Y,
+  footPoint,
   MINI,
   miniRect,
   ORDER_BADGE,
   orderPoint,
+  READY_MARK,
+  readyPoint,
   TH,
   TW,
   tileRect,
@@ -260,5 +263,37 @@ describe('El número de orden y las miniaturas', () => {
     };
     expect(reaches(low, life)).toBe(false);
     expect(low.right).toBeLessThan(feet.x + hpText.x);
+  });
+});
+
+describe('La marca de listo de una partida en línea (R-36)', () => {
+  const at = { x: 4, y: 2 };
+  const circle = (c: { x: number; y: number }, r: number) => ({ x: c.x - r, y: c.y - r, w: 2 * r, h: 2 * r });
+  const mark = (below: boolean) => circle(readyPoint(at, below), READY_MARK.r + READY_MARK.stroke / 2);
+  const hits = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  it('va al centro de la casilla, sobre la cabeza, sin pisar el número de orden ni los íconos de estado', () => {
+    const tile = tileRect(at);
+    expect(readyPoint(at).x).toBe(tile.x + tile.w / 2);
+    const order = circle(orderPoint(at), ORDER_BADGE.r + ORDER_BADGE.stroke / 2);
+    expect(hits(mark(false), order)).toBe(false);
+    const fp = footPoint(at);
+    const icon = {
+      x: fp.x + UNIT_HUD.icon.x - UNIT_HUD.icon.size / 2,
+      y: fp.y + UNIT_HUD.icon.y - UNIT_HUD.icon.size / 2,
+      w: UNIT_HUD.icon.size,
+      h: UNIT_HUD.icon.size,
+    };
+    expect(hits(mark(false), icon)).toBe(false);
+  });
+
+  it('con una carta en la casilla baja al pecho: no tapa ninguna miniatura ni la barra de vida', () => {
+    for (const el of ELEMENTS) expect(hits(mark(true), miniRect(at, el)), el).toBe(false);
+    const fp = footPoint(at);
+    const bar = { x: fp.x + UNIT_HUD.bar.x, y: fp.y + UNIT_HUD.bar.y, w: UNIT_HUD.bar.w, h: UNIT_HUD.bar.h };
+    expect(hits(mark(true), bar)).toBe(false);
+    // Arriba sí quedaría sobre la miniatura del centro: por eso baja.
+    expect(hits(mark(false), miniRect(at, 'water'))).toBe(true);
   });
 });

@@ -20,6 +20,7 @@ import {
 import { activeAids } from './aids';
 import { activeInfo, plansArray, reviverOf, threatTiles } from './planning';
 import type { AppState } from './store';
+import { isAsleep } from './team';
 
 /*
  * Capas del tablero durante la planificación (lineamientos de diseño, sección "Tablero"). Este módulo
@@ -133,6 +134,11 @@ export interface BoardLayers {
   order: { ninja: ElementKind; at: Vec; n: number; below: boolean }[];
   /** Líneas de mira: solo las que pide el ratón. */
   aims: AimLine[];
+  /**
+   * En línea: los ninjas que ya confirmaron su turno (R-36), en la casilla donde están. Llevan la marca
+   * verde de listo. `below`: en esa casilla hay una carta colocada, y la marca baja para no tapar su miniatura.
+   */
+  ready: { ninja: ElementKind; at: Vec; below: boolean }[];
 
   /** Ayuda "Ver el alcance de los enemigos" (D-78): lo que puede golpear el gólem que está bajo el ratón. */
   threat: ReachTile[];
@@ -148,7 +154,7 @@ export interface BoardLayers {
 type BoardState = Pick<
   AppState,
   'phase' | 'screen' | 'settings' | 'local' | 'match' | 'plans' | 'active' | 'pendingCard' | 'hover'
->;
+> & { online?: Pick<AppState['online'], 'match'> };
 
 /** Lo que muestra el tablero mientras se planifica; `null` fuera de la planificación. */
 export function boardLayers(s: BoardState): BoardLayers | null {
@@ -174,6 +180,7 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     combo: false,
     order: [],
     aims: [],
+    ready: [],
     threat: [],
     losses: [],
     hover,
@@ -259,8 +266,10 @@ export function boardLayers(s: BoardState): BoardLayers | null {
     }
     const a = plan.action;
     if (a?.type === 'card') {
-      const value = n.hand.find((c) => c.id === a.cardId)?.value ?? null;
-      if (value !== null) played += 1;
+      const card = n.hand.find((c) => c.id === a.cardId);
+      // En línea, la carta de un compañero llega tapada, sin valor, hasta que el servidor lo manda (R-35).
+      const value = card && card.value > 0 ? card.value : null;
+      if (card) played += 1;
       const group = placed.get(key(a.at)) ?? { at: a.at, cards: [], area: area3x3(a.at), full: null, faded: false };
       group.cards.push({ ninja: n.id, value });
       placed.set(key(a.at), group);
@@ -281,6 +290,16 @@ export function boardLayers(s: BoardState): BoardLayers | null {
   layers.combo = played >= 2;
   // Las miniaturas ocupan la franja de arriba de su casilla: ahí el número de orden cambia de esquina.
   for (const o of layers.order) o.below = placed.has(key(o.at));
+
+  // En línea: quién ya confirmó. Un ninja caído, o quieto porque su dueño no está, no lleva la marca.
+  const om = s.local ? null : (s.online?.match ?? null);
+  if (om) {
+    for (const id of ELEMENTS) {
+      const n = getNinja(m, id);
+      if (!n || n.hp <= 0 || !om.ready.includes(id) || isAsleep(om, id)) continue;
+      layers.ready.push({ ninja: id, at: n.pos, below: placed.has(key(n.pos)) });
+    }
+  }
 
   for (const group of placed.values()) {
     const over = hover !== null && eq(hover, group.at);

@@ -15,6 +15,7 @@ import { clickTile, notify, setHover, undo } from '../state/actions';
 import { type AimLine, type BoardLayers, boardLayers, type PlacedCards, type TargetMark } from '../state/board';
 import { bridge } from '../state/bridge';
 import { type CardFlight, type Overlay, type ResolveStep, store } from '../state/store';
+import { isAsleep } from '../state/team';
 import { Fx } from './fx';
 import {
   aimPoint,
@@ -26,7 +27,9 @@ import {
   miniRect,
   ORDER_BADGE,
   orderPoint,
+  READY_MARK,
   RES,
+  readyPoint,
   TH,
   TW,
   tileAt,
@@ -44,6 +47,7 @@ const RED = hex(PALETTE.danger);
 const MINT = hex(ELEMENT_COLORS.snow.base);
 const GOLD = hex(PALETTE.gold);
 const WHITE = hex(PALETTE.paperLight);
+const OK = hex(PALETTE.ok);
 
 type Pt = { x: number; y: number };
 type Apply = (e: GameEvent) => void;
@@ -152,11 +156,13 @@ export class BattleScene extends Phaser.Scene {
         s.match !== prev.match ||
         s.screen !== prev.screen ||
         s.local !== prev.local ||
+        s.online.match !== prev.online.match ||
         s.settings.aidDamage !== prev.settings.aidDamage ||
         s.settings.aidReach !== prev.settings.aidReach
       ) {
         this.redrawPlanning();
       }
+      if (s.online.match?.seats !== prev.online.match?.seats || s.local !== prev.local) this.syncSleepers();
       if (
         s.settings.reducedMotion !== prev.settings.reducedMotion ||
         s.settings.fastAnimations !== prev.settings.fastAnimations
@@ -195,6 +201,18 @@ export class BattleScene extends Phaser.Scene {
   /** Lo que el tablero muestra al planificar; `null` fuera de la planificación. */
   protected planning(): BoardLayers | null {
     return boardLayers(store.getState());
+  }
+
+  /** En línea: los ninjas que están quietos porque quien los lleva se desconectó o salió (R-38). */
+  protected sleepers(): ElementKind[] {
+    const { local, online } = store.getState();
+    return local ? [] : ELEMENTS.filter((id) => isAsleep(online.match, id));
+  }
+
+  /** Duerme o despierta a cada ninja, según quién sigue en la partida. */
+  private syncSleepers(): void {
+    const asleep = this.sleepers();
+    for (const id of ELEMENTS) this.units.get(id)?.setAsleep(asleep.includes(id));
   }
 
   /** Un cartel sobre el tablero (ronda, combo o bonus), o `null` para quitarlo. */
@@ -311,6 +329,7 @@ export class BattleScene extends Phaser.Scene {
       if (n.hp <= 0) u.setKo(true);
     }
     for (const e of view.enemies) this.makeEnemy(e.id, e.kind, e.pos, e.hp, e.maxHp);
+    this.syncSleepers();
     this.redrawPlanning();
     return this.generation;
   }
@@ -322,6 +341,7 @@ export class BattleScene extends Phaser.Scene {
       rig: ninjaRig(id),
       clips: NINJA_CLIPS[id],
       koTexture: `ninja-${id}-ko`,
+      asleepTexture: `ninja-${id}-asleep`,
       size: UNIT_SIZE.ninja,
       pos,
       hp,
@@ -383,6 +403,23 @@ export class BattleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(1601);
     this.labels.push(g, t);
+  }
+
+  /** La marca verde de listo sobre un ninja que ya confirmó (R-36): un círculo grande con su palomita. */
+  private readyMark(at: Pt): void {
+    const { r, stroke } = READY_MARK;
+    const g = this.add.graphics().setDepth(1602);
+    g.fillStyle(OK, 1);
+    g.fillCircle(at.x, at.y, r);
+    g.lineStyle(stroke, INK, 1);
+    g.strokeCircle(at.x, at.y, r);
+    g.lineStyle(3.5, WHITE, 1);
+    g.beginPath();
+    g.moveTo(at.x - r * 0.46, at.y + r * 0.04);
+    g.lineTo(at.x - r * 0.1, at.y + r * 0.4);
+    g.lineTo(at.x + r * 0.5, at.y - r * 0.34);
+    g.strokePath();
+    this.labels.push(g);
   }
 
   private reticle(g: Phaser.GameObjects.Graphics, c: Pt, alpha: number, solid: boolean): void {
@@ -699,6 +736,9 @@ export class BattleScene extends Phaser.Scene {
 
     // D-32: el orden real de R-11, en la casilla desde la que actúa cada ninja; sin acción no hay número.
     for (const o of layers.order) this.badge(orderPoint(o.at, o.below), `${o.n}`, colorOf(o.ninja));
+
+    // En línea: la marca de listo sobre cada ninja que ya confirmó (R-36).
+    for (const r of layers.ready) this.readyMark(readyPoint(r.at, r.below));
 
     if (layers.hover) {
       const r = tileRect(layers.hover);

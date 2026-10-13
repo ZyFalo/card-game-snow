@@ -1,0 +1,2066 @@
+/*
+ * El juego en línea fuera del tablero: la ficha, la búsqueda de equipo, las salas y los avisos (D-87 a
+ * D-89 y D-100). Todo va sobre la grilla de los lineamientos (sección 12): 12 columnas en el escenario de
+ * 1280×720, 8 entre 600 y 1023 px, y 4 por debajo de 600 px. El contenedor `online` mide el ancho en que
+ * se dibuja la pantalla: el del escenario, o el de la ventana cuando va en la capa adaptable.
+ */
+.online-root {
+  position: absolute;
+  inset: 0;
+  container: online / inline-size;
+  pointer-events: auto;
+}
+
+.online-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-group);
+  padding: var(--edge-top) var(--grid-margin);
+}
+
+.online-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gutter);
+  row-gap: var(--space-item);
+  min-height: 0;
+}
+
+/* La ✕ va en el margen de la grilla: no pisa ninguna columna. */
+.online-x {
+  position: absolute;
+  top: var(--grid-step);
+  right: var(--grid-step);
+  z-index: 3;
+}
+
+.quiet {
+  color: var(--ink-2);
+}
+
+.beta-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font: 700 var(--text-small) / 1.3 var(--font-ui);
+  color: var(--ink);
+  background: var(--gold);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.btn-xl {
+  min-height: 64px;
+  padding: 12px 72px;
+  font-size: 24px;
+}
+
+.spin {
+  display: inline-grid;
+  place-items: center;
+  animation: spin 1.4s linear infinite;
+}
+
+.spin svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.link-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  margin: 0 auto 0 0;
+  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.link-line .spin {
+  width: 20px;
+  height: 20px;
+}
+
+.online-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  min-height: 48px;
+}
+
+.online-head h1 {
+  margin: 0;
+  font-size: var(--text-title);
+  line-height: 1.1;
+}
+
+.online-intro {
+  margin: calc(-1 * var(--space-item)) 0 0;
+  max-width: var(--read-max);
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.online-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-item);
+  min-height: 54px;
+}
+
+.online-line {
+  flex: 1;
+  margin: 0;
+  font: 700 var(--text-lead) / var(--leading) var(--font-ui);
+  text-align: right;
+}
+
+.online-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.online-note .notice {
+  flex: 1;
+}
+
+/* ---------- El escenario ---------- */
+.scenery {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-panel);
+}
+
+/* El fondo va más ancho que el escenario: las montañas de los costados quedan fuera, y el piso, despejado. */
+.scenery-bg {
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 140%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+
+/* La franja que va sobre el escenario: la oferta del bot, o el ninja que ya está ocupado. */
+.stage-strip {
+  position: absolute;
+  left: 50%;
+  top: var(--space-item);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  max-width: calc(100% - 2 * var(--space-item));
+  padding: var(--space-in) var(--space-item);
+  font: 700 var(--text-body) / var(--leading) var(--font-ui);
+  transform: translateX(-50%);
+  animation: dropInCentered 0.35s backwards;
+}
+
+.stage-strip .btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+
+.stage-strip > span {
+  white-space: nowrap;
+}
+
+.strip-note {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* ---------- La ficha: elegir ninja ---------- */
+.online-screen.pick {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.pick-card {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-item);
+  padding: var(--space-group);
+  background: var(--el-soft);
+}
+
+.online-kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.pick-card header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.pick-card header img {
+  flex: none;
+  width: 80px;
+  height: 80px;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-panel);
+}
+
+.pick-card h1 {
+  margin: 0;
+  font-size: var(--text-title);
+  line-height: 1.1;
+  color: var(--el-lo);
+}
+
+.pick-card header p {
+  margin: 4px 0 0;
+  font: 700 var(--text-body) / 1.3 var(--font-ui);
+}
+
+.pick-stats {
+  display: grid;
+  gap: var(--space-in);
+  margin: 0;
+}
+
+.pick-stats > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.pick-stats dt {
+  font: 700 var(--text-body) / 1.3 var(--font-ui);
+}
+
+.pick-stats dd {
+  margin: 0;
+}
+
+.statbar {
+  display: block;
+  height: 14px;
+  overflow: hidden;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.statbar i {
+  display: block;
+  height: 100%;
+  background: var(--el);
+  border-right: var(--line) solid var(--ink);
+}
+
+.pick-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-in);
+  padding-top: var(--space-item);
+  border-top: 1.5px solid rgba(31, 36, 64, 0.2);
+}
+
+.pick-line.combo-line {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.pick-line .demo-open {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
+
+.pick-line p {
+  margin: 0;
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+}
+
+.pick-foot {
+  margin-top: auto;
+  padding-top: var(--space-item);
+  border-top: 1.5px solid rgba(31, 36, 64, 0.2);
+}
+
+.pick-main {
+  grid-column: span 8;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  gap: var(--space-group);
+  min-height: 0;
+}
+
+.path-chip {
+  position: absolute;
+  left: 50%;
+  top: var(--space-item);
+  z-index: 2;
+  padding: 3px 12px;
+  font: 700 var(--text-small) / 1.3 var(--font-ui);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.pick-front,
+.pick-side {
+  position: absolute;
+  bottom: 6%;
+  width: auto;
+  filter: drop-shadow(0 8px 0 var(--shade));
+}
+
+.pick-front {
+  left: 50%;
+  z-index: 1;
+  height: 72%;
+  transform: translateX(-50%);
+  animation: pickIn 0.3s ease-out backwards;
+}
+
+.pick-side {
+  bottom: 14%;
+  height: 40%;
+  opacity: 0.42;
+  filter: grayscale(0.5);
+}
+
+.pick-side.at-left {
+  left: 14%;
+}
+
+.pick-side.at-right {
+  right: 14%;
+}
+
+@keyframes pickIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.96);
+  }
+}
+
+.stage-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  margin-top: -21px;
+}
+
+.stage-arrow.at-left {
+  left: var(--space-item);
+}
+
+.stage-arrow.at-right {
+  right: var(--space-item);
+}
+
+.pick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-item);
+}
+
+/* La línea de la conexión no descentra los botones. */
+.pick-actions .link-line {
+  position: absolute;
+  margin: 0;
+  left: calc(var(--grid-margin) + (100% - 2 * var(--grid-margin) + var(--grid-gutter)) / 3);
+}
+
+/* ---------- Los asientos: buscando equipo y salas ---------- */
+.seats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  padding: 0 0 var(--space-group);
+}
+
+.seat {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-in);
+  height: 100%;
+  min-height: 0;
+  justify-content: flex-end;
+}
+
+.seat-figure {
+  display: block;
+  flex: 0 1 auto;
+  min-height: 0;
+  height: 66%;
+  width: auto;
+  filter: drop-shadow(0 8px 0 var(--shade));
+}
+
+.seat-empty {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  flex: 0 1 auto;
+  min-height: 0;
+  height: 66%;
+}
+
+.seat-empty .seat-figure {
+  height: 100%;
+  opacity: 0.86;
+  filter: none;
+}
+
+.seat-empty .spin {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  color: var(--paper-hi);
+}
+
+/* Un asiento libre es solo un contorno: sin sombra. */
+.seat[data-state="free"] .seat-figure {
+  filter: none;
+}
+
+.seat.away .seat-figure {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.seat-label {
+  padding: 3px 12px;
+  font: 500 var(--text-body) / 1.4 var(--font-ui);
+  text-align: center;
+  background: rgba(246, 249, 251, 0.94);
+  border-radius: 8px;
+}
+
+.seat-label b {
+  font-weight: 700;
+  color: var(--el-lo);
+}
+
+.seat.mine .seat-label {
+  box-shadow: var(--ring);
+}
+
+/* ---------- Salas con código ---------- */
+.online-screen.rooms {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bajo las dos opciones, el equipo: llena el espacio que queda y dice de qué va la sala. */
+.rooms-art {
+  flex: 1;
+  display: grid;
+  place-items: end center;
+  min-height: 0;
+}
+
+.rooms-art .ninja-trio img {
+  height: 200px;
+}
+
+.room-option {
+  grid-column: span 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-in);
+  padding: var(--space-group);
+}
+
+.room-option h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.15;
+}
+
+.room-option p {
+  margin: 0 0 var(--space-in);
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.join-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.code-input {
+  width: 200px;
+  height: var(--control-h);
+  padding: 0 var(--gap-2);
+  font: 700 var(--text-section) / 1.2 var(--font-ui);
+  letter-spacing: 0.2em;
+  color: var(--ink);
+  text-transform: uppercase;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+  user-select: text;
+}
+
+.code-input::placeholder {
+  color: var(--ink-3);
+}
+
+.code-input:focus-visible,
+.copy-code:focus-visible,
+.online-x:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.code-input[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: var(--shadow-danger);
+}
+
+.room-option .join-error {
+  min-height: 20px;
+  margin: 0;
+  color: var(--danger);
+}
+
+.room-code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  margin-left: auto;
+  font: 500 var(--text-body) / 1.3 var(--font-ui);
+}
+
+.room-code .code {
+  padding: 4px 16px;
+  font: var(--text-panel) / 1.2 var(--font-display);
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  box-shadow: var(--shadow-control);
+  border-radius: var(--radius-control);
+  user-select: text;
+}
+
+/* ---------- Diálogos (lineamientos, sección 12: plantilla de diálogo, 6 columnas) ---------- */
+.dialog-backdrop {
+  z-index: 30;
+}
+
+.dialog {
+  width: min(576px, calc(100% - 2 * var(--space-item)));
+  padding: var(--space-group);
+  animation: riseIn 0.25s backwards;
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.15;
+}
+
+.dialog-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+}
+
+.dialog-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.dialog-icon.tone-gold {
+  background: #fdf0d5;
+}
+
+.dialog-icon.tone-danger {
+  background: var(--fire-soft);
+}
+
+.dialog-icon.tone-snow {
+  background: var(--snow-soft);
+}
+
+.dialog p {
+  margin: var(--space-item) 0 var(--space-group);
+  max-width: var(--read-max);
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+  color: var(--ink-2);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-item);
+}
+
+/* ---------- Animaciones reducidas ---------- */
+.reduced .spin,
+.reduced .pick-front,
+.reduced .stage-strip,
+.reduced .dialog {
+  animation: none;
+}
+
+/* ---------- Capa adaptable: la misma pantalla, a lo ancho de la ventana ---------- */
+.fluid {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--paper);
+  -webkit-overflow-scrolling: touch;
+}
+
+.fluid .online-root {
+  position: relative;
+  inset: auto;
+  min-height: 100%;
+}
+
+.fluid .screen {
+  position: relative;
+  inset: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.fluid .dialog-backdrop,
+.fluid .modal-backdrop,
+.fluid .demo-backdrop.over {
+  position: fixed;
+}
+
+/* Una ventana, como la de una caja recién abierta, nunca es más ancha ni más alta que la pantalla. */
+.fluid .modal {
+  width: min(640px, calc(100vw - 2 * var(--space-item)));
+  max-height: calc(100dvh - 2 * var(--space-item));
+}
+
+.fluid .reveal-cards {
+  flex-wrap: wrap;
+  gap: var(--space-item);
+}
+
+.fluid .demo.over {
+  position: fixed;
+  max-width: calc(100vw - 2 * var(--space-item));
+}
+
+/* 8 columnas: de 600 a 1023 px. */
+@container online (max-width: 1023px) {
+  /* Arriba queda lugar para la ✕, que con márgenes angostos ya no cabe a un lado. */
+  .online-screen {
+    --grid-margin: 32px;
+    grid-template-rows: auto auto auto;
+    align-content: start;
+    gap: var(--space-item);
+    padding: 64px var(--grid-margin) var(--space-group);
+  }
+
+  .online-grid {
+    align-content: start;
+  }
+
+  .online-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .online-head h1 {
+    font-size: var(--text-panel);
+  }
+
+  .online-head {
+    flex-wrap: wrap;
+    padding-right: var(--space-zone);
+  }
+
+  .scenery {
+    aspect-ratio: 16 / 9;
+    min-height: 260px;
+  }
+
+  .online-screen.pick {
+    grid-template-rows: auto;
+  }
+
+  /* El escenario primero: ahí se elige; la ficha del ninja va debajo, en horizontal. */
+  .pick-main {
+    grid-column: span 8;
+    order: 1;
+    grid-template-rows: auto;
+  }
+
+  .pick-card {
+    grid-column: span 8;
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: min-content;
+    column-gap: var(--grid-gutter);
+    align-items: start;
+  }
+
+  .pick-card .online-kicker,
+  .pick-card .pick-foot {
+    grid-column: 1 / -1;
+  }
+
+  .pick-card header {
+    grid-area: 2 / 1;
+  }
+
+  .pick-card .pick-stats {
+    grid-area: 3 / 1;
+  }
+
+  .pick-card .pick-line {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .pick-card .card-line {
+    grid-area: 2 / 2;
+  }
+
+  .pick-card .combo-line {
+    grid-area: 3 / 2;
+  }
+
+  .pick-actions .link-line {
+    position: static;
+  }
+
+  .btn-xl {
+    min-height: 54px;
+    padding: 12px 48px;
+    font-size: var(--text-section);
+  }
+
+  .room-option {
+    grid-column: span 4;
+  }
+
+  .room-code {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .online-foot {
+    flex-wrap: wrap;
+  }
+
+  .online-line {
+    flex: 1 1 100%;
+    text-align: left;
+  }
+
+  .stage-strip {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: calc(100% - 2 * var(--space-item));
+    text-align: center;
+  }
+
+  .stage-strip > span {
+    white-space: normal;
+  }
+
+  .rooms-art {
+    display: none;
+  }
+}
+
+/* 4 columnas: menos de 600 px. */
+@container online (max-width: 599px) {
+  .online-screen {
+    --grid-margin: 16px;
+    padding: 64px var(--grid-margin) var(--space-group);
+  }
+
+  .online-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pick-main,
+  .pick-card,
+  .room-option {
+    grid-column: span 4;
+  }
+
+  .pick-card {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .pick-card .card-line {
+    padding-top: var(--space-item);
+    border-top: 1.5px solid rgba(31, 36, 64, 0.2);
+  }
+
+  .scenery {
+    aspect-ratio: 4 / 3;
+    min-height: 240px;
+  }
+
+  .seat-label {
+    padding: 2px 6px;
+    font-size: var(--text-small);
+  }
+
+  .pick-actions,
+  .online-foot {
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .online-foot .online-line,
+  .online-foot .link-line {
+    flex: none;
+    margin: 0;
+  }
+
+  .pick-actions .btn,
+  .online-foot .btn {
+    width: 100%;
+  }
+
+  .join-form {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .code-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .room-code {
+    flex-wrap: wrap;
+  }
+
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .stage-arrow.at-left {
+    left: var(--space-in);
+  }
+
+  .stage-arrow.at-right {
+    right: var(--space-in);
+  }
+}
+
+/* ---------- El combate en línea (D-90 a D-93): solo en el escenario de 1280×720 (D-73) ---------- */
+
+/* La tarta del reloj: una porción por segundo. En los últimos 3, el número grande. */
+.pie {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+}
+
+.pie svg {
+  width: 56px;
+  height: 56px;
+}
+
+.pie-rim {
+  fill: var(--paper-hi);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+
+.pie path {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.pie path.on {
+  fill: var(--gold);
+}
+
+.pie path.on.alt {
+  fill: #e0a52b;
+}
+
+.pie path.off {
+  fill: #eef3f7;
+}
+
+.pie.urgent {
+  color: var(--gold);
+  background: var(--ink);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+}
+
+.pie.urgent span {
+  font-size: 32px;
+  line-height: 1;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+/* "Listo": esta persona ya confirmó, y no puede cambiar su plan. */
+.confirm.is-ready,
+.confirm.is-ready:disabled {
+  color: var(--ok-lo);
+  background: var(--paper-hi);
+  opacity: 1;
+}
+
+.confirm.is-ready svg path {
+  stroke: var(--ok);
+  stroke-width: 3.2;
+}
+
+/* Las franjas de la conexión: arriba, sobre el tablero y sin bloquearlo. */
+.net-strip {
+  position: absolute;
+  left: 50%;
+  top: 76px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  padding: var(--space-in) var(--space-item);
+  font: 500 var(--text-notice) / 1.35 var(--font-ui);
+  white-space: nowrap;
+  box-shadow: var(--shadow-control);
+  border-radius: var(--radius-control);
+  transform: translateX(-50%);
+  animation: dropInCentered 0.3s backwards;
+}
+
+.net-strip b {
+  font-weight: 700;
+}
+
+.net-strip .spin {
+  width: 22px;
+  height: 22px;
+}
+
+.net-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--snow-soft);
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+}
+
+.net-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Los paneles: de quién es cada ninja y cómo va esa persona. El de quien juega, con el contorno dorado. */
+.hud-online .ninja-panel {
+  cursor: default;
+  pointer-events: auto;
+}
+
+.ninja-panel.mine {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    7px 7px 0 var(--ink);
+}
+
+.ninja-panel.asleep {
+  filter: grayscale(1);
+  opacity: 0.78;
+}
+
+.np-who {
+  max-width: 132px;
+  overflow: hidden;
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.seat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.seat-pill svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.seat-pill.is-ready {
+  color: #fff;
+  background: var(--ok);
+}
+
+.seat-pill.is-ready svg path {
+  stroke: #fff;
+  stroke-width: 3.4;
+}
+
+.seat-pill.is-planning {
+  color: var(--ink-2);
+}
+
+.seat-pill.is-away,
+.seat-pill.is-left,
+.seat-pill.is-ko {
+  color: #fff;
+  background: var(--ink-2);
+}
+
+.reduced .net-strip,
+.reduced .pie.urgent span {
+  animation: none;
+}
+
+/* ---------- La carga (D-100) ---------- */
+.online-loading {
+  background: linear-gradient(160deg, #cfdbe6, #eef3f7 60%, var(--paper-hi));
+}
+
+/* La marca del pliegue, en diagonal, entre el equipo y los gólems. */
+.load-slash {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 36, 64, 0.08);
+  clip-path: polygon(47% 0, 57% 0, 50% 72%, 40% 76%);
+}
+
+.load-band {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  clip-path: polygon(0 78%, 100% 58%, 100% 100%, 0 100%);
+}
+
+.load-figure {
+  position: absolute;
+  filter: drop-shadow(5px 6px 0 var(--shade));
+}
+
+.load-mate {
+  height: 250px;
+  opacity: 0.86;
+}
+
+.load-mate.first {
+  left: 4%;
+  top: 14%;
+  transform: rotate(-8deg);
+}
+
+.load-mate.second {
+  left: 17%;
+  top: 4%;
+  transform: rotate(-4deg);
+}
+
+.load-you {
+  left: 24%;
+  top: 9%;
+  z-index: 1;
+  height: 400px;
+  transform: rotate(-10deg);
+  animation: loadIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+
+.load-golem {
+  filter: drop-shadow(-5px 6px 0 var(--shade));
+}
+
+.load-golem.g1 {
+  right: 8%;
+  top: 6%;
+  height: 250px;
+}
+
+.load-golem.g2 {
+  right: 26%;
+  top: 22%;
+  height: 170px;
+}
+
+.load-golem.g3 {
+  right: 1%;
+  top: 34%;
+  height: 190px;
+}
+
+@keyframes loadIn {
+  from {
+    opacity: 0;
+    transform: rotate(-10deg) translate(-40px, 20px);
+  }
+}
+
+/* La barra de carga: una tira de papel que se llena en dorado, con el ícono girando. */
+.load-bar {
+  position: absolute;
+  left: var(--grid-margin);
+  bottom: 72px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  width: 420px;
+  color: var(--paper-hi);
+}
+
+.load-bar .spin {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+.load-track {
+  flex: 1;
+  height: 20px;
+  overflow: hidden;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--paper-hi);
+  border-radius: 4px 12px 5px 14px;
+}
+
+.load-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--gold);
+  transform-origin: 0 50%;
+  animation: loadFill var(--load-ms, 3400ms) cubic-bezier(0.3, 0.1, 0.4, 1) backwards;
+}
+
+@keyframes loadFill {
+  from {
+    transform: scaleX(0.04);
+  }
+}
+
+.load-tip {
+  position: absolute;
+  right: var(--grid-margin);
+  bottom: 40px;
+  z-index: 2;
+  width: 560px;
+  color: var(--paper-hi);
+}
+
+.load-tip h2 {
+  margin: 0 0 var(--space-in);
+  font-size: var(--text-panel);
+  line-height: 1.1;
+  color: var(--gold);
+  transform: rotate(-2deg);
+  transform-origin: 0 100%;
+}
+
+.load-tip p {
+  margin: 0;
+  font: 500 19px / 1.5 var(--font-ui);
+}
+
+.load-tip b {
+  margin-right: 4px;
+  padding: 1px 8px;
+  font-weight: 700;
+  color: var(--el-lo);
+  background: var(--paper-hi);
+  border-radius: 6px;
+}
+
+.reduced .load-you,
+.reduced .load-fill {
+  animation: none;
+}
+
+/* ---------- Los resultados (D-100): un pergamino sobre la batalla ---------- */
+.online-results {
+  display: grid;
+  place-items: center;
+  background: rgba(31, 36, 64, 0.38);
+}
+
+.scroll {
+  --roll: 22px;
+  position: relative;
+  width: 872px;
+  padding: 52px calc(var(--space-zone) + var(--roll)) var(--space-group);
+  background: #f7f1e3;
+  border: solid var(--ink);
+  border-width: var(--line) 0;
+  border-radius: 6px;
+  box-shadow: 5px 5px 0 var(--ink);
+  animation: riseIn 0.4s backwards;
+}
+
+/* Los rollos del pergamino, a los lados: van dentro de su caja y hacen de borde, para no desbordarla. */
+.scroll::before,
+.scroll::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  width: var(--roll);
+  background: linear-gradient(90deg, #eadfc6 0 55%, #dccfb0 55% 100%);
+  border: var(--line) solid var(--ink);
+  border-radius: 11px;
+}
+
+.scroll::before {
+  left: 0;
+}
+
+.scroll::after {
+  right: 0;
+}
+
+.scroll-title {
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  z-index: 1;
+  margin: 0;
+  padding: 6px 40px;
+  font-size: var(--text-title);
+  line-height: 1.15;
+  color: #f7f1e3;
+  white-space: nowrap;
+  background: var(--ink);
+  border-radius: 5px 22px 5px 22px;
+  transform: translateX(-50%) rotate(-2deg);
+}
+
+.scroll-box {
+  padding: var(--gap-2) var(--space-item);
+  background: #fffaf0;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.scroll-box h3 {
+  margin: 0;
+  font: 700 var(--text-lead) / 1.3 var(--font-ui);
+}
+
+.res-rounds {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.res-rounds h3 {
+  width: 80px;
+}
+
+.res-track {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.res-track li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+}
+
+.res-track li:not(:last-child) {
+  flex: 1;
+}
+
+.res-track li:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 6px;
+  background: #c9d3dd;
+  border-radius: 3px;
+}
+
+.res-track li.linked::after {
+  background: var(--ink);
+}
+
+.res-round {
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 var(--space-in);
+  font: 18px / 1 var(--font-display);
+  color: var(--ink-3);
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.res-round.done {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.res-round.bonus {
+  display: inline-flex;
+  gap: 6px;
+  padding: 0 14px;
+  font: 700 var(--text-body) / 1 var(--font-ui);
+}
+
+.res-round.bonus svg {
+  width: 18px;
+  height: 18px;
+}
+
+.res-row {
+  display: grid;
+  grid-template-columns: 5fr 9fr;
+  gap: var(--space-item);
+  margin: var(--space-item) 0;
+}
+
+.res-coins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-in);
+}
+
+.res-counter {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.res-counter svg {
+  width: 36px;
+  height: 36px;
+}
+
+.res-counter output {
+  padding: 4px 14px;
+  font: 32px / 1.1 var(--font-display);
+  letter-spacing: 0.08em;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.res-double {
+  padding: 2px 10px;
+  font: 700 var(--text-lead) / 1.3 var(--font-ui);
+  background: var(--gold);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.res-small {
+  margin: 0;
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.res-reward {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.res-reward > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.res-bar {
+  height: 16px;
+  margin: var(--space-in) 0 6px;
+  overflow: hidden;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
+}
+
+.res-bar i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  border-right: var(--line) solid var(--ink);
+}
+
+.res-bar.ok i {
+  background: var(--ok);
+  border-right: 0;
+}
+
+.res-reward p {
+  margin: 0;
+  font: 500 var(--text-notice) / 1.35 var(--font-ui);
+}
+
+.res-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 80px;
+  background: var(--el-soft);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.res-box svg {
+  width: 34px;
+  height: 34px;
+}
+
+.res-amulet {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.res-amulet h3 {
+  white-space: nowrap;
+}
+
+.ach-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-in);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ach {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: #c9d3dd;
+  background: var(--paper-hi);
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+}
+
+.ach svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ach.got {
+  color: var(--el-ink);
+  background: var(--el);
+}
+
+.ach.fresh {
+  box-shadow: var(--ring);
+}
+
+.res-new {
+  margin: 0 0 0 var(--space-in);
+  font: 500 var(--text-notice) / 1.35 var(--font-ui);
+}
+
+.res-new b {
+  color: #9a6a0c;
+}
+
+.scroll-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-item);
+  margin-top: var(--space-group);
+}
+
+.reduced .scroll {
+  animation: none;
+}
+
+/* En ventanas angostas el pergamino ocupa el ancho y sus cajas se apilan. */
+.fluid .online-results {
+  display: block;
+  padding: var(--space-zone) var(--space-group);
+  background: var(--page);
+}
+
+.fluid .scroll {
+  width: auto;
+  max-width: 872px;
+  margin: 0 auto;
+}
+
+@container online (max-width: 1023px) {
+  .scroll-title {
+    font-size: var(--text-panel);
+    padding: 6px 24px;
+  }
+
+  .res-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container online (max-width: 599px) {
+  .fluid .online-results {
+    padding: var(--space-zone) var(--space-item) var(--space-group);
+  }
+
+  .scroll {
+    --roll: 14px;
+    padding: 44px calc(var(--space-item) + var(--roll)) var(--space-item);
+  }
+
+  .res-rounds,
+  .res-amulet {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .res-track {
+    width: 100%;
+  }
+
+  .scroll-actions {
+    flex-direction: column-reverse;
+  }
+
+  .scroll-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- La Libreta ninja (D-100): un pergamino con pestañas a la izquierda ---------- */
+.notebook {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: var(--grid-gutter);
+  padding: 48px var(--grid-margin) var(--space-zone);
+  background: var(--page);
+}
+
+.note-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-in);
+  padding-top: var(--space-zone);
+}
+
+/* Las pestañas van de pie, con el texto a lo largo: como los separadores de una libreta. */
+.note-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-in);
+  width: 56px;
+  min-height: 176px;
+  padding: var(--space-item) 0;
+  font: 700 var(--text-body) / 1 var(--font-ui);
+  color: var(--ink);
+  background: #eadfc6;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-panel);
+  cursor: pointer;
+}
+
+.note-tab span {
+  writing-mode: vertical-rl;
+  line-height: 1.4;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+.note-tab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.note-tab[aria-selected="true"] {
+  background: #f7f1e3;
+  box-shadow: var(--shadow-control);
+}
+
+.note-tab:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+.note-scroll {
+  width: auto;
+  min-height: 0;
+  margin: 0 var(--space-item);
+  padding-top: 56px;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-item);
+  max-width: var(--read-max);
+  margin: auto 0;
+  font: 500 var(--text-lead) / var(--leading) var(--font-ui);
+}
+
+.note-empty h2,
+.note-empty p {
+  margin: 0;
+}
+
+.note-quiet {
+  margin: 0;
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+/* Mi progreso */
+.note-progress {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-group);
+  min-height: 0;
+}
+
+.note-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-group);
+  min-height: 112px;
+}
+
+.note-camino {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+}
+
+.note-camino img {
+  flex: none;
+  width: 72px;
+  height: 64px;
+  padding: 2px;
+  background: var(--el-soft);
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.note-camino h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.1;
+}
+
+.note-camino p {
+  margin: 4px 0 0;
+  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+  color: var(--el-lo);
+}
+
+.note-wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-in);
+  font: 500 var(--text-notice) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.amulet {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  margin: 0 0 0 auto;
+}
+
+.amulet svg {
+  flex: none;
+  width: 84px;
+  height: 112px;
+}
+
+.amulet figcaption {
+  max-width: 200px;
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.amulet.complete figcaption {
+  font-weight: 700;
+  color: #9a6a0c;
+}
+
+.note-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--grid-gutter);
+  flex: 1;
+  min-height: 0;
+}
+
+.note-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-in);
+  padding: var(--space-item);
+  text-align: center;
+  background: #fffaf0;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.note-card.full {
+  background: var(--el-soft);
+}
+
+.note-card h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  margin: 0;
+  font-size: var(--text-section);
+  line-height: 1.1;
+}
+
+.note-el h3 {
+  color: var(--el-lo);
+}
+
+.note-card h3 svg {
+  width: 24px;
+  height: 24px;
+}
+
+.note-card > p {
+  margin: 0;
+  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+}
+
+.note-el img {
+  flex: 0 1 auto;
+  height: 128px;
+  min-height: 0;
+  margin: var(--space-in) 0;
+}
+
+.note-stats dl {
+  display: grid;
+  width: 100%;
+  margin: var(--space-in) 0 0;
+}
+
+.note-stats dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--gap-2) 0;
+  border-top: 1.5px dashed #c9bfa8;
+}
+
+.note-stats dt {
+  font: 500 var(--text-body) / 1.3 var(--font-ui);
+}
+
+.note-stats dd {
+  margin: 0;
+  font: var(--text-panel) / 1 var(--font-display);
+}
+
+.note-fold {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  list-style: none;
+}
+
+.note-fold li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  font: 500 var(--text-small) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.note-fold i {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: #fffaf0;
+  border: var(--line) solid var(--ink);
+  border-radius: 50%;
+}
+
+.note-fold li.got {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.note-fold li.got i {
+  background: var(--el);
+}
+
+.note-el .link {
+  margin-top: auto;
+  font-size: var(--text-notice);
+}
+
+/* Mis cartas */
+.note-collection,
+.note-boxes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-item);
+  min-height: 0;
+}
+
+.note-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-item);
+}
+
+.note-bar h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-in);
+  margin: 0;
+  font: 700 var(--text-section) / 1.2 var(--font-ui);
+  color: var(--el-lo);
+}
+
+.note-bar h2 svg {
+  width: 28px;
+  height: 28px;
+}
+
+.note-bar .tabs {
+  flex: 1;
+  max-width: 640px;
+}
+
+.note-pages {
+  display: flex;
+  align-items: center;
+  gap: var(--space-item);
+  flex: 1;
+  min-height: 0;
+}
+
+.note-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 132px));
+  grid-template-rows: repeat(2, minmax(0, 168px));
+  justify-content: center;
+  align-content: center;
+  gap: var(--space-item);
+  height: 100%;
+  min-height: 0;
+}
+
+.note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-item);
+}
+
+/* Abrir cajas */
+.note-shop {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: var(--space-zone);
+  align-items: start;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-group);
+  background: #fffaf0;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius-control);
+}
+
+.shop-info {
+  display: grid;
+  gap: var(--gap-2);
+}
+
+.shop-info h2 {
+  margin: 0;
+  font-size: var(--text-panel);
+  line-height: 1.1;
+}
+
+.shop-info p {
+  margin: 0;
+  max-width: var(--read-max);
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+}
+
+.shop-info p.shop-note {
+  font-size: var(--text-notice);
+  color: var(--ink-2);
+}
+
+.reduced .note-scroll {
+  animation: none;
+}
+
+.fluid .notebook {
+  min-height: 100dvh;
+}
+
+@container online (max-width: 1023px) {
+  .notebook {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-group);
+    padding: var(--space-zone) var(--space-group) var(--space-group);
+  }
+
+  /* En ventanas angostas las pestañas pasan arriba, acostadas. */
+  .note-tabs {
+    flex-direction: row;
+    padding: 0 var(--space-zone) 0 0;
+  }
+
+  .note-tab {
+    flex: 1;
+    flex-direction: row;
+    width: auto;
+    min-height: var(--control-h);
+    padding: 0 var(--space-item);
+  }
+
+  .note-tab span {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+
+  .note-scroll {
+    margin: var(--space-item) 0 0;
+    padding: 48px calc(var(--space-item) + var(--roll)) var(--space-item);
+  }
+
+  .note-top {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .amulet {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .note-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .note-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 132px);
+    height: auto;
+  }
+
+  .note-shop {
+    grid-template-columns: 1fr;
+    gap: var(--space-group);
+  }
+
+  .note-bar {
+    flex-wrap: wrap;
+  }
+}
+
+@container online (max-width: 599px) {
+  .notebook {
+    padding: var(--space-group) var(--space-item);
+  }
+
+  .note-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Con poco ancho, cada página se ve en dos columnas de cinco. */
+  .note-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, 120px);
+  }
+
+  .note-pages {
+    align-items: flex-start;
+  }
+
+  .note-actions {
+    flex-direction: column-reverse;
+  }
+
+  .note-actions .btn {
+    width: 100%;
+  }
+
+  .note-bar .tabs {
+    flex-direction: column;
+    width: 100%;
+  }
+}

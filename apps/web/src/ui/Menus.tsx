@@ -126,7 +126,8 @@ function TipsHelp() {
 
 export function HelpModal() {
   const close = () => setHelp(false);
-  const inBattle = store.getState().screen === 'battle';
+  // En una partida local, la ayuda se abre sobre la pausa y vuelve a ella. En línea no hay pausa (R-36).
+  const inBattle = store.getState().screen === 'battle' && store.getState().local;
   const helpDemo = useApp((s) => s.helpDemo);
   return (
     <>

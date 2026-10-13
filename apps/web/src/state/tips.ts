@@ -26,7 +26,10 @@ export interface MomentTip {
   mark: TipMark;
 }
 
-type TipState = Pick<AppState, 'phase' | 'settings' | 'match' | 'plans' | 'active' | 'pendingCard'>;
+type TipState = Pick<AppState, 'phase' | 'settings' | 'match' | 'plans' | 'active' | 'pendingCard'> & {
+  /** En línea cada persona lleva a un solo ninja: el consejo de pasar a otro no aplica. Por defecto, local. */
+  local?: boolean;
+};
 
 const nameOf = (id: ElementKind): string => NINJA_TEXT[id].name;
 
@@ -52,6 +55,7 @@ const MOMENTS: Record<
       : null,
   // El ninja activo ya no tiene nada por decidir y a otro le falta su plan: el foco no salta solo (D-79).
   switchNinja: (m, active, s) =>
+    s.local !== false &&
     !s.pendingCard &&
     !hasPending(m, s.plans, active) &&
     ELEMENTS.some((id) => id !== active && hasPending(m, s.plans, id))

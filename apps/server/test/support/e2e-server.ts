@@ -20,4 +20,10 @@ await admin.end();
 process.env.DATABASE_URL = e2eDatabaseUrl(adminUrl);
 if (process.env.MAIL_OUTBOX_DIR) rmSync(process.env.MAIL_OUTBOX_DIR, { recursive: true, force: true });
 
-await import('../../src/main');
+/*
+ * Los plazos del juego en línea, para las pruebas: un turno largo, para que una prueba que planea y
+ * confirma no dependa de lo cargado que esté el equipo (el turno se resuelve en cuanto confirman todos), y
+ * una oferta del bot corta, para no esperar 30 s en la cola.
+ */
+const { start } = await import('../../src/start');
+await start({ playTimings: { turnMs: 60_000, offerMs: 4_000 } });

@@ -177,6 +177,44 @@ function CardDemo({ ninja, combo }: { ninja: ElementKind; combo: boolean }) {
   );
 }
 
+/**
+ * Qué hacen las cartas de ese ninja, abierta desde la ficha (D-87): va sobre ella, fuera de una partida,
+ * así que no hay mano de la que tomar un valor.
+ */
+export function PickDemo({
+  ninja,
+  combo,
+  onCombo,
+  onClose,
+}: {
+  ninja: ElementKind;
+  combo: boolean;
+  onCombo: (combo: boolean) => void;
+  onClose: () => void;
+}) {
+  const demo = useMemo(() => cardDemo(ninja, null, combo), [ninja, combo]);
+  const t = NINJA_TEXT[ninja];
+  return (
+    <DemoBubble
+      title={DEMO_TEXT.cardTitle(t.element, null)}
+      demo={demo}
+      caption={combo ? DEMO_TEXT.comboCaption(DEMO_TEXT.comboEffect[ninja]) : t.card}
+      onClose={onClose}
+      over
+    >
+      <Segmented
+        label={DEMO_TEXT.mode}
+        value={combo ? 'combo' : 'alone'}
+        options={[
+          { value: 'alone', label: DEMO_TEXT.alone },
+          { value: 'combo', label: DEMO_TEXT.combo },
+        ]}
+        onChange={(v) => onCombo(v === 'combo')}
+      />
+    </DemoBubble>
+  );
+}
+
 /** Cómo ataca ese gólem (D-82). Sus números los pone el motor. `over`: abierta desde la ayuda, sobre ella. */
 export function GolemDemo({ enemy, onClose, over }: { enemy: EnemyKind; onClose: () => void; over?: boolean }) {
   const demo = useMemo(() => golemDemo(enemy), [enemy]);

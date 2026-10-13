@@ -2,7 +2,7 @@ import { BALANCE, type ElementKind, type Ninja, resolutionOrder } from '@ventisc
 import { type CSSProperties, useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { BONUS_SHORT, DEMO_TEXT, ES, HUD, MOMENT_TIP, NINJA_TEXT } from '../i18n/es';
+import { BONUS_SHORT, DEMO_TEXT, ES, HUD, MOMENT_TIP, NINJA_TEXT, ONLINE_TEXT as O } from '../i18n/es';
 import {
   closeDemo,
   confirmTurn,
@@ -17,29 +17,38 @@ import {
   suggest,
   togglePause,
 } from '../state/actions';
+import { askLeave, leaveMatch } from '../state/online';
 import { bonusProgress, contextualTip, namedGolem, planLabel, planStatus, plansArray } from '../state/planning';
 import { useApp } from '../state/store';
+import { isAsleep, onlineTip, SEAT_TEXT, seatState, whoPlays } from '../state/team';
 import { type BubbleSlot, bubbleSlot, type MomentTip, momentTip } from '../state/tips';
 import { ElementGlyph, Icon } from './common';
 import { DemoLayer } from './Demos';
+import { Dialog } from './Online';
 
 export function BattleHud() {
-  const blocked = useApp((s) => s.paused || s.helpOpen);
+  const blocked = useApp((s) => s.paused || s.helpOpen || s.online.leaving);
+  const online = useApp((s) => !s.local && s.online.match !== null);
   return (
-    <div className="hud" inert={blocked}>
-      <TipBar />
-      <TurnControls />
-      <RoundInfo />
-      <Toast />
-      <NinjaPanels />
-      <Hand />
-      <DemoLayer />
-    </div>
+    <>
+      <div className={`hud ${online ? 'hud-online' : ''}`} inert={blocked}>
+        <TipBar />
+        {online ? <OnlineTurnControls /> : <TurnControls />}
+        <RoundInfo />
+        <Toast />
+        {online ? <NetStrip /> : null}
+        <NinjaPanels />
+        <Hand />
+        <DemoLayer />
+      </div>
+      {online ? <LeaveDialog /> : null}
+    </>
   );
 }
 
 function TipBar() {
-  const tip = useApp((s) => (s.settings.tips ? contextualTip(s) : null));
+  // En línea la franja dice además a quién se espera y anuncia el combo (D-91).
+  const tip = useApp((s) => (s.settings.tips ? (s.local ? contextualTip(s) : onlineTip(s)) : null));
   // El gólem que la franja está nombrando: con él va el botón de su demostración (D-82).
   const golem = useApp(namedGolem);
   const open = useApp((s) => s.demo?.kind === 'golem');
@@ -79,9 +88,10 @@ function useMomentTip(): MomentTip | null {
   const plans = useApp((s) => s.plans);
   const active = useApp((s) => s.active);
   const pendingCard = useApp((s) => s.pendingCard);
+  const local = useApp((s) => s.local);
   // Una burbuja a la vez: con una demostración abierta (D-81), el consejo espera.
   const demo = useApp((s) => s.demo !== null);
-  return demo ? null : momentTip({ phase, settings, match, plans, active, pendingCard });
+  return demo ? null : momentTip({ phase, settings, match, plans, active, pendingCard, local });
 }
 
 /**
@@ -218,11 +228,229 @@ function TurnControls() {
   );
 }
 
+/** Cuántos segundos dura el turno en línea: uno por porción de la tarta (R-36). */
+const PIE_R = 24;
+
+/** Una porción de la tarta, la `k` de `n`, empezando arriba y en el sentido del reloj. */
+function slicePath(k: number, n: number, r: number): string {
+  const a0 = (k / n) * 2 * Math.PI - Math.PI / 2;
+  const a1 = ((k + 1) / n) * 2 * Math.PI - Math.PI / 2;
+  const p = (a: number) => `${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`;
+  return `M0 0 L${p(a0)} A${r} ${r} 0 0 1 ${p(a1)} Z`;
+}
+
+/**
+ * El reloj de una partida en línea (R-36): una tarta con una porción por segundo, que pierde una cada
+ * segundo. En los últimos 3 cambia por el número, grande. El reloj es del servidor: aquí solo se dibuja.
+ */
+function PieTimer() {
+  const timer = useApp((s) => s.timer);
+  const planning = useApp((s) => s.phase === 'planning');
+  const [, redraw] = useReducer((x: number) => x + 1, 0);
+  const lastTick = useRef<number | null>(null);
+  const running = planning && timer.deadline !== null && timer.total !== null;
+
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(redraw, 100);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  const remaining = running && timer.deadline !== null ? Math.max(0, timer.deadline - performance.now()) : null;
+  const total = timer.total !== null ? Math.max(1, Math.round(timer.total / 1000)) : 10;
+  const secs = remaining !== null ? Math.min(total, Math.ceil(remaining / 1000)) : null;
+
+  useEffect(() => {
+    if (secs !== null && secs <= 3 && secs > 0) {
+      if (lastTick.current !== secs) {
+        lastTick.current = secs;
+        audio.play('tick');
+      }
+    } else {
+      lastTick.current = null;
+    }
+  }, [secs]);
+
+  if (secs === null) {
+    return (
+      <div className="pie" role="img" aria-label={ES.resolving} title={ES.resolving}>
+        <svg viewBox="-28 -28 56 56" aria-hidden="true">
+          <circle r={PIE_R + 2} className="pie-rim" />
+        </svg>
+      </div>
+    );
+  }
+  if (secs <= 3) {
+    return (
+      <div className="pie urgent" role="timer" aria-label={O.secondsLeft(secs)} data-seconds={secs}>
+        <span className="display">{secs}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="pie" role="timer" aria-label={O.secondsLeft(secs)} data-seconds={secs}>
+      <svg viewBox="-28 -28 56 56" aria-hidden="true">
+        <circle r={PIE_R + 2} className="pie-rim" />
+        {Array.from({ length: total }, (_, k) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: las porciones son fijas, una por segundo
+          <path key={k} d={slicePath(k, total, PIE_R - 2)} className={k < secs ? (k % 2 ? 'on alt' : 'on') : 'off'} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * En línea: la tarta pegada a "Confirmar", que pasa a "Listo" cuando esta persona ya confirmó. Confirmar
+ * es definitivo; el turno se resuelve al confirmar todos o al llegar a cero.
+ */
+function OnlineTurnControls() {
+  const phase = useApp((s) => s.phase);
+  const boosting = useApp((s) => s.boosting);
+  const match = useApp((s) => s.online.match);
+  const open = useApp((s) => s.online.link === 'open');
+  const waiting = match?.waiting ?? false;
+  if (phase === 'resolving' && !waiting) {
+    return (
+      <div className="turnbox interactive">
+        <PieTimer />
+        <button
+          type="button"
+          className={`btn confirm accelerate ${boosting ? 'on' : ''}`}
+          aria-pressed={boosting}
+          onPointerDown={() => setBoost(true)}
+          onPointerUp={() => setBoost(false)}
+          onPointerLeave={() => setBoost(false)}
+          onPointerCancel={() => setBoost(false)}
+        >
+          {boosting ? ES.accelerating : ES.accelerate} <span className="kbd">Espacio</span>
+        </button>
+      </div>
+    );
+  }
+  const ready = !!match && match.ready.includes(match.you);
+  const plays = !!match?.plays && phase === 'planning';
+  return (
+    <div className="turnbox interactive">
+      <PieTimer />
+      {ready && plays ? (
+        <button type="button" className="btn confirm is-ready" disabled>
+          <Icon name="check" /> {O.ready}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-primary confirm"
+          disabled={!plays || !open}
+          onClick={() => void confirmTurn()}
+        >
+          {phase === 'planning' ? (
+            <>
+              {O.confirm} <span className="kbd">Espacio</span>
+            </>
+          ) : (
+            ES.preparing
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Las franjas de la conexión, arriba y sin bloquear el tablero: se perdió, o esta persona acaba de volver. */
+function NetStrip() {
+  const link = useApp((s) => s.online.link);
+  const back = useApp((s) => s.online.back);
+  if (link === 'reconnecting' || link === 'connecting') {
+    return (
+      <div className="net-strip paper lost" role="alert">
+        <span className="spin" aria-hidden="true">
+          <Icon name="spin" />
+        </span>
+        <span>
+          <b>{O.lostTitle}</b> {O.lostBody}
+        </span>
+      </div>
+    );
+  }
+  if (back) {
+    return (
+      <div className="net-strip paper back" role="status">
+        <span className="net-icon" aria-hidden="true">
+          <Icon name="plug" />
+        </span>
+        <span>
+          <b>{O.backTitle}</b> {O.backBody}
+        </span>
+      </div>
+    );
+  }
+  return null;
+}
+
+/** "¿Salir de la partida?": salir es abandonar (R-39). El principal es "Seguir jugando", al final de la fila. */
+function LeaveDialog() {
+  const leaving = useApp((s) => s.online.leaving);
+  if (!leaving) return null;
+  return (
+    <Dialog
+      icon="door"
+      tone="danger"
+      title={O.leaveTitle}
+      actions={
+        <>
+          <button type="button" className="btn" onClick={leaveMatch}>
+            {O.leaveConfirm}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => askLeave(false)}>
+            {O.leaveCancel}
+          </button>
+        </>
+      }
+    >
+      {O.leaveBody}
+    </Dialog>
+  );
+}
+
 function RoundInfo() {
   const view = useApp((s) => s.view);
   const phase = useApp((s) => s.phase);
+  const online = useApp((s) => !s.local && s.online.match !== null);
   if (!view) return null;
   const progress = bonusProgress(view);
+  if (online) {
+    // En línea no hay pausa ni "Sugerir jugada": la ayuda, y la ✕, que es salir de la partida (R-39).
+    return (
+      <div className="roundbox">
+        <div className="chip">
+          <span className="round">{ES.round(view.round)}</span>
+          <span className="bonus">
+            <small>{BONUS_SHORT[view.bonusCondition]}</small>
+            <small className={progress.cls}>{progress.text}</small>
+          </span>
+        </div>
+        <button
+          type="button"
+          className="icon-btn interactive"
+          onClick={() => setHelp(true)}
+          aria-label={ES.howToPlay}
+          title={ES.howToPlay}
+        >
+          <Icon name="help" />
+        </button>
+        <button
+          type="button"
+          className="icon-btn interactive leave-x"
+          onClick={() => askLeave(true)}
+          aria-label={O.leaveMatch}
+          title={O.leaveMatch}
+        >
+          <Icon name="close" />
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="roundbox">
       <div className="chip">
@@ -283,6 +511,11 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
   const isActive = useApp((s) => s.active === n.id);
   const planning = useApp((s) => s.phase === 'planning');
   const reduced = useApp((s) => s.settings.reducedMotion);
+  // En línea: de quién es el ninja y cómo va esa persona (planeando, lista, desconectada o fuera).
+  const om = useApp((s) => (s.local ? null : s.online.match));
+  const seat = useApp((s) => (!s.local && s.online.match ? seatState(s, s.online.match, n.id) : null));
+  const mine = om?.you === n.id;
+  const asleep = isAsleep(om, n.id);
   const t = NINJA_TEXT[n.id];
   const status = match ? planStatus(plan, n) : 'none';
   const label = match ? planLabel(plan, n, match) : '';
@@ -343,15 +576,9 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
     }
   }, [n.hp, n.meter, n.deck.length, reduced]);
 
-  return (
-    <button
-      type="button"
-      data-ninja-panel={n.id}
-      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''} ${marked ? 'tip-mark' : ''}`}
-      onClick={() => selectNinja(n.id)}
-      aria-pressed={isActive}
-      aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, spoken)}
-    >
+  const who = om ? whoPlays(om, n.id) : null;
+  const body = (
+    <>
       <span ref={inner} className="np-inner">
         {order ? (
           <span className="np-order" title={HUD.orderTitle}>
@@ -359,12 +586,18 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
           </span>
         ) : null}
         <div className="np-top">
-          <img src={art.bust(n.id)} alt="" />
+          <img src={asleep ? art.asleep(n.id) : art.bust(n.id)} alt="" />
           <div>
             <div className="np-name">{t.name}</div>
-            <div className="np-el" title={t.role}>
-              {t.element}
-            </div>
+            {who === null ? (
+              <div className="np-el" title={t.role}>
+                {t.element}
+              </div>
+            ) : (
+              <div className="np-el np-who" title={`${t.element} · ${t.role}`}>
+                {who}
+              </div>
+            )}
           </div>
         </div>
         <div className={`bar ${frac <= 0.3 ? 'low' : ''}`}>
@@ -392,13 +625,46 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
           {n.boost ? <img src={art.icon('boost')} alt={HUD.boost} title={HUD.boostTitle} /> : null}
         </span>
         <div className="np-foot">
-          {planning || status === 'ko' ? (
+          {om ? (
+            seat ? (
+              <span key={seat} className={`plan-pill seat-pill is-${seat}`}>
+                {seat === 'ready' ? <Icon name="check" /> : null}
+                {seat === 'planning' ? <Icon name="pencil" /> : null}
+                {SEAT_TEXT[seat]}
+              </span>
+            ) : null
+          ) : planning || status === 'ko' ? (
             <span key={label} className={`plan-pill ${status === 'ko' ? 'ko' : status === 'none' ? '' : 'set'}`}>
               {label}
             </span>
           ) : null}
         </div>
       </span>
+    </>
+  );
+  if (om) {
+    // En línea cada persona lleva a un solo ninja: los paneles informan, no se eligen.
+    return (
+      <section
+        data-ninja-panel={n.id}
+        data-seat-state={seat ?? 'idle'}
+        className={`ninja-panel paper el-${n.id} ${mine ? 'mine' : ''} ${asleep ? 'asleep' : ''} ${n.hp <= 0 ? 'ko' : ''} ${marked ? 'tip-mark' : ''}`}
+        aria-label={`${O.seatOf(t.name, who ?? '')}. ${HUD.panelLabel(t.name, n.hp, n.maxHp, seat ? SEAT_TEXT[seat] : '')}`}
+      >
+        {body}
+      </section>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-ninja-panel={n.id}
+      className={`ninja-panel paper interactive el-${n.id} ${isActive && planning ? 'active' : ''} ${n.hp <= 0 ? 'ko' : ''} ${marked ? 'tip-mark' : ''}`}
+      onClick={() => selectNinja(n.id)}
+      aria-pressed={isActive}
+      aria-label={HUD.panelLabel(t.name, n.hp, n.maxHp, spoken)}
+    >
+      {body}
     </button>
   );
 }
@@ -431,9 +697,11 @@ function Hand() {
   const arrived = useApp((s) => s.arrived);
   const demo = useApp((s) => s.demo);
   const tip = useMomentTip();
+  const you = useApp((s) => (s.local ? null : (s.online.match?.you ?? null)));
   const last = useRef<ElementKind>('fire');
   if (active) last.current = active;
-  const shown = active ?? last.current;
+  // En línea cada persona ve solo su mano (R-35), tenga o no el turno a medias.
+  const shown = you ?? active ?? last.current;
   // La demostración de las cartas es la de las que se ven: si la mano pasa a otro ninja, se cierra.
   const cardDemo = demo?.kind === 'card' ? demo.ninja : null;
   const demoOpen = cardDemo === shown;

@@ -43,6 +43,18 @@ export const orderPoint = (v: Vec, below = false) => ({
   y: BOARD_Y + v.y * TH + (below ? ORDER_BADGE.bottom : ORDER_BADGE.top),
 });
 
+/**
+ * La marca verde de listo (R-36): un círculo grande sobre la cabeza del ninja que ya confirmó, al centro
+ * de su casilla. Con una carta colocada en esa casilla baja al pecho, para no quedar sobre su miniatura.
+ */
+export const READY_MARK = { r: 13, stroke: 2.5, top: 11, chest: 52 } as const;
+
+/** Centro de la marca de listo. `below`: en la casilla hay una carta colocada. */
+export const readyPoint = (v: Vec, below = false) => ({
+  x: BOARD_X + v.x * TW + TW / 2,
+  y: BOARD_Y + v.y * TH + (below ? READY_MARK.chest : READY_MARK.top),
+});
+
 export function tileAt(x: number, y: number): Vec | null {
   const tx = Math.floor((x - BOARD_X) / TW);
   const ty = Math.floor((y - BOARD_Y) / TH);

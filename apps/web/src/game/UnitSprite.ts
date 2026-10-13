@@ -16,6 +16,8 @@ export interface UnitSpriteOptions {
   clips: Readonly<Record<string, Clip>>;
   /** Figura de caído (solo ninjas). */
   koTexture?: string;
+  /** Figura gris y dormida, para el ninja de quien se desconectó (solo ninjas, en línea). */
+  asleepTexture?: string;
   size: { w: number; h: number };
   pos: Vec;
   hp: number;
@@ -46,6 +48,11 @@ export class UnitSprite {
   private readonly icons = new Map<StatusKind, Phaser.GameObjects.Image>();
   private readonly koImage: Phaser.GameObjects.Image | null;
   private koTween: Phaser.Tweens.Tween | null = null;
+  private readonly asleepImage: Phaser.GameObjects.Image | null;
+  private readonly zzz: Phaser.GameObjects.Text | null;
+  private zzzTween: Phaser.Tweens.Tween | null = null;
+  /** Quien lo lleva no está (R-38): queda gris y dormido hasta que vuelva. */
+  private asleep = false;
   private shieldBubble: Phaser.GameObjects.Image | null = null;
   private stunFx: { stars: Phaser.GameObjects.Image[]; tween: Phaser.Tweens.Tween } | null = null;
   private burnFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
@@ -90,6 +97,23 @@ export class UnitSprite {
       : null;
     this.koImage?.setDisplaySize(o.size.w, o.size.h);
 
+    this.asleepImage = o.asleepTexture
+      ? scene.add.image(0, FIGURE_SINK, o.asleepTexture).setOrigin(0.5, 1).setVisible(false)
+      : null;
+    this.asleepImage?.setDisplaySize(o.size.w, o.size.h);
+    this.zzz = o.asleepTexture
+      ? scene.add
+          .text(o.size.w * 0.26, -o.size.h * 0.86, 'z z', {
+            fontFamily: '"Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif',
+            fontSize: '13px',
+            color: PALETTE.ink,
+            resolution: 3,
+          })
+          .setOrigin(0, 1)
+          .setAlpha(0.7)
+          .setVisible(false)
+      : null;
+
     this.bar = scene.add.graphics();
     this.hpText = scene.add
       .text(UNIT_HUD.hpText.x, UNIT_HUD.hpText.y, '', {
@@ -104,6 +128,8 @@ export class UnitSprite {
     const fp = footPoint(o.pos);
     const children: Phaser.GameObjects.GameObject[] = [shadow, this.rig.root];
     if (this.koImage) children.push(this.koImage);
+    if (this.asleepImage) children.push(this.asleepImage);
+    if (this.zzz) children.push(this.zzz);
     children.push(this.bar, this.hpText);
     this.container = scene.add.container(fp.x, fp.y, children);
     this.container.setDepth(fp.y);
@@ -404,6 +430,40 @@ export class UnitSprite {
     this.scene.time.delayedCall(90, () => this.rig.clearTint());
   }
 
+  /* ---------- Dormido ---------- */
+
+  /**
+   * Duerme o despierta al ninja: quien lo lleva se desconectó o salió de la partida (R-38). Dormido se ve
+   * gris y quieto, pero sigue en el tablero: puede recibir golpes, curas y caer como cualquiera.
+   */
+  setAsleep(on: boolean): void {
+    if (this.asleep === on) return;
+    this.asleep = on;
+    this.showAsleep();
+  }
+
+  /** La figura que toca: la dormida solo mientras está en pie; caído se ve caído. */
+  private showAsleep(): void {
+    const dozing = this.asleep && !this.ko && this.asleepImage !== null;
+    this.asleepImage?.setVisible(dozing);
+    this.zzz?.setVisible(dozing);
+    this.zzzTween?.stop();
+    this.zzzTween = null;
+    this.zzz?.setAlpha(0.7).setY(-this.size.h * 0.86);
+    if (!this.ko) this.rig.root.setVisible(!dozing);
+    if (dozing && this.zzz && !this.calm) {
+      this.zzzTween = this.scene.tweens.add({
+        targets: this.zzz,
+        y: -this.size.h * 0.86 - 7,
+        alpha: 0.25,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
   /* ---------- Caída y reanimación ---------- */
 
   /** Cambia al instante entre figura en pie y figura de caído. */
@@ -438,6 +498,7 @@ export class UnitSprite {
       this.rig.root.setVisible(true).setAlpha(1);
       this.hpText.setAlpha(1);
     }
+    this.showAsleep();
   }
 
   /** Clip de desplome y fundido a la figura de caído. */
@@ -473,11 +534,14 @@ export class UnitSprite {
         onComplete: () => k.setVisible(false),
       });
     }
+    // Si quien lo lleva sigue sin estar, se levanta dormido.
+    this.showAsleep();
     return this.act('revived');
   }
 
   destroy(): void {
     this.koTween?.stop();
+    this.zzzTween?.stop();
     this.stunFx?.tween.stop();
     this.burnFx?.stop();
     this.rig.stop(false);

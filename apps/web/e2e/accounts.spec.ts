@@ -28,7 +28,7 @@ test('R-44: registro, verificación con el código del correo, y la sesión sigu
   for (const url of apiUrls) {
     const { pathname, search } = new URL(url);
     expect(search).toBe('');
-    expect(pathname).toMatch(/^\/api\/(config|progress(\/[a-z]+)?|auth\/[a-z/]+)$/);
+    expect(pathname).toMatch(/^\/api\/(config|progress(\/[a-z]+)?|auth\/[a-z/]+|play\/status)$/);
   }
 });
 
@@ -163,9 +163,7 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
     st.setState({ screen: 'results', phase: 'ended', results: { state: st.getState().match } });
   });
   // Guardar el progreso ya existe y va en presente; jugar en línea todavía no, y va en futuro.
-  await expect(
-    page.getByText('¿Te gustó? Crea una cuenta: guarda tu progreso y pronto podrás jugar en línea.'),
-  ).toBeVisible();
+  await expect(page.getByText('¿Te gustó? Crea una cuenta: guarda tu progreso y juega en línea.')).toBeVisible();
   // Lineamientos: un solo primario por vista ("Jugar otra vez"), y el botón de la invitación en una línea.
   await expect(page.locator('.results-screen .btn-primary')).toHaveText(['Jugar otra vez']);
   const invite = page.getByRole('button', { name: 'Crear una cuenta' });
@@ -234,18 +232,17 @@ test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta text
   expect(clipped).toEqual({});
 });
 
-test('el beneficio que todavía no existe dice "Próximamente", y el perfil no los muestra', async ({ page }) => {
-  // El progreso y la colección ya existen; el juego en línea llega con el M8.
-  const benefits = [
-    /^Tu progreso queda guardado$/,
-    /^Juega en línea con amigos\s+Próximamente$/,
-    /^Tu colección de cartas$/,
-  ];
+test('los beneficios de una cuenta ya existen todos: ninguno dice "Próximamente", y el perfil no los muestra', async ({
+  page,
+}) => {
+  // El progreso, la colección y el juego en línea (Beta) ya existen: van en presente y sin marca.
+  const benefits = [/^Tu progreso queda guardado$/, /^Juega en línea con amigos$/, /^Tu colección de cartas$/];
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
-  // La introducción de "Entrar" dice lo mismo: el progreso en presente y el juego en línea en futuro.
-  await expect(page.getByText('Con tu cuenta guardas tu progreso. Pronto podrás jugar en línea.')).toBeVisible();
+  await expect(page.getByText('Próximamente')).toHaveCount(0);
+  // La introducción de "Entrar" dice lo mismo, en presente.
+  await expect(page.getByText('Con tu cuenta guardas tu progreso y juegas en línea.')).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
   // En el perfil no van: esa columna es el resumen del progreso.

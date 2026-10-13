@@ -313,6 +313,31 @@ describe('Compra de cajas en el cliente (R-28, D-66, D-68)', () => {
     await second;
   });
 
+  it('D-68: tras un rechazo por monedas insuficientes, vuelve a leer el progreso para mostrar el saldo real', async () => {
+    await loaded(progress({ coins: 500 }));
+    const buying = buyBox('fire', 3);
+    await last().reply(409, fail('not_enough_coins'));
+    await buying;
+    // El saldo en pantalla estaba viejo: las monedas ya se habían gastado desde otra pestaña.
+    expect(last()).toMatchObject({ method: 'GET', path: '/api/progress', body: null });
+    await last().reply(200, progress({ coins: 40 }));
+    expect(state()).toMatchObject({
+      status: 'ready',
+      data: progress({ coins: 40 }),
+      pending: null,
+      error: ACCOUNT_ERRORS.not_enough_coins,
+    });
+  });
+
+  it('D-68: otro rechazo definitivo no vuelve a leer el progreso', async () => {
+    await loaded();
+    const buying = buyBox('fire', 3);
+    await last().reply(400, fail('bad_request'));
+    await buying;
+    expect(calls.filter((c) => c.method === 'GET')).toHaveLength(1);
+    expect(state()).toMatchObject({ pending: null, error: ACCOUNT_ERRORS.bad_request });
+  });
+
   it('D-66: después de una compra hecha, la siguiente lleva otro identificador', async () => {
     await loaded();
     const first = buyBox('fire', 1);

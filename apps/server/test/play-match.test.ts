@@ -48,6 +48,45 @@ describe('Empezar una partida (R-33, R-34)', () => {
     ]);
   });
 
+  it('un tablero preparado vale solo para la sala que la prueba eligió: las demás partidas conservan su entrada', async () => {
+    const seen: (string | null)[] = [];
+    let chosen = '';
+    const w = world({
+      prepare: (state, room) => {
+        seen.push(room);
+        return room !== null && room === chosen ? board({ round: 3 })(state) : null;
+      },
+    });
+    // Una sala que la prueba no eligió: la partida queda como salió del motor, con sus rocas y su entrada.
+    const first = await duo(w);
+    expect(seen).toEqual([first.code]);
+    const plain = first.ana.last('match.start');
+    expect(plain?.state).toMatchObject({ round: 1 });
+    expect(plain?.state.rocks).not.toEqual([]);
+    expect(plain?.events.map((e) => e.t)).toEqual(['roundStart']);
+
+    // La sala elegida: el tablero preparado, sin entrada.
+    const caro = await w.join('Caro', 'fire');
+    const dani = await w.join('Dani', 'water');
+    await w.say(caro, { type: 'room.create', element: 'fire' });
+    chosen = caro.last('room.state')?.code as string;
+    await w.say(dani, { type: 'room.join', code: chosen, element: 'water' });
+    await w.say(caro, { type: 'room.start' });
+    expect(seen).toEqual([first.code, chosen]);
+    expect(caro.last('match.start')?.state).toMatchObject({ round: 3, rocks: [] });
+    expect(caro.last('match.start')?.events).toEqual([]);
+
+    // Una partida que salió de la cola no tiene sala.
+    for (const [name, element] of [
+      ['Eva', 'fire'],
+      ['Fer', 'water'],
+      ['Gil', 'snow'],
+    ] as const) {
+      await w.say(await w.join(name, element), { type: 'queue.join', element });
+    }
+    expect(seen).toEqual([first.code, chosen, null]);
+  });
+
   it('D-102: nadie recibe la semilla ni el azar de la partida', async () => {
     const w = world();
     const { ana, beto, caro } = await trio(w);

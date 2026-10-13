@@ -8,6 +8,7 @@ import {
   newPlayer,
   online,
   openOnline,
+  planning,
   watchLoading,
 } from './online-helpers';
 
@@ -107,6 +108,37 @@ test('R-52 y D-88: en la cola cada persona ve a la otra en el lugar de su elemen
   await beto.context.close();
 });
 
+test('R-52: tres personas con un ninja de cada elemento forman equipo en la cola, y su partida empieza sin bot', async ({
+  browser,
+}) => {
+  const ana = await newPlayer(browser, 'fire');
+  const beto = await newPlayer(browser, 'water');
+  const caro = await newPlayer(browser, 'snow');
+  const all = [ana, beto, caro];
+  for (const p of [ana, beto]) {
+    await openOnline(p.page);
+    await p.page.getByRole('button', { name: 'Jugar', exact: true }).click();
+  }
+  await expect(ana.page.getByText(/^Clásica · Se busca: Nieve · \d+:\d\d$/)).toBeVisible();
+  // Con dos no hay partida: falta Nieve.
+  expect((await online(ana.page)).online.match).toBeNull();
+
+  // Llega Caro con el ninja que faltaba: el equipo se arma solo y la partida empieza para las tres.
+  await openOnline(caro.page);
+  await caro.page.getByRole('button', { name: 'Jugar', exact: true }).click();
+  for (const p of all) await planning(p.page, 1);
+  for (const p of all) {
+    const seats = (await online(p.page)).online.match?.seats ?? [];
+    expect(seats.map((s) => s.kind)).toEqual(['human', 'human', 'human']);
+  }
+  const who = (ninja: string) => beto.page.locator(`[data-ninja-panel="${ninja}"] .np-who`);
+  await expect(who('fire')).toHaveText(ana.displayName);
+  await expect(who('water')).toHaveText('Tú');
+  await expect(who('snow')).toHaveText(caro.displayName);
+  expect((await online(caro.page)).online.match).toMatchObject({ you: 'snow', plays: true });
+  for (const p of all) await p.context.close();
+});
+
 test('R-53: una sala con código: unirse con el ninja ocupado, elegir otro y empezar con el bot una partida en la que cada quien ve los planes del otro', async ({
   browser,
 }) => {
@@ -167,6 +199,14 @@ test('R-53: una sala con código: unirse con el ninja ocupado, elegir otro y emp
   // No hay pausa ni "Sugerir jugada": la ✕ es salir.
   await expect(beto.page.getByRole('button', { name: /Pausa/ })).toHaveCount(0);
   await expect(beto.page.getByRole('button', { name: /Sugerir jugada/ })).toHaveCount(0);
+  // La ayuda trae las reglas en línea, con el reloj del servidor, y se cierra sin pasar por una pausa.
+  await beto.page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = beto.page.getByRole('dialog', { name: 'Cómo jugar' });
+  await expect(help.getByRole('heading', { name: 'En línea' })).toBeVisible();
+  await expect(help).toContainText('El reloj da 10 s por turno a todo el equipo, y no hay pausa.');
+  await expect(help.locator('.btn-primary')).toHaveText('Cerrar');
+  await help.locator('.btn-primary').click();
+  await expect(help).toHaveCount(0);
   const before = await online(beto.page);
   expect(before.local).toBe(false);
   expect(before.online.match).toMatchObject({ you: 'snow', turn: 1, plays: true });

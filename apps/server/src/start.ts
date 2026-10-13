@@ -10,7 +10,8 @@ import { dbStore } from './play/store';
 /*
  * Arranque: configuración, migraciones pendientes y servidor. Railway manda SIGTERM al reemplazarlo.
  * `main.ts` lo llama sin opciones. El servidor de las pruebas e2e le pasa sus plazos del juego en línea,
- * para que una prueba no dependa del reloj de verdad ni de lo cargado que esté el equipo.
+ * para que una prueba no dependa del reloj de verdad ni de lo cargado que esté el equipo, y lo apaga y lo
+ * vuelve a arrancar para probar un reinicio (R-54).
  */
 
 /** Build del cliente. Funciona igual desde src/ (desarrollo) que desde dist/ (imagen). */
@@ -19,8 +20,22 @@ const WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 /** Lo que las pruebas pueden cambiar al arrancar: los plazos del juego en línea y el tablero de sus partidas. */
 export type StartOptions = Pick<AppOptions, 'playTimings' | 'matchSeed' | 'matchPrepare'>;
 
-export async function start(options: StartOptions = {}): Promise<void> {
-  const config = loadConfig(process.env);
+/** El servidor en marcha. */
+export interface Running {
+  /**
+   * Lo apaga como en un despliegue: las partidas en curso se interrumpen con sus cuentas (R-54), se cierran
+   * las conexiones y se suelta la base. Llamarlo otra vez no hace nada más.
+   */
+  stop(): Promise<void>;
+}
+
+const SIGNALS = ['SIGTERM', 'SIGINT'] as const;
+
+export async function start(
+  options: StartOptions = {},
+  env: Record<string, string | undefined> = process.env,
+): Promise<Running> {
+  const config = loadConfig(env);
   const database = connect(config.databaseUrl);
   /** Resend si hay clave; si no, ningún envío en producción, y la consola o la carpeta de las e2e fuera de ella. */
   const mailer = config.resendApiKey
@@ -68,12 +83,20 @@ export async function start(options: StartOptions = {}): Promise<void> {
     process.exit(1);
   }
 
-  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-    process.once(signal, async () => {
-      app.log.info({ signal }, 'Cerrando');
+  let stopping: Promise<void> | null = null;
+  const stop = (): Promise<void> => {
+    stopping ??= (async () => {
+      for (const signal of SIGNALS) process.off(signal, onSignal);
       await app.close();
       await database.close();
-      process.exit(0);
-    });
-  }
+    })();
+    return stopping;
+  };
+  const onSignal = async (signal: NodeJS.Signals): Promise<void> => {
+    app.log.info({ signal }, 'Cerrando');
+    await stop();
+    process.exit(0);
+  };
+  for (const signal of SIGNALS) process.once(signal, onSignal);
+  return { stop };
 }

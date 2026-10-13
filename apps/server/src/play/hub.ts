@@ -1,8 +1,15 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { type AchievementId, type DeckCard, type ElementKind, type MatchState, reserveFor } from '@ventisca/core';
-import { CLOSE, type ClientMessage, type PlayError, type SeatStatus, type ServerPayload } from '@ventisca/protocol';
+import { type AchievementId, type DeckCard, type ElementKind, reserveFor } from '@ventisca/core';
+import {
+  CLOSE,
+  type ClientMessage,
+  PLAY_TURN_SECONDS,
+  type PlayError,
+  type SeatStatus,
+  type ServerPayload,
+} from '@ventisca/protocol';
 import type { Link, Player } from './link';
-import { Match, type MatchOutcome, type MatchTimings, type TurnRewards } from './match';
+import { Match, type MatchOutcome, type MatchTimings, type PrepareMatch, type TurnRewards } from './match';
 import { Queue, type Team } from './queue';
 import { Rooms } from './rooms';
 import type { PlayStore } from './store';
@@ -28,7 +35,7 @@ export interface PlayTimings extends MatchTimings {
 
 export const PLAY_TIMINGS: PlayTimings = {
   // R-36 (D-90): 10 s por turno, como el original.
-  turnMs: 10_000,
+  turnMs: PLAY_TURN_SECONDS * 1000,
   graceMs: 400,
   // El turno más largo, con combo, se anima en unos 8 s; la entrada de una partida, en menos.
   watchMs: 20_000,
@@ -44,7 +51,7 @@ export interface HubOptions {
   /** La semilla de cada partida; las pruebas la fijan. Por defecto, una al azar que nadie puede adivinar. */
   seed?: () => number;
   /** Solo para las pruebas: deja cada partida recién creada en un tablero preparado. */
-  prepare?: (state: MatchState) => MatchState;
+  prepare?: PrepareMatch;
 }
 
 export class Hub {

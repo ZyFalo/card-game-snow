@@ -118,8 +118,15 @@ export interface MatchSetup {
   /** La reserva de cada persona: su colección del elemento de su ninja (R-34). El bot usa el mazo de referencia. */
   decks: Partial<Record<ElementKind, DeckCard[]>>;
   /** Solo para las pruebas: deja la partida recién creada en un tablero preparado. */
-  prepare?: (state: MatchState) => MatchState;
+  prepare?: PrepareMatch;
 }
+
+/**
+ * Solo para las pruebas: prepara el tablero de una partida recién creada. Recibe el código de su sala
+ * (`null` si salió de la cola), para preparar solo la de una prueba. Con `null`, la partida queda como
+ * salió del motor, con su entrada.
+ */
+export type PrepareMatch = (state: MatchState, room: string | null) => MatchState | null;
 
 export class Match {
   readonly id: string;
@@ -154,8 +161,10 @@ export class Match {
     this.difficulty = setup.difficulty;
     this.seed = setup.seed;
     const created = createMatch({ seed: setup.seed, difficulty: setup.difficulty, decks: setup.decks });
-    this.state = setup.prepare ? setup.prepare(created.state) : created.state;
-    this.opening = setup.prepare ? [] : created.events;
+    const prepared = setup.prepare?.(created.state, setup.room) ?? null;
+    this.state = prepared ?? created.state;
+    // Un tablero preparado no tiene entrada: sus gólems ya están donde la prueba los puso.
+    this.opening = prepared ? [] : created.events;
     this.seats = ELEMENTS.map((element): Seat => {
       const member = setup.team.members.find((m) => m.element === element);
       return member

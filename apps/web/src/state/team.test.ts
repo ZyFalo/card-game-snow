@@ -1,8 +1,8 @@
 import { createMatch, type MatchState } from '@ventisca/core';
-import type { MatchSeat, TeamPlan } from '@ventisca/protocol';
+import { type MatchSeat, PLAY_TURN_SECONDS, type TeamPlan } from '@ventisca/protocol';
 import { describe, expect, it } from 'vitest';
 import { NetworkHost, toPlan, toSeatPlan } from '../host/NetworkHost';
-import { ONLINE_TEXT, TIP_TEXT } from '../i18n/es';
+import { HELP, ONLINE_TEXT, TIP_TEXT } from '../i18n/es';
 import { boardLayers } from './board';
 import { DEFAULT_SETTINGS } from './persist';
 import { type AppState, initialOnline, type OnlineMatch } from './store';
@@ -273,6 +273,32 @@ describe('La franja de arriba en línea (D-91)', () => {
     expect(momentTip({ ...base, local: true })?.id).toBe('switchNinja');
     expect(momentTip({ ...base, local: false })).toBeNull();
     expect(om.you).toBe('snow');
+  });
+});
+
+describe('La ayuda con las reglas en línea', () => {
+  it('D-90: explica el reloj con los segundos del servidor, no con un número escrito a mano', () => {
+    const lines = HELP.online(PLAY_TURN_SECONDS);
+    expect(lines.filter((line) => line.includes(`El reloj da ${PLAY_TURN_SECONDS} s por turno`))).toHaveLength(1);
+    const other = HELP.online(15).join(' ');
+    expect(other).toContain('El reloj da 15 s por turno');
+    expect(other).not.toContain(`${PLAY_TURN_SECONDS} s`);
+  });
+
+  it('cubre el reloj, el ninja quieto, el abandono y los reinicios', () => {
+    const text = HELP.online(PLAY_TURN_SECONDS).join(' ');
+    for (const part of [
+      'no hay pausa',
+      'confirmar es definitivo',
+      'su ninja queda quieto hasta que vuelva',
+      'Quien vuelve lo retoma desde el turno siguiente',
+      'Salir con la ✕ es abandonar: pierdes las monedas de esa partida',
+      'También abandona quien se desconecta y no vuelve antes del final',
+      'Si el servidor se reinicia, la partida termina',
+      'no cuenta como derrota',
+    ]) {
+      expect(text).toContain(part);
+    }
   });
 });
 

@@ -16,6 +16,12 @@ export const PROTOCOL_VERSION = 1;
 /** La ruta de la conexión. Va bajo `/api`, en el mismo origen que el juego: la cookie de sesión viaja sola. */
 export const PLAY_PATH = '/api/play';
 
+/**
+ * R-36 (D-90): los segundos que dura la planificación de un turno en línea. El reloj lo lleva el servidor;
+ * el cliente solo usa este número para explicar la regla en la ayuda.
+ */
+export const PLAY_TURN_SECONDS = 10;
+
 /** Límites de la conexión (D-102). Un mensaje más grande, o más mensajes que estos, la cierran. */
 export const PLAY_LIMITS = {
   /** Tamaño máximo de un mensaje del cliente, en bytes. El plan más largo no llega a 200. */

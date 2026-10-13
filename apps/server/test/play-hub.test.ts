@@ -1,6 +1,6 @@
-import { CLOSE, type ClientMessage, type ClientPayload, PROTOCOL_VERSION } from '@ventisca/protocol';
+import { CLOSE, type ClientMessage, type ClientPayload, PLAY_TURN_SECONDS, PROTOCOL_VERSION } from '@ventisca/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Hub } from '../src/play/hub';
+import { Hub, PLAY_TIMINGS } from '../src/play/hub';
 import { again, type FakeLink, person } from './support/fake-link';
 import { MemoryStore } from './support/memory-store';
 import { board, TIMINGS, trio, watched, world } from './support/world';
@@ -14,6 +14,18 @@ const message = (payload: ClientPayload): ClientMessage => {
   return { v: PROTOCOL_VERSION, seq, ...payload } as ClientMessage;
 };
 const types = (link: FakeLink) => link.fresh().map((m) => m.type);
+
+describe('Los plazos del juego en línea', () => {
+  it('D-90, D-88 y R-38: en producción el turno dura 10 s, la oferta del bot sale a los 30 s y una partida o una sala sin nadie dura 2 minutos', () => {
+    expect(PLAY_TIMINGS).toMatchObject({ turnMs: 10_000, offerMs: 30_000, emptyMs: 120_000 });
+    // La ayuda del juego explica el reloj con este mismo número.
+    expect(PLAY_TIMINGS.turnMs).toBe(PLAY_TURN_SECONDS * 1000);
+  });
+
+  it('las pruebas del servidor corren con esos mismos plazos', () => {
+    expect(TIMINGS).toBe(PLAY_TIMINGS);
+  });
+});
 
 describe('Centro del juego en línea: conexiones (D-102)', () => {
   it('al conectarse, la persona recibe el saludo y dónde está', async () => {

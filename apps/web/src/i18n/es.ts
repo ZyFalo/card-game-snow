@@ -426,6 +426,20 @@ export const HELP = {
     'Un ninja caído no actúa, pero puede ser revivido desde una casilla vecina (también en diagonal).',
     'Revivir ocupa la acción. El caído se levanta al final del turno, con 1 de vida, después de que actúen los gólems. Si quien lo revive cae antes, la reanimación se interrumpe.',
   ],
+  /**
+   * Lo que cambia en una partida en línea (R-33 a R-40 y R-54). `seconds` es el reloj del servidor
+   * (`PLAY_TURN_SECONDS`, D-90).
+   */
+  onlineTitle: 'En línea',
+  online: (seconds: number) => [
+    'De 2 a 3 personas, cada una con un ninja: si falta una, el bot lleva al tercero. Ves solo tu mano, y los planes de tus compañeros aparecen en el tablero mientras los arman. No hay chat: así se coordina el equipo.',
+    `El reloj da ${seconds} s por turno a todo el equipo, y no hay pausa. El turno se resuelve antes si todos confirman, y confirmar es definitivo. Si el reloj llega a cero, se juega lo que cada quien tenga planeado.`,
+    'Si alguien se desconecta, su ninja queda quieto hasta que vuelva: no se mueve ni actúa, y los gólems lo pueden atacar. Quien vuelve lo retoma desde el turno siguiente.',
+    'Salir con la ✕ es abandonar: pierdes las monedas de esa partida, y tu ninja queda quieto hasta el final. También abandona quien se desconecta y no vuelve antes del final. Los logros que ya ganaste se mantienen.',
+    'Las monedas de cada ronda superada entran a tu cuenta al terminar la partida. Una ronda la cobra quien estaba conectado cuando el equipo la superó. El bot no cobra.',
+    'Si el servidor se reinicia, la partida termina. Conservas lo ganado en las rondas completas, y no cuenta como derrota.',
+    'En línea no hay «Sugerir jugada» ni las ayudas para ver el daño y el alcance de los gólems.',
+  ],
   keysTitle: 'Controles',
   keys: [
     ['Clic', 'Seleccionar ninja, casilla u objetivo'],
@@ -875,11 +889,16 @@ export const ACCOUNT_ERRORS = {
  * São Paulo) y la del plazo de los códigos (R-50) aprobadas en la revisión del PR #11. El contacto pasa a
  * ventisca@wpena.dev (D-62). Su primer párrafo cambió con D-75: Ventisca dejó de ser un proyecto de clase y
  * es el piloto de un proyecto personal. Ese párrafo nombra de forma explícita al responsable del tratamiento
- * de los datos. La fecha de vigencia es la de la fusión de ese cambio.
+ * de los datos.
+ *
+ * Con el juego en línea (D-96) se revisó contra lo que hace el multijugador y se precisaron tres cosas: quién
+ * ve el nombre visible, qué se guarda de cada partida y qué ve el equipo mientras se juega. Desde entonces
+ * queda congelado hasta que exista el mecanismo para avisar sus cambios. La fecha de vigencia es la de la
+ * fusión del último cambio.
  */
 export const PRIVACY_NOTICE = {
   title: 'Aviso de privacidad de Ventisca',
-  since: 'Vigente desde el 6 de octubre de 2026',
+  since: 'Vigente desde el 13 de octubre de 2026',
   sections: [
     {
       title: '',
@@ -898,14 +917,15 @@ export const PRIVACY_NOTICE = {
       items: [
         'Tu correo, para verificar tu cuenta, recuperarla y avisarte de cambios en ella o en este aviso.',
         'Una huella de tu contraseña (Argon2id), que no permite recuperarla. Tu contraseña nunca se guarda.',
-        'Tu nombre visible, que ven las personas con quienes juegas.',
+        'Tu nombre visible, que ven las personas con quienes juegas o buscas equipo.',
         'Tu progreso: carta de camino, monedas, cajas abiertas, colección y logros.',
         'Tus estadísticas de combate. Solo las ves tú.',
-        'Las partidas en línea que jugaste: con qué ninja, cuándo entraste y cuándo saliste.',
+        'Las partidas en línea que jugaste: con qué ninja, cuándo entraste y cuándo saliste, las rondas que superaste y cómo terminó cada una para ti (si la terminaste, la abandonaste o la interrumpió un reinicio del servidor).',
         'Una cookie necesaria para mantener tu sesión abierta.',
       ],
       body: [
         'Para frenar abusos, como intentos repetidos de entrar a una cuenta, el servidor recuerda tu IP durante 15 minutos, solo en memoria. No la guardamos en la base de datos.',
+        'Mientras juegas en línea, tu equipo ve lo que planeas con tu ninja y si sigues conectado. Eso no se guarda.',
         'No pedimos tu edad, tu nombre real ni tu ubicación. No hay pagos ni chat.',
       ],
     },

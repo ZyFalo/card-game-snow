@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import type { MatchState } from '@ventisca/core';
 import { apiError, type Health, type PublicConfig } from '@ventisca/protocol';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import { type AccountsOptions, accountsRoutes } from './accounts/routes';
 import { originGuard } from './origin';
 import { Hub, type PlayTimings } from './play/hub';
+import type { PrepareMatch } from './play/match';
 import { playRoutes } from './play/routes';
 import { dbStore } from './play/store';
 import { progressRoutes } from './progress/routes';
@@ -35,7 +35,7 @@ export interface AppOptions {
   /** Semilla de cada partida en línea (R-23); las pruebas la fijan. */
   matchSeed?: () => number;
   /** Solo para las pruebas: deja cada partida en línea recién creada en un tablero preparado. */
-  matchPrepare?: (state: MatchState) => MatchState;
+  matchPrepare?: PrepareMatch;
 }
 
 /**

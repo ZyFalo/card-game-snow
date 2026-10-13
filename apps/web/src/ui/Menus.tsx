@@ -1,4 +1,5 @@
 import { BALANCE, ELEMENTS, ENEMY_KINDS } from '@ventisca/core';
+import { PLAY_TURN_SECONDS } from '@ventisca/protocol';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { art } from '../art';
 import { DEMO_TEXT, ENEMY_TEXT, ES, HELP, NINJA_TEXT } from '../i18n/es';
@@ -207,6 +208,13 @@ function HelpContent({ inBattle, close }: { inBattle: boolean; close: () => void
       <h3>{HELP.koTitle}</h3>
       <ul>
         {HELP.ko.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+
+      <h3>{HELP.onlineTitle}</h3>
+      <ul>
+        {HELP.online(PLAY_TURN_SECONDS).map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>

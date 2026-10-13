@@ -129,11 +129,20 @@ export async function logIn(page: Page, email: string, password: string) {
 const SERVER = fileURLToPath(new URL('../../server', import.meta.url));
 
 /**
- * Le paga `matches` partidas completas (420 monedas cada una) a una cuenta de la base de las e2e. Hasta
- * que existan las partidas en línea (M8), no hay forma de ganarlas desde la interfaz.
+ * Le paga `matches` partidas completas (420 monedas cada una) a una cuenta de la base de las e2e: así las
+ * pruebas de la tienda no tienen que jugar partidas enteras para tener monedas.
  */
 export function giveCoins(email: string, matches = 1): void {
   execFileSync(`${SERVER}/node_modules/.bin/tsx`, [`${SERVER}/test/support/e2e-coins.ts`, email, String(matches)], {
     stdio: 'pipe',
   });
+}
+
+/**
+ * Le da a una cuenta de la base de las e2e los 9 logros, o todos menos `missing`, en la tabla donde el
+ * servidor los cuenta: así una prueba del doble de monedas (R-29) no tiene que ganarlos jugando.
+ */
+export function giveAchievements(email: string, missing?: string): void {
+  const args = [`${SERVER}/test/support/e2e-achievements.ts`, email, ...(missing ? [missing] : [])];
+  execFileSync(`${SERVER}/node_modules/.bin/tsx`, args, { stdio: 'pipe' });
 }

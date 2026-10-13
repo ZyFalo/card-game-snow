@@ -18,10 +18,14 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
   // Con sockets y relojes de verdad, cada prueba puede tardar más que las demás.
   vi.setConfig({ testTimeout: 30_000 });
   const timings = { turnMs: 600, graceMs: 50, watchMs: 400, offerMs: 150, emptyMs: 500 };
-  /** La última ronda, con un gólem a punto de caer junto a Brasa: un golpe y la partida se gana. */
+  /**
+   * La última ronda, con un gólem a punto de caer junto a Brasa: un golpe y la partida se gana. Sin bonus:
+   * Escarcha está herida. Nadie cayó, así que la partida no suma a ningún logro.
+   */
   const lastBlow = board({
     round: 3,
-    ninjas: { fire: { at: [3, 2] }, snow: { everKo: true } },
+    bonus: 'fullHealth',
+    ninjas: { fire: { at: [3, 2] }, snow: { hp: 20 } },
     golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
   });
   let server: TestServer;

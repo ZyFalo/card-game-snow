@@ -836,7 +836,7 @@ export const ACHIEVEMENT_TEXT: Record<AchievementId, { name: string; counts: str
   snowShield: { name: 'Escudo de nieve', counts: 'Golpes que anula tu escudo' },
   combo3: { name: 'Combo triple', counts: 'Turnos con las tres cartas' },
   untouched: { name: 'Sin un rasguño', counts: 'Bonus con todos a vida completa' },
-  noOneLeft: { name: 'Nadie se queda atrás', counts: 'Victorias en que los tres cayeron y volvieron' },
+  noOneLeft: { name: 'Nadie se queda atrás', counts: 'Victorias en que alguien cayó y los tres terminaron de pie' },
 };
 
 /** Los cuatro pliegues del amuleto (D-104): su nombre y con quién se gana cada uno. */

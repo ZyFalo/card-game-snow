@@ -241,8 +241,10 @@ describe('Logros por persona (R-55)', () => {
     ninja(s, 'fire').everKo = true;
     const { state, feats } = play(s, plans);
     expect(state.status).toBe('victory');
-    // Brasa también cayó y ganó de pie, pero el logro es del pliegue de Agua.
-    expect(feats).toEqual({ fire: {}, water: { upAgain: 1 }, snow: {} });
+    // Brasa también cayó y ganó de pie, pero el logro es del pliegue de Agua. El de equipo sí es para los tres.
+    expect(feats.water.upAgain).toBe(1);
+    expect(feats.fire.upAgain).toBeUndefined();
+    expect(feats.snow.upAgain).toBeUndefined();
   });
 
   it('R-55: si Marea sigue caída al ganar, o si nunca cayó, no hay "De pie otra vez"', () => {
@@ -396,20 +398,32 @@ describe('Logros por persona (R-55)', () => {
     expect(feats).toEqual(NOTHING);
   });
 
-  it('R-55: "Nadie se queda atrás" cuenta la victoria en que los tres cayeron y volvieron, para los tres', () => {
-    const { s, plans } = lastBlow('noKo');
-    for (const id of ELEMENTS) ninja(s, id).everKo = true;
-    const { state, feats } = play(s, plans);
-    expect(state.status).toBe('victory');
-    expect(feats).toEqual({ fire: { noOneLeft: 1 }, water: { upAgain: 1, noOneLeft: 1 }, snow: { noOneLeft: 1 } });
+  it('R-55: "Nadie se queda atrás" cuenta la victoria en que alguien cayó y los tres terminaron de pie, para los tres', () => {
+    // Basta con que haya caído uno, sea quien sea, y que al ganar no quede nadie en el suelo.
+    const one = lastBlow('noKo');
+    ninja(one.s, 'snow').everKo = true;
+    const first = play(one.s, one.plans);
+    expect(first.state.status).toBe('victory');
+    expect(first.feats).toEqual({ fire: { noOneLeft: 1 }, water: { noOneLeft: 1 }, snow: { noOneLeft: 1 } });
+
+    // Si cayeron los tres y volvieron, cuenta igual, y una sola vez.
+    const all = lastBlow('noKo');
+    for (const id of ELEMENTS) ninja(all.s, id).everKo = true;
+    expect(play(all.s, all.plans).feats).toEqual({
+      fire: { noOneLeft: 1 },
+      water: { upAgain: 1, noOneLeft: 1 },
+      snow: { noOneLeft: 1 },
+    });
   });
 
-  it('R-55: si uno de los tres nunca cayó, o sigue caído al ganar, no hay "Nadie se queda atrás"', () => {
-    const never = lastBlow('noKo');
-    ninja(never.s, 'water').everKo = true;
-    ninja(never.s, 'snow').everKo = true;
-    for (const id of ELEMENTS) expect(play(never.s, never.plans).feats[id].noOneLeft).toBeUndefined();
+  it('R-55: si nadie cayó, o alguien sigue caído al ganar, no hay "Nadie se queda atrás"', () => {
+    // Una victoria sin caídas: nadie tuvo que volver.
+    const clean = lastBlow('turnLimit');
+    clean.s.turn = BALANCE.difficulty.classic.bonusTurnLimit + 5;
+    expect(play(clean.s, clean.plans).state.status).toBe('victory');
+    expect(play(clean.s, clean.plans).feats).toEqual(NOTHING);
 
+    // Escarcha cayó y sigue en el suelo: se quedó atrás, aunque los otros dos hayan vuelto.
     const down = lastBlow('noKo');
     for (const id of ELEMENTS) ninja(down.s, id).everKo = true;
     place(down.s, 'snow', 0, 4, { hp: 0 });

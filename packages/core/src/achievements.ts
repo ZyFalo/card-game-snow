@@ -118,6 +118,8 @@ export function countFeats(turn: TurnRecord, ninjaId: ElementKind): AchievementC
   const won = after.status === 'victory';
   /** Cayó en la partida y está de pie: alguien lo levantó. */
   const backUp = (id: ElementKind) => after.ninjas.some((n) => n.id === id && n.everKo && n.hp > 0);
+  /** Alguien cayó en la partida, y los tres están de pie: nadie se quedó en el suelo. */
+  const noOneLeft = after.ninjas.some((n) => n.everKo) && after.ninjas.every((n) => n.hp > 0);
   const card = cardEffects(events, ninjaId);
   /** Las unidades a las que su carta les puso ese estado, sin contarse a sí mismo. */
   const statusOn = (kind: 'stun' | 'burn' | 'boost') =>
@@ -152,6 +154,6 @@ export function countFeats(turn: TurnRecord, ninjaId: ElementKind): AchievementC
   // Se llega al bonus por cualquiera de sus condiciones (R-21), con los tres a vida completa.
   const reachedBonus = events.some((e) => e.t === 'bonusCheck' && e.met);
   add('untouched', reachedBonus && after.ninjas.every((n) => n.hp === n.maxHp) ? 1 : 0);
-  add('noOneLeft', won && ELEMENTS.every(backUp) ? 1 : 0);
+  add('noOneLeft', won && noOneLeft ? 1 : 0);
   return out;
 }

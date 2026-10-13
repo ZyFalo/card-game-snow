@@ -147,6 +147,11 @@ test('D-104 y D-105: "Mi progreso" muestra el amuleto de 4 pliegues y el avance 
     'Curas a compañeros',
     'Golpes que anula tu escudo',
   ]);
+  await expect(fold(page, 'team').locator('.ach-what')).toHaveText([
+    'Turnos con las tres cartas',
+    'Bonus con todos a vida completa',
+    'Victorias en que alguien cayó y los tres terminaron de pie',
+  ]);
   await expect(page.locator('.ach-what')).toHaveCount(12);
   for (const what of await page.locator('.ach-what').all()) await expect(what).toBeVisible();
   await expect(page.locator('.note-fold [data-count="0"]')).toHaveCount(12);

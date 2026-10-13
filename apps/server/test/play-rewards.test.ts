@@ -19,11 +19,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** La ronda `round`, con un gólem a punto de caer junto a Brasa. Sin bonus: alguien ya cayó. */
+/** La ronda `round`, con un gólem a punto de caer junto a Brasa. Sin bonus: Escarcha está herida. */
 const oneBlow = (round: 1 | 2 | 3) =>
   board({
     round,
-    ninjas: { fire: { at: [3, 2] }, snow: { everKo: true } },
+    bonus: 'fullHealth',
+    ninjas: { fire: { at: [3, 2] }, snow: { hp: 20 } },
     golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
   });
 
@@ -331,6 +332,9 @@ describe('Logros por persona (R-55)', () => {
     await own.say(second.caro, { type: 'plan.confirm', turn: 1, plan: {} });
     expect(second.ana.last('match.end')).toMatchObject({ result: 'victory' });
     expect(own.store.countsOf(second.beto.player.userId)).toEqual({});
+    // A quienes sí estaban se les suma lo del equipo: alguien cayó, y los tres terminaron de pie.
+    expect(own.store.countsOf(second.ana.player.userId)).toEqual({ noOneLeft: 1 });
+    expect(own.store.countsOf(second.caro.player.userId)).toEqual({ noOneLeft: 1 });
   });
 
   it('R-55: el bot no suma: solo avanzan las cuentas de las personas', async () => {
@@ -361,11 +365,12 @@ describe('Logros por persona (R-55)', () => {
 
   it('R-55: lo que un logro suma en varios turnos de la partida se junta en el resultado', async () => {
     // Dos gólems a un golpe de Marea, que derriba uno por turno: el coloso se queda a su lado, pegándole.
-    // Sin bonus: Escarcha ya había caído.
+    // Sin bonus: Escarcha está herida.
     const w = world({
       prepare: board({
         round: 3,
-        ninjas: { water: { at: [4, 2] }, snow: { everKo: true } },
+        bonus: 'fullHealth',
+        ninjas: { water: { at: [4, 2] }, snow: { hp: 20 } },
         golems: [
           { kind: 'sniper', at: [5, 2], hp: 1 },
           { kind: 'colossus', at: [4, 3], hp: 1 },
@@ -385,9 +390,10 @@ describe('Logros por persona (R-55)', () => {
     await w.say(ana, { type: 'plan.confirm', turn: 2, plan: {} });
     await w.say(caro, { type: 'plan.confirm', turn: 2, plan: {} });
     const end = beto.last('match.end');
-    expect(end).toMatchObject({ result: 'victory', gained: { breakwater: 2 }, completed: [] });
+    expect(end).toMatchObject({ result: 'victory', completed: [] });
+    expect(end?.gained).toEqual({ breakwater: 2 });
     expect(end?.achievements.breakwater).toEqual({ count: 2, done: false });
-    expect(ana.last('match.end')).toMatchObject({ gained: {}, completed: [] });
+    expect(ana.last('match.end')?.gained).toEqual({});
   });
 
   it('R-55: el resultado dice cuánto sumó cada logro en esa partida, entre todos sus turnos, y cómo queda', async () => {
@@ -395,7 +401,8 @@ describe('Logros por persona (R-55)', () => {
     const w = world({
       prepare: board({
         round: 3,
-        ninjas: { fire: { at: [3, 2], hand: [10] }, snow: { everKo: true } },
+        bonus: 'fullHealth',
+        ninjas: { fire: { at: [3, 2], hand: [10] }, snow: { hp: 20 } },
         golems: [{ kind: 'sniper', at: [5, 2], hp: 11 }],
       }),
     });
@@ -412,15 +419,20 @@ describe('Logros por persona (R-55)', () => {
     expect(ana.last('turn.result')?.state.status).toBe('playing');
     await clearRound(w, [ana, beto, caro], 2);
     const end = ana.last('match.end');
-    expect(end).toMatchObject({ result: 'victory', gained: { stunner: 1 }, completed: [] });
+    expect(end).toMatchObject({ result: 'victory', completed: [] });
+    expect(end?.gained).toEqual({ stunner: 1 });
     expect(end?.achievements.stunner).toEqual({ count: 4, done: false });
     expect(end?.achievements.blaze).toEqual({ count: 0, done: false });
     // A cada quien, lo suyo: Beto y Caro no sumaron nada.
-    expect(beto.last('match.end')).toMatchObject({ gained: {}, completed: [] });
+    expect(beto.last('match.end')?.gained).toEqual({});
+    expect(beto.last('match.end')?.completed).toEqual([]);
     expect(caro.last('match.end')?.achievements.stunner).toEqual({ count: 0, done: false });
   });
 
-  /** La última ronda, con Marea de pie después de haber caído: al ganar, suma "De pie otra vez". */
+  /**
+   * La última ronda, con Marea de pie después de haber caído. Al ganar, quien la lleva suma "De pie otra vez",
+   * y el equipo, "Nadie se queda atrás": alguien cayó, y los tres terminan de pie.
+   */
   const upAgain = () =>
     board({
       round: 3,
@@ -435,9 +447,12 @@ describe('Logros por persona (R-55)', () => {
     w.store.giveProgress(beto.player.userId, { upAgain: goal - 1 });
     await clearRound(w, [ana, beto, caro], 1);
     const end = beto.last('match.end');
-    expect(end).toMatchObject({ gained: { upAgain: 1 }, completed: ['upAgain'] });
+    expect(end?.gained).toEqual({ upAgain: 1, noOneLeft: 1 });
+    expect(end?.completed).toEqual(['upAgain']);
     expect(end?.achievements.upAgain).toEqual({ count: goal, done: true });
-    expect(ana.last('match.end')).toMatchObject({ gained: {}, completed: [] });
+    // Ana, con Brasa, suma solo lo del equipo, que todavía no llega a su meta.
+    expect(ana.last('match.end')?.gained).toEqual({ noOneLeft: 1 });
+    expect(ana.last('match.end')?.completed).toEqual([]);
   });
 
   it('R-55: un logro que ya estaba completo no vuelve a sumar ni a salir como nuevo', async () => {
@@ -446,7 +461,9 @@ describe('Logros por persona (R-55)', () => {
     w.store.giveAchievements(beto.player.userId, ['upAgain']);
     await clearRound(w, [ana, beto, caro], 1);
     const end = beto.last('match.end');
-    expect(end).toMatchObject({ gained: {}, completed: [] });
+    // Lo del equipo sí le suma; "De pie otra vez", que ya tenía, no.
+    expect(end?.gained).toEqual({ noOneLeft: 1 });
+    expect(end?.completed).toEqual([]);
     expect(end?.achievements.upAgain).toEqual({ count: achievementGoal('upAgain'), done: true });
   });
 });
@@ -479,7 +496,7 @@ describe('El doble de monedas (R-29, D-103)', () => {
   });
 
   it('D-103: quien completa el amuleto en esa misma partida ya cobra el doble', async () => {
-    // Los tres cayeron y están de pie: al ganar, el equipo suma "Nadie se queda atrás".
+    // Alguien cayó y los tres están de pie: al ganar, el equipo suma "Nadie se queda atrás".
     const w = world({
       prepare: board({
         round: 3,

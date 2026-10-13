@@ -57,6 +57,11 @@ export interface AccountsOptions {
   now?: () => Date;
   /** Límites de abuso; las pruebas los inspeccionan. */
   limits?: AccountLimits;
+  /**
+   * Se cerraron sesiones de esa cuenta (cerró sesión, cambió o recuperó su contraseña, deshizo un cambio
+   * de correo o borró la cuenta): el juego en línea cierra su conexión, que se abrió con una de ellas.
+   */
+  sessionsEnded?: (userId: string) => void;
 }
 
 type Purpose = (typeof EMAIL_CODE_PURPOSES)[number];
@@ -392,7 +397,10 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
 
   app.post('/api/auth/logout', async (req, reply) => {
     const current = await sessionUser(req);
-    if (current) await db.delete(sessions).where(eq(sessions.id, current.sessionId));
+    if (current) {
+      await db.delete(sessions).where(eq(sessions.id, current.sessionId));
+      opts.sessionsEnded?.(current.user.id);
+    }
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return reply.code(204).send();
   });
@@ -436,6 +444,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
       .returning();
     // Se cierran todas las sesiones y la persona entra con una nueva.
     await db.delete(sessions).where(eq(sessions.userId, user.id));
+    opts.sessionsEnded?.(user.id);
     await startSession(reply, user.id);
     limits.loginByAccount.reset(user.email);
     await sendSecurityNotice(passwordChangedMail(user.email, appUrl), req);
@@ -462,6 +471,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
     // Se cierran las demás sesiones; la actual sigue abierta.
     await db.delete(sessions).where(and(eq(sessions.userId, user.id), ne(sessions.id, current.sessionId)));
+    opts.sessionsEnded?.(user.id);
     await sendSecurityNotice(passwordChangedMail(user.email, appUrl), req);
     return reply.code(204).send();
   });
@@ -574,6 +584,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
       return false;
     });
     if (taken) return reply.code(409).send(apiError('email_taken'));
+    opts.sessionsEnded?.(owner.id);
     limits.loginByAccount.reset(oldEmail);
     return reply.code(204).send();
   });
@@ -593,6 +604,7 @@ export async function accountsRoutes(app: FastifyInstance, opts: AccountsOptions
     }
     // En cascada se borran sus sesiones, sus códigos y, cuando exista, su progreso (D-56).
     await db.delete(users).where(eq(users.id, user.id));
+    opts.sessionsEnded?.(user.id);
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return reply.code(204).send();
   });

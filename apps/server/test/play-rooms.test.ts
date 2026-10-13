@@ -326,23 +326,45 @@ describe('Salas con código (R-53, D-89)', () => {
 
     it('R-53: al terminar, el equipo vuelve a la sala con sus asientos, y se puede jugar otra', () => {
       const { ana, room } = playing();
-      expect(rooms.finish(room.code, [])).toBe(true);
+      expect(rooms.survives(room.code)).toBe(true);
+      expect(rooms.finish(room.code)).toBe(true);
       expect(names(ana)).toEqual(['Ana', 'Beto', 'Caro']);
       expect(view(ana)).toMatchObject({ start: 'full' });
       expect(typeof rooms.start(ana.userId)).toBe('object');
     });
 
-    it('R-39: quien abandonó la partida también sale de la sala', () => {
+    it('R-39: quien abandona la partida sale también de la sala, y queda libre en el acto', () => {
       const { ana, beto, room } = playing();
-      expect(rooms.finish(room.code, [beto.userId])).toBe(true);
-      expect(names(ana)).toEqual(['Ana', null, 'Caro']);
+      rooms.abandon(beto.userId);
       expect(rooms.of(beto.userId)).toBeUndefined();
+      // A los demás no se les avisa a mitad de la partida.
+      expect(states.size).toBe(0);
+      expect(rooms.finish(room.code)).toBe(true);
+      expect(names(ana)).toEqual(['Ana', null, 'Caro']);
     });
 
-    it('R-53: si abandonó quien creó la sala, la sala se cierra al terminar la partida', () => {
+    it('R-53: si abandona quien creó la sala, los demás siguen jugando y la sala se cierra al terminar', () => {
       const { ana, beto, caro, room } = playing();
-      expect(rooms.finish(room.code, [ana.userId])).toBe(false);
-      expect(closed).toEqual([{ code: room.code, told: [beto.userId, caro.userId] }]);
+      rooms.abandon(ana.userId);
+      expect(rooms.of(ana.userId)).toBeUndefined();
+      // La sala sigue mientras dura la partida, pero ya se sabe que no sobrevive.
+      expect(rooms.of(beto.userId)?.code).toBe(room.code);
+      expect(rooms.survives(room.code)).toBe(false);
+      expect(rooms.finish(room.code)).toBe(false);
+      expect(rooms.size).toBe(0);
+      for (const who of [beto, caro]) expect(rooms.of(who.userId)).toBeUndefined();
+      // Sin más aviso: el resultado de la partida ya dice que no hay sala a la que volver.
+      expect(closed).toEqual([]);
+      expect(rooms.join(player('Dani'), room.code, 'fire')).toBe('room_not_found');
+    });
+
+    it('R-39: abandonar sin una partida en curso es salir de la sala', () => {
+      const [ana, beto] = [player('Ana'), player('Beto')];
+      const room = rooms.create(ana, 'fire');
+      joined(rooms.join(beto, room.code, 'water'));
+      rooms.abandon(beto.userId);
+      expect(names(ana)).toEqual(['Ana', null, null]);
+      rooms.abandon(ana.userId);
       expect(rooms.size).toBe(0);
     });
 
@@ -351,14 +373,15 @@ describe('Salas con código (R-53, D-89)', () => {
       rooms.disconnect(caro.userId);
       vi.advanceTimersByTime(EMPTY_MS * 5);
       expect(rooms.of(caro.userId)?.code).toBe(room.code);
-      rooms.finish(room.code, []);
+      rooms.finish(room.code);
       expect(view(ana).seats[2]).toMatchObject({ name: 'Caro', connected: false });
       vi.advanceTimersByTime(EMPTY_MS);
       expect(names(ana)).toEqual(['Ana', 'Beto', null]);
     });
 
     it('terminar una sala que ya no existe no hace nada', () => {
-      expect(rooms.finish('ZZZZZZ', [])).toBe(false);
+      expect(rooms.finish('ZZZZZZ')).toBe(false);
+      expect(rooms.survives('ZZZZZZ')).toBe(false);
     });
   });
 });

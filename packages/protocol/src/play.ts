@@ -25,6 +25,14 @@ export const PLAY_LIMITS = {
   burst: 30,
 } as const;
 
+/**
+ * `GET /api/play/status`: si la cuenta tiene una partida en curso que no abandonó, y si ya está conectada a
+ * ella desde otra parte. Con eso, al abrir el juego, quien se había desconectado vuelve derecho a su partida
+ * (R-38), sin quitarle la conexión a otra pestaña que ya esté jugando.
+ */
+export const playStatusSchema = z.object({ match: z.enum(['here', 'away']).nullable() });
+export type PlayStatus = z.infer<typeof playStatusSchema>;
+
 /** Por qué el servidor cerró la conexión. Los códigos de 4000 en adelante son de la aplicación. */
 export const CLOSE = {
   /** La misma cuenta abrió el juego en otra pestaña: vale la conexión nueva. */

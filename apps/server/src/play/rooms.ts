@@ -44,6 +44,8 @@ export interface Room {
   members: Map<string, Member>;
   /** Hay una partida en curso: nadie más puede unirse. */
   playing: boolean;
+  /** Quien la creó abandonó la partida en curso: la sala se cierra cuando esa partida termine. */
+  orphan: boolean;
 }
 
 export interface RoomsOptions {
@@ -90,7 +92,7 @@ export class Rooms {
       if (i >= CODE_TRIES) throw new Error('No se pudo generar un código de sala libre.');
       code = next();
     }
-    const room: Room = { code, host: player, members: new Map(), playing: false };
+    const room: Room = { code, host: player, members: new Map(), playing: false, orphan: false };
     room.members.set(player.userId, { player, seat: element, wanted: null, connected: true, cancelGone: null });
     this.rooms.set(code, room);
     this.byUser.set(player.userId, room);
@@ -188,18 +190,41 @@ export class Rooms {
   }
 
   /**
-   * La partida de la sala terminó. `left`: quienes abandonaron la partida, que también salen de la sala.
-   * Si entre ellos está quien la creó, la sala se cierra. Devuelve si la sala sigue abierta.
+   * Esa persona abandonó la partida de su sala (R-39): sale también de la sala, y queda libre para jugar
+   * en otra parte. Si es quien la creó, la sala se cierra cuando termine esa partida: los demás siguen
+   * jugando.
    */
-  finish(code: string, left: readonly string[]): boolean {
+  abandon(userId: string): void {
+    const room = this.byUser.get(userId);
+    if (!room) return;
+    if (!room.playing) {
+      this.leave(userId);
+      return;
+    }
+    if (room.host.userId === userId) room.orphan = true;
+    this.remove(room, userId);
+  }
+
+  /** ¿Seguirá abierta esa sala cuando termine su partida? */
+  survives(code: string): boolean {
+    const room = this.rooms.get(code);
+    return room !== undefined && !room.orphan;
+  }
+
+  /**
+   * La partida de la sala terminó: quienes siguen en ella vuelven a la sala, con sus asientos. Si quien la
+   * creó abandonó la partida, la sala se cierra sin más aviso: el resultado ya dijo que no hay sala a la
+   * que volver. Devuelve si la sala sigue abierta.
+   */
+  finish(code: string): boolean {
     const room = this.rooms.get(code);
     if (!room) return false;
     room.playing = false;
-    if (left.includes(room.host.userId)) {
-      this.close(room, room.host.userId);
+    if (room.orphan) {
+      for (const userId of [...room.members.keys()]) this.remove(room, userId);
+      this.rooms.delete(room.code);
       return false;
     }
-    for (const userId of left) this.remove(room, userId);
     // Quien sigue sin conexión al terminar la partida conserva su lugar el plazo de siempre.
     for (const member of room.members.values()) if (!member.connected) this.startGone(room, member);
     this.announce(room);
@@ -281,7 +306,9 @@ export class Rooms {
     this.options.onClosed(room, told);
   }
 
+  /** Les dice a quienes están en la sala cómo quedó. Durante una partida no: están jugando, no en la sala. */
   private announce(room: Room): void {
+    if (room.playing) return;
     for (const member of room.members.values()) {
       if (!member.connected) continue;
       const state = this.stateOf(member.player.userId);

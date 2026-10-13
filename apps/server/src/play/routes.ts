@@ -1,5 +1,13 @@
 import fastifyWebsocket from '@fastify/websocket';
-import { apiError, CLOSE, clientMessageSchema, PLAY_LIMITS, PLAY_PATH, PROTOCOL_VERSION } from '@ventisca/protocol';
+import {
+  apiError,
+  CLOSE,
+  clientMessageSchema,
+  PLAY_LIMITS,
+  PLAY_PATH,
+  type PlayStatus,
+  PROTOCOL_VERSION,
+} from '@ventisca/protocol';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sessionReader } from '../accounts/session';
 import type { Db } from '../db';
@@ -63,6 +71,15 @@ export async function playRoutes(app: FastifyInstance, opts: PlayOptions) {
   app.addHook('onClose', async () => {
     clearInterval(heartbeat);
     await hub.shutdown();
+  });
+
+  /** ¿Tiene esta cuenta una partida en curso? Para volver a ella al abrir el juego (R-38). */
+  app.get(`${PLAY_PATH}/status`, async (req, reply) => {
+    const current = await sessionUser(req);
+    if (!current) return reply.code(401).send(apiError('unauthorized'));
+    const status = hub.statusOf(current.user.id);
+    const body: PlayStatus = { match: status === 'left' ? null : status };
+    return body;
   });
 
   app.get(

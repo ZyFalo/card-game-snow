@@ -1,10 +1,10 @@
 # Ventisca en línea (v2): PRD de multijugador, cuentas y progreso
 
-Versión 1.14: aprobada para implementar · 6 de octubre de 2026 · William Andrés Peña Vargas
+Versión 1.15: aprobada para implementar · 12 de octubre de 2026 · William Andrés Peña Vargas
 
 > Documento aprobado en claude.ai el 29 de septiembre de 2026. Desde ahora esta es la versión de referencia: los cambios se hacen aquí, en el repositorio. En todo lo que toque el modo en línea, este documento manda sobre `docs/PRD.md`.
 >
-> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8, y la 1.13 (el mismo día) agrega D-75: Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal. El primer párrafo del aviso de privacidad cambia como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas. También anota, como idea para después y sin compromiso, que las ayudas de las partidas locales podrían ofrecerse en línea (`docs/ideas/`). La 1.14 (el mismo día) pone esa nota en presente: las ayudas ya existen en las partidas locales, con su decisión (D-78, en `docs/PRD.md`).
+> Cambios: la versión 1.1 agrega la gestión de la cuenta (R-43 a R-49 y D-57), aprobada el 29 de septiembre de 2026. La 1.2 (30 de septiembre de 2026) agrega las decisiones D-51 a D-56, tomadas al empezar el M7, la 1.3 (el mismo día) agrega D-58, tomada al desplegar, la 1.4 agrega D-59, aprobada con las cuentas del servidor, la 1.5 registra cómo se envían los correos y agrega R-50, D-60 y D-61 con las cuentas del servidor, la 1.6 agrega D-62, el correo de contacto, y una tarea del M9 para avisar los cambios del aviso de privacidad, la 1.7 (1 de octubre de 2026) agrega D-64: cada push a `main` se despliega, la 1.8 (el mismo día) corrige su causa: los despliegues se saltaban por las rutas vigiladas del panel de Railway, no por las de `railway.json`, la 1.9 agrega D-65, la comprobación de origen, y D-66, las compras en el libro de monedas, y precisa las tablas del progreso, la 1.10 agrega D-67, el perfil como inicio en línea durante el M7, y D-68, el reintento de una compra en el cliente, y marca el progreso en la cuenta del M7, la 1.11 anota que P-20 ya está medida, la 1.12 (6 de octubre de 2026) cierra P-20 con R-51 y las decisiones D-69 a D-72, precisa D-68, agrega D-73, sobre los dispositivos, y anota lo que queda pendiente antes del M8, y la 1.13 (el mismo día) agrega D-75: Ventisca deja de ser un proyecto de clase y es el piloto de un proyecto personal. El primer párrafo del aviso de privacidad cambia como corrección previa a la apertura, sin aviso previo, porque todas las cuentas siguen siendo internas. También anota, como idea para después y sin compromiso, que las ayudas de las partidas locales podrían ofrecerse en línea (`docs/ideas/`). La 1.14 (el mismo día) pone esa nota en presente: las ayudas ya existen en las partidas locales, con su decisión (D-78, en `docs/PRD.md`). La 1.15 (12 de octubre de 2026) registra el multijugador en línea, que se publica como Beta: las decisiones D-83 a D-103, las reglas R-52 a R-55, y las enmiendas a R-33 a R-42. Cambian el reloj (10 s, D-90), la desconexión (el ninja queda quieto, D-92), el abandono (pierde las monedas de la partida, D-93) y el reinicio del servidor (la partida en curso se pierde, D-94), que reemplazan a D-46, D-45, D-31 y D-49. El M8 y el M9 se entregan juntos (D-84).
 
 ## Resumen y alcance
 
@@ -14,11 +14,13 @@ Ventisca v2 agrega un modo en línea con cuentas: de 2 a 3 personas juegan junta
 - **En línea:** requiere cuenta con correo y contraseña. Hay salas con código para jugar con amigos y emparejamiento público. Monedas, cajas, colección, logros y estadísticas viven en la cuenta.
 - **Dónde:** en ventisca.wpena.dev, todo alojado en Railway (Docker, servidor Node y Postgres), con correos por Resend.
 
+- **Beta:** el modo en línea se publica como Beta para todas las cuentas verificadas (D-83), con la cola pública y las salas con código (D-84), solo en Clásica (D-85).
+
 Queda fuera de v2: chat, señales y clasificaciones públicas. El jefe final y los rangos siguen en v3. El motor de reglas no cambia: el servidor usa el mismo `packages/core`.
 
 ## Decisiones
 
-Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, D-67 y D-68, aprobadas con el progreso en el cliente, D-69 a D-72, que cierran P-20, D-73, sobre los dispositivos, y D-75, que deja de llamar a Ventisca proyecto de clase (D-74, la claridad del tablero, está en `docs/PRD.md`). La columna de estado queda como registro de cómo se decidió cada una.
+Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho se tomaron al definir la idea y nueve se aprobaron tras revisarlas una por una. Después llegaron D-57, la gestión de la cuenta; D-51 a D-56, tomadas al empezar el M7 (las herramientas del servidor se explican en el ADR 0006), D-58, tomada al desplegar, D-59, D-60 y D-61, aprobadas con las cuentas del servidor, D-62, el correo de contacto, D-64, que despliega cada push a `main`, D-65, la comprobación de origen, D-66, las compras en el libro de monedas, D-67 y D-68, aprobadas con el progreso en el cliente, D-69 a D-72, que cierran P-20, D-73, sobre los dispositivos, y D-75, que deja de llamar a Ventisca proyecto de clase (D-74 y D-76 a D-82, la claridad del tablero y los créditos, están en `docs/PRD.md`). D-83 a D-101 son las del multijugador en línea, dictadas por el dueño de producto el 12 de octubre de 2026 con sus maquetas aprobadas; D-102 y D-103 se tomaron al implementarlo y quedan por revisar. Desde D-83, las decisiones nuevas se registran aquí, y `docs/PRD.md` solo las enlaza. La columna de estado queda como registro de cómo se decidió cada una.
 
 | ID | Decisión | Estado |
 | --- | --- | --- |
@@ -33,11 +35,11 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-42 | Sin comunicación, como el original: ni chat ni señales. Cada persona ve en tiempo real el plan de sus compañeros (R-35). | Aprobada |
 | D-43 | Elección de ninja, como el original: cada persona elige su ninja antes de entrar a la cola, y el emparejamiento solo junta personas con ninjas distintos. En una sala, cada quien elige sin repetir. | Aprobada |
 | D-44 | El emparejamiento espera 30 s a un tercer jugador. Después, las dos personas pueden empezar con un bot si ambas aceptan; mientras tanto, la búsqueda sigue. | Aprobada |
-| D-45 | Si alguien se desconecta, el bot toma su ninja hasta que vuelva. | Aprobada |
-| D-46 | Reloj del servidor, sin pausa: todos planifican a la vez, con 15 s por turno (el original usaba 10 s). Enmienda R-04 para el modo en línea. | Aprobada |
+| D-45 | Si alguien se desconecta, el bot toma su ninja hasta que vuelva. | Reemplazada por D-92 |
+| D-46 | Reloj del servidor, sin pausa: todos planifican a la vez, con 15 s por turno (el original usaba 10 s). Enmienda R-04 para el modo en línea. | Aprobada; los 15 s, reemplazados por los 10 s de D-90 |
 | D-47 | El bot juega con el mazo de referencia de su elemento: 8, 9, 10, 10, 11 y 12. | Aprobada |
 | D-48 | Recompensas individuales: cada persona cobra sus rondas (D-31) y gana sus logros. Solo cobra una ronda quien estaba conectado al terminarla; el bot no cobra. | Aprobada |
-| D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio. | Aprobada |
+| D-49 | El estado de cada partida se guarda en Postgres al final de cada turno, para reconstruir las salas tras un reinicio. | Reemplazada por D-94 |
 | D-50 | El sandbox usa por ninja el mazo de referencia del balance (8, 9, 10, 10, 11 y 12). El mazo de una cuenta nueva, con un solo 9, apenas permite combos. | Aprobada |
 | D-51 | El servidor HTTP y de WebSocket usa Fastify (ADR 0006). | Tomada |
 | D-52 | El servidor usa Postgres a través de Drizzle. drizzle-kit genera las migraciones como SQL versionado en el repositorio, y se aplican al desplegar (ADR 0006). | Tomada |
@@ -62,6 +64,27 @@ Las decisiones están cerradas. De las diecisiete del documento aprobado, ocho s
 | D-72 | Se acepta que Clásica en línea sea fácil desde la primera caja (99,7 % de victorias en el simulador): es el modo para empezar, y el simulador es un techo para personas reales. | Tomada |
 | D-73 | El juego debe funcionar en computador y en teléfono, por etapas. El combate en línea del M8 se diseña para computador. Las pantallas nuevas del M8 (sala, cola y equipo en línea) se construyen adaptables desde el principio, con diseño fluido y no dentro del escenario fijo de 1280×720. El alcance del teléfono se decide con una investigación, que queda pendiente. | Tomada |
 | D-75 | Ventisca ya no es un proyecto de clase: es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres. El aviso de privacidad lo dice en su primer párrafo, que nombra de forma explícita al responsable del tratamiento de los datos, y declara que hoy el juego es gratuito: no vende nada ni muestra publicidad. Todas las cuentas siguen siendo internas, así que el cambio del aviso va como corrección previa a la apertura, sin aviso previo, y su "Vigente desde" pasa a la fecha de la fusión. Desde que haya cuentas de otras personas, cualquier cambio del aviso pasará por el mecanismo del M9. | Tomada |
+| D-83 | La Beta del modo en línea se abre a todas las cuentas verificadas. "Jugar en línea" lleva la etiqueta "Beta". | Tomada |
+| D-84 | La Beta trae desde el primer día las dos formas de jugar de D-36: la cola pública y las salas con código. El M8 y el M9 se entregan juntos. | Tomada |
+| D-85 | En la Beta solo se juega Clásica. Tormenta en línea queda para después, con su mínimo de 5 cartas por elemento ya decidido (R-51). | Tomada |
+| D-86 | Además de jugar, la Beta da monedas por ronda, logros, con el doble de monedas al completar los 9, y estadísticas privadas básicas en el perfil: partidas, rondas y victorias. El resto de las estadísticas de R-42 llega después. | Tomada |
+| D-87 | El ninja se elige en cada partida, como en el original. La pantalla ofrece primero el del camino de la persona, y se juega con la colección del elemento del ninja elegido. Precisa D-43 y R-34: el camino ya no fija el ninja. | Tomada |
+| D-88 | Cola incompleta: con dos personas, a los 30 s se les ofrece el bot como tercero, y la partida empieza cuando ambas aceptan. Mientras tanto la búsqueda sigue: si llega una tercera persona, la partida empieza con ella. Quien cancela sale de la cola, y una persona sola sigue esperando (D-35 y D-44). | Tomada |
+| D-89 | En una sala, quien la crea puede empezar con dos personas: el bot toma el ninja libre. Con tres, empieza la partida completa. | Tomada |
+| D-90 | El reloj da 10 s por turno, como el original. Reemplaza los 15 s de D-46 y enmienda R-36. Se revisa tras la prueba de la Beta. | Tomada |
+| D-91 | Sin comunicación, como el original (D-42). Los compañeros se coordinan viendo los planes de los demás, que llegan en tiempo real con las mismas marcas del tablero. Cuando dos o más ninjas planean carta, sus miniaturas llevan el borde dorado y la franja lo anuncia: sin chat, esa señal es la forma de coordinar un combo. | Tomada |
+| D-92 | Si alguien se desconecta, su ninja queda quieto hasta el final de la partida, como en el original. Reemplaza a D-45: el bot ya no toma el ninja de nadie, y solo completa el asiento que quedó libre al empezar. Si su dueño vuelve, lo retoma desde el turno siguiente. Si se van todas las personas, la partida termina. | Tomada |
+| D-93 | Abandonar es salir con el botón "Salir", que pide confirmación, o desconectarse y no volver antes del final. Quien abandona pierde las monedas de esa partida: las de cada ronda quedan pendientes y se acreditan al terminarla. Reemplaza en el modo en línea a D-31 (`docs/PRD.md`) y a la R-39 anterior, y responde P-22 para la Beta. | Tomada |
+| D-94 | Si el servidor se reinicia, la partida en curso se pierde. Reemplaza a D-49: el estado ya no se guarda por turno ni se reconstruyen las salas. Se acreditan las monedas de las rondas ya terminadas, y la partida no cuenta como abandono ni como derrota. | Tomada |
+| D-95 | La Beta se publica sin interruptor: queda abierta al fusionar su PR, cuando nadie esté jugando. | Tomada |
+| D-96 | Antes de publicar la Beta se revisa que el aviso de privacidad cubra todo lo que hace el multijugador, y lo que falte se corrige en el mismo PR. Después, el aviso queda congelado hasta que exista el mecanismo para avisar sus cambios, que llega después de la Beta. | Tomada |
+| D-97 | Teléfono: las pantallas nuevas del modo en línea que están fuera del combate son adaptables. El combate en línea es para computador (D-73). | Tomada |
+| D-98 | El logro "Tormenta perfecta" (golpear a 3 gólems con una carta) pasa a llamarse "Barrido perfecto", para que nadie crea que pide jugar en Tormenta. | Tomada |
+| D-99 | Toda pantalla se compone sobre una grilla de 12 columnas a 1280×720, con 16 px entre columnas, 56 px de margen y ritmo vertical de 8 px. Tiene cuatro plantillas (menú, batalla, lectura y diálogo) y reglas de simetría, de respiro y de detalles. En las pantallas adaptables pasa a 8 columnas entre 600 y 1023 px, y a 4 por debajo de 600. Está en la sección 12 de `docs/lineamientos-de-diseno.md` y, como variables, en el código. | Tomada |
+| D-100 | Las pantallas del modo en línea toman la estructura del original donde la hay: la ficha para elegir ninja, la búsqueda de equipo, la carga, el combate y los resultados. Las salas con código y los avisos son propios. La Libreta ninja, con las pestañas "Mi progreso" y "Mis cartas", reemplaza a "Tu progreso" y a "Colección y tienda", y muestra el amuleto de papel: tres pliegues, que se colorean al completar los tres logros de cada uno. | Tomada |
+| D-101 | El bot, al revivir, mira si quien revive podría caer, no solo si un gólem lo alcanza: suma el golpe más fuerte de cada gólem que llega a su casilla, descuenta uno si tiene Escudo y lo compara con su vida. Un ninja con mucha vida aguanta el golpe y completa la reanimación. Medido con el simulador (`docs/balance-report.md`): en Tormenta, con el mazo de referencia, el bot pasa de 0,66 a 1,48 reanimaciones por partida, pierde casi las mismas (del 2,6 al 2,9 %) y la victoria sube del 91,5 al 95,9 %. En Clásica, que ya se ganaba, sube 1,2 puntos con la colección de inicio. Las decisiones de P-20 no cambian. | Tomada |
+| D-102 | Cómo corre una partida en el servidor. Una sola conexión WebSocket por persona, en `/api/play`, que pide sesión, correo verificado y el `Origin` del juego; una conexión nueva de la misma cuenta reemplaza a la anterior. Cada persona recibe el estado sin el azar de la partida y sin las manos de los demás. Cada plan se valida al llegar con el motor: si dos personas quieren la misma casilla o el mismo caído, vale el que llegó primero y a la otra se le avisa. Confirmar es definitivo en ese turno. El reloj del turno empieza cuando todas las personas terminaron de ver el turno anterior, con un tope. | Tomada al implementar; por revisar |
+| D-103 | Recompensas por persona. Cada logro se otorga en el momento en que ocurre y a quien está conectado, así que se mantiene aunque después abandone. Los personales miran lo que hizo su ninja; los de equipo se dan a quienes están conectados cuando pasan. Al acreditar las monedas se cuentan los logros ya guardados, incluidos los de esa partida: completar el amuleto duplica ya ese pago. En las estadísticas, la partida abandonada cuenta como jugada y no ganada, la perdida por un reinicio no cuenta, y las rondas superadas cuentan siempre. | Tomada al implementar; por revisar |
 
 ## Experiencia del jugador
 
@@ -78,37 +101,59 @@ La portada ofrece dos puertas: jugar en el sandbox sin cuenta o entrar al modo e
 1. Se registra con correo, contraseña y nombre visible, y acepta el aviso de privacidad.
 2. Recibe un correo con un código de verificación; al escribirlo, la cuenta queda verificada (R-44).
 3. Elige su carta de camino (D-25) y recibe el mazo inicial (R-30).
-4. Llega al inicio en línea: jugar, colección, tienda y estadísticas.
+4. Llega a su perfil, que lleva a "Jugar en línea" y a la Libreta ninja.
+
+**Jugar en línea** (Beta, D-83)
+
+1. Elige su ninja en la ficha: se le ofrece primero el de su camino y puede cambiarlo con las flechas (D-87). La ficha muestra cuántas cartas tiene de ese elemento, qué tan lejos camina, cuánto alcanza y cuánto daño hace, y qué hacen su carta y su combo.
+2. Desde ahí va a la cola, con "Jugar", o a una sala con código.
+
+**Partida con desconocidos (cola pública)**
+
+1. "Jugar" lo mete en la cola con el ninja elegido (R-52).
+2. Ve los tres asientos, uno por elemento: el suyo a color y los libres en silueta. La pantalla dice qué elementos se buscan, por si quiere volver y cambiar de ninja.
+3. Con tres personas, la partida empieza. Con dos, a los 30 s se les ofrece jugar con el bot en el ninja libre, y empieza cuando ambas aceptan (D-88). Con una sola, la búsqueda sigue hasta que llegue alguien o la cancele.
 
 **Partida con amigos (sala con código)**
 
-1. Crea una sala y elige la dificultad; recibe un código de 6 caracteres para compartir.
-2. Sus amigos entran con el código y cada quien elige su ninja, sin repetir. Si la sala es de Tormenta, cada persona necesita 5 cartas del elemento de su ninja (R-51).
-3. El anfitrión inicia con 2 o 3 personas; con 2, el bot toma el ninja libre.
+1. Crea una sala y recibe un código de 6 caracteres para compartir (R-53).
+2. Sus amigos entran con el código. Cada persona ocupa el asiento de su ninja; quien lo encuentra ocupado elige uno libre.
+3. Quien creó la sala empieza la partida: con dos personas, el bot toma el ninja libre (D-89); con tres, juegan los tres.
+4. Al terminar, vuelven a la sala para jugar otra.
 
-**Partida con desconocidos (emparejamiento)**
+**Durante la partida**
 
-1. Elige dificultad y su ninja, y entra a la cola. Tormenta pide 5 cartas del elemento de ese ninja (R-51).
-2. El servidor busca un equipo con ninjas distintos. Si a los 30 s solo hay dos personas, ambas pueden aceptar empezar con un bot. Con una sola persona, la búsqueda sigue hasta que llegue alguien o la cancele.
-3. Ve la pantalla de equipo y empieza la partida.
+1. Cada persona controla solo a su ninja y ve solo su mano. Los planes de sus compañeros aparecen en el tablero en tiempo real (R-35).
+2. El reloj da 10 s por turno (R-36). Al confirmar, su botón dice "Listo" y una marca verde aparece sobre su ninja.
+3. No hay pausa. Una ✕ pregunta si quiere salir: salir es abandonar (R-39).
+4. Si se le cae la conexión, su ninja queda quieto; si vuelve, lo retoma desde el turno siguiente (R-38).
 
-Al terminar cada partida, cada persona ve sus propios resultados: monedas cobradas por ronda, logros y estadísticas actualizadas. Desde ahí puede volver a la sala o a la cola.
+Al terminar cada partida, cada persona ve sus propios resultados: las rondas alcanzadas, las monedas cobradas, cuánto le falta para su próxima caja y los logros de su amuleto. Desde ahí vuelve a la sala o al inicio en línea, o abre su Libreta ninja.
 
 ## Reglas del modo en línea
 
-Las reglas de combate R-01 a R-24 no cambian; estas once reglas nuevas cubren lo que agrega jugar en equipo. R-43 a R-50 son las de la cuenta y están en la sección siguiente.
+Las reglas de combate R-01 a R-24 no cambian; estas reglas cubren lo que agrega jugar en equipo. R-43 a R-50 son las de la cuenta y están en la sección siguiente. La Beta (D-83 a D-103) enmendó R-33 a R-36, R-38 a R-40 y R-42, y agregó R-52 a R-55.
 
-- **R-33 Equipo.** De 2 a 3 personas, un ninja cada una. Los tres elementos siempre están en juego: el ninja sin persona lo controla el bot (§8).
-- **R-34 Mazo de cada jugador.** Cada persona juega con su colección del elemento de su ninja (R-26 aplicado por jugador). Su carta de camino solo ayuda si juega ese elemento. El bot usa el mazo de referencia de su elemento (D-47).
-- **R-35 Planificación simultánea.** Todos planifican a la vez y cada persona ve en tiempo real los fantasmas de sus compañeros: movimiento, objetivo y carta. El orden de resolución no cambia (R-11, D-32).
-- **R-36 Reloj.** Lo lleva el servidor: 15 s por turno, sin pausa (D-46). Al vencer, cada ninja actúa con lo que su persona dejó planificado. Si todos confirman antes, el turno se resuelve de inmediato.
+- **R-33 Equipo.** De 2 a 3 personas, un ninja cada una. Los tres elementos siempre están en juego: el ninja que quedó sin persona al empezar lo controla el bot (§8), que juega su mejor jugada y muestra su plan como un compañero más. El bot no toma el ninja de quien se desconecta (D-92).
+- **R-34 Mazo de cada jugador.** Cada persona juega con su colección del elemento del ninja que eligió para esa partida (R-26 aplicado por jugador; D-87). Su carta de camino solo ayuda si juega ese elemento. El bot usa el mazo de referencia de su elemento (D-47).
+- **R-35 Planificación simultánea.** Todos planifican a la vez. Cada persona controla solo a su ninja y ve solo su mano, y ve en tiempo real el plan de sus compañeros con las marcas del tablero: la silueta donde se moverá, la marca de su objetivo y la miniatura de su carta, con su valor (D-91). El servidor valida cada plan al llegar: si dos personas eligen la misma casilla o el mismo caído, vale el que llegó primero, y a la otra se le avisa (D-102). El orden de resolución no cambia (R-11, D-32).
+- **R-36 Reloj.** Lo lleva el servidor: 10 s por turno, sin pausa (D-90). Empieza cuando todas las personas terminaron de ver el turno anterior. Confirmar es definitivo en ese turno. Si todos confirman antes, el turno se resuelve de inmediato; un ninja quieto cuenta como confirmado. Al vencer, cada ninja actúa con lo que su persona dejó planificado.
 - **R-37 Combos entre personas.** Las cartas de distintos jugadores combinan igual que en solo (R-18), como en el original.
-- **R-38 Desconexión.** El bot toma el ninja al instante y lo devuelve cuando la persona reconecta, en cualquier turno. Una sala sin personas conectadas durante 2 minutos se cierra.
-- **R-39 Abandono.** Salir conserva lo ya cobrado (D-31). En v2 no hay castigo por abandonar el emparejamiento (P-22).
-- **R-40 Recompensas.** Cada persona cobra sus rondas y el bonus (R-29) y gana sus propios logros. El bot no cobra ni suma estadísticas, y una persona cobra una ronda solo si estaba conectada al terminarla (D-48).
+- **R-38 Desconexión.** El ninja de quien se desconecta queda quieto: no se mueve ni actúa, y los gólems lo pueden atacar (D-92). Lo que tenía planeado sin confirmar se descarta; lo que ya había confirmado se juega. Si vuelve, lo retoma desde el turno siguiente. Si no queda ninguna persona conectada, la partida se detiene y, a los 2 minutos, termina. Una sala sin personas conectadas durante 2 minutos se cierra.
+- **R-39 Abandono.** Abandona quien sale con "Salir", que pide confirmación, o quien se desconecta y no vuelve antes del final (D-93). Pierde las monedas de esa partida, y su ninja queda quieto hasta el final. Sus logros se mantienen.
+- **R-40 Recompensas.** Las monedas de cada ronda superada (R-29) quedan pendientes y se acreditan al terminar la partida (D-93). Solo cobra una ronda quien estaba conectado al terminarla (D-48). El bot no cobra ni suma estadísticas. Cada persona gana sus propios logros (R-55).
 - **R-41 Sin comunicación.** Como en el original, no hay chat ni señales: lo único que cada persona comparte es su plan en curso, que el equipo ve en tiempo real (R-35).
-- **R-42 Estadísticas.** Se registran por persona desde los eventos del servidor: partidas jugadas y ganadas, rondas superadas, bonus ganados, daño hecho (total y por tipo de gólem), gólems derrotados por tipo, cartas lanzadas por elemento, combos, vida curada a compañeros, reanimaciones hechas y caídas sufridas. Son privadas: solo las ve su dueño, en su perfil (P-21).
-- **R-51 Mínimo para Tormenta.** Para entrar a una partida de Tormenta, cada persona necesita 5 cartas del elemento del ninja con que entra, contando las repetidas (D-69). Vale igual en el emparejamiento público y en las salas con código. A quien no las tiene, la pantalla le muestra cuánto le falta (por ejemplo, "3 de 5 cartas de Fuego") y le sugiere jugar Clásica para conseguir su primera caja. El bot no tiene mínimo: juega con el mazo de referencia (D-47). En línea reemplaza a R-31, que solo recomendaba.
+- **R-42 Estadísticas.** Se registran por persona desde los eventos del servidor: partidas jugadas y ganadas, rondas superadas, bonus ganados, daño hecho (total y por tipo de gólem), gólems derrotados por tipo, cartas lanzadas por elemento, combos, vida curada a compañeros, reanimaciones hechas y caídas sufridas. Son privadas: solo las ve su dueño, en su perfil (P-21). **En la Beta se registran las básicas** (D-86): partidas jugadas, rondas superadas y victorias, separadas por dificultad. Una partida abandonada cuenta como jugada y no ganada; una perdida por un reinicio del servidor no cuenta como jugada, ganada ni perdida; las rondas superadas cuentan siempre (D-103).
+- **R-51 Mínimo para Tormenta.** Para entrar a una partida de Tormenta, cada persona necesita 5 cartas del elemento del ninja con que entra, contando las repetidas (D-69). Vale igual en el emparejamiento público y en las salas con código. A quien no las tiene, la pantalla le muestra cuánto le falta (por ejemplo, "3 de 5 cartas de Fuego") y le sugiere jugar Clásica para conseguir su primera caja. El bot no tiene mínimo: juega con el mazo de referencia (D-47). En línea reemplaza a R-31, que solo recomendaba. En la Beta todavía no hay Tormenta en línea (D-85).
+- **R-52 Cola pública.** Cada persona elige su ninja antes de entrar (D-87). La cola arma equipos con un ninja de cada elemento y, dentro de la dificultad, junta a cualquiera (D-43, D-70). La pantalla dice qué elementos se buscan. Con tres personas, la partida empieza. Con dos, a los 30 s de estar juntas se les ofrece el bot, que toma el elemento libre y no gana monedas; la partida empieza cuando ambas aceptan (D-88). Mientras tanto la búsqueda sigue. Quien cancela sale de la cola. Una persona sola nunca juega en línea: sigue esperando o cancela (D-35).
+- **R-53 Salas con código.** El código tiene 6 caracteres, sin los que se confunden (la O y el 0, la I y el 1). Hay un asiento por elemento: quien se une y encuentra ocupado su ninja elige uno libre para esa partida. Solo quien creó la sala puede empezar: con dos personas, con el bot en el ninja libre; con tres, la partida completa (D-89). Al terminar una partida, el equipo vuelve a la sala. La sala se cierra cuando sale quien la creó, o tras 2 minutos sin personas conectadas (R-38).
+- **R-54 Reinicio del servidor.** Si el servidor se reinicia, la partida en curso se pierde (D-94). Se acreditan las monedas de las rondas ya terminadas, y la partida no cuenta como abandono ni como derrota. Quienes estaban jugando vuelven al inicio en línea con un aviso.
+- **R-55 Logros por persona.** Cada persona gana sus propios logros, en el momento en que ocurren, y solo si está conectada; por eso se mantienen aunque después abandone (D-103). Son los 9 del §9.6 de `docs/PRD.md`, y el amuleto de papel los agrupa en tres pliegues (D-100):
+  - **Pliegue de Fuego:** Combo doble (su ninja jugó carta en un combo), Combo triple (en un combo de los tres) y Barrido perfecto (una carta suya alcanzó a 3 gólems; D-98).
+  - **Pliegue de Agua:** De pie otra vez (su ninja cayó, y el equipo ganó con él de pie), Bonus conquistado (el equipo ganó la ronda bonus) y Sin un rasguño (el equipo llegó al bonus por vida completa).
+  - **Pliegue de Nieve:** Reanimador (su ninja revivió a un compañero), Mano sanadora (curó 15 veces en una partida) y Nadie se queda atrás (el equipo ganó después de que cayeran los tres).
+
+  Con los 9, el amuleto está completo y las monedas se duplican (R-29). Lo decide el servidor al acreditar, contando los logros de su propia tabla; nunca lo recibe del cliente.
 
 ## Cuentas, seguridad y privacidad
 
@@ -255,7 +300,7 @@ Antes del M8 va una ronda de ajustes de jugabilidad. Después, el M8 empieza por
 
 ## Preguntas abiertas y riesgos
 
-P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya datos de uso.
+P-19 a P-24 están resueltas; P-22, para la Beta, y se revisa cuando haya datos de uso.
 
 **Preguntas abiertas**
 
@@ -271,7 +316,7 @@ P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya da
     - El límite de turnos del bonus se queda en 13 y 18 (D-71).
     - Se acepta que Clásica sea fácil desde la primera caja (D-72).
 - [x] **P-21 Visibilidad de las estadísticas.** Resuelta: solo las ve cada jugador. En v2 no hay perfil público ni clasificación.
-- [ ] **P-22 Castigo por abandono.** En v2 no hay castigo. Se decide con datos de uso una vez abierto el emparejamiento.
+- [x] **P-22 Castigo por abandono.** Resuelta para la Beta (D-93): quien abandona pierde las monedas de esa partida y nada más. Se revisa con los datos de uso de la Beta.
 - [x] **P-23 Mazo del sandbox.** Resuelta: el bot y el sandbox usan el mismo mazo de referencia (D-47 y D-50).
 - [x] **P-24 Jugar en línea en solitario.** Resuelta: no. Hacen falta al menos dos personas; quien está solo juega el sandbox (D-35).
 
@@ -282,7 +327,7 @@ P-19, P-20, P-21, P-23 y P-24 están resueltas, y P-22 queda para cuando haya da
 | Railway cobra por uso: servidor encendido todo el día más Postgres | Revisar el plan y el consumo antes de abrir el registro al público |
 | Registros masivos y uso del registro para enviar correo basura | Límites por IP y por dirección, captcha y verificación obligatoria |
 | Colas vacías o desparejas: pocos jugadores, o casi todos con el mismo ninja | Salas con código desde el inicio, un contador de personas buscando partida, la lista de ninjas que faltan y el sandbox siempre disponible |
-| Reinicios del servidor durante partidas | Estado guardado por turno y reconstrucción de salas (D-49) |
+| Reinicios del servidor durante partidas | La partida en curso se pierde, pero no lo ganado: se acreditan las rondas ya terminadas y no cuenta como derrota (D-94). Los despliegues se hacen cuando nadie está jugando (D-95) |
 | Alcance grande para un proyecto personal que avanza en ratos libres | Hitos publicables por separado: el M7 ya aporta valor solo |
 
 **Ideas para después**

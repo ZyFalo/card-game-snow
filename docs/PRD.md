@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.25 |
+| Versión | 0.10.26 |
 | Última actualización | 12 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -407,13 +407,13 @@ Como en v1 el jugador controla a los tres ninjas (D-08), el bot ya no es un comp
 
 1. **Balance (v1):** juega miles de partidas sin render para medir tasa de victoria, frecuencia de combos y turnos por partida (§11.9). Con esos datos se fijan los valores 🧪.
 2. **Ayuda opcional (v1, deseable):** un botón "sugerir jugada" que propone el plan del ninja activo.
-3. **Asientos vacíos (v2, opcional):** si en una sala nadie quiere controlar a un ninja.
+3. **Asientos vacíos (v2):** en línea completa el asiento que quedó libre al empezar la partida (R-33 del PRD de v2).
 
 Es una función pura del motor: recibe el estado y devuelve un plan por ninja.
 
 **Prioridades por ninja**
 
-1. **Revivir** a un aliado caído si puede quedar adyacente y a él mismo no lo alcanza un gólem en la casilla desde donde revive: si cae antes del final del turno, la reanimación se interrumpe (R-09). Si ahí lo alcanzan, solo revive cuando no tiene nada mejor que hacer. No manda a dos ninjas a revivir al mismo caído.
+1. **Revivir** a un aliado caído si puede quedar adyacente y él mismo no podría caer en la casilla desde donde revive: si cae antes del final del turno, la reanimación se interrumpe (R-09). Para saberlo suma el golpe más fuerte de cada gólem que llega a esa casilla, descuenta uno si tiene Escudo y lo compara con su vida (D-101, en `docs/PRD-v2.md`). Si ahí podría caer, solo revive cuando no tiene nada mejor que hacer. No manda a dos ninjas a revivir al mismo caído.
 2. **Jugar carta** si tiene una y se cumple algo de lo siguiente: otro ninja del equipo ya planificó carta este turno (se suma para provocar combo), el área alcanza a 2 o más enemigos, la carta derrota a un enemigo, o (Nieve) cura 12 o más en total.
 3. **Rol de su clase:**
    - *Nieve:* cura al aliado con menor porcentaje de vida a su alcance; si nadie lo necesita, ataca desde la mayor distancia posible.
@@ -542,7 +542,9 @@ La franja de arriba es la línea de contexto: dice el estado del turno y, al mir
 
 ### 9.6 Logros locales (nombres propios)
 
-Combo doble, Combo triple, Reanimador, De pie otra vez (ganar después de haber caído), Nadie se queda atrás (ganar tras caer los tres y ser revividos), Mano sanadora (curar 15 veces en una partida), Tormenta perfecta (una carta alcanza a 3 enemigos), Bonus conquistado y Sin un rasguño (llegar al bonus por vida completa).
+Combo doble, Combo triple, Reanimador, De pie otra vez (ganar después de haber caído), Nadie se queda atrás (ganar tras caer los tres y ser revividos), Mano sanadora (curar 15 veces en una partida), Barrido perfecto (una carta alcanza a 3 enemigos; se llamaba "Tormenta perfecta" hasta D-98), Bonus conquistado y Sin un rasguño (llegar al bonus por vida completa).
+
+En línea se ganan por persona, y el amuleto de papel los agrupa en tres pliegues: R-55 y D-100 del PRD de v2.
 
 ### 9.7 Accesibilidad y opciones
 
@@ -818,10 +820,10 @@ export function resolveTurn(prev: MatchState, plans: Plan[]): TurnResult {
 El modo en línea se especifica en `docs/PRD-v2.md` (versión 1.0, aprobado), que manda sobre este documento en todo lo del modo en línea. En resumen:
 
 - **Servidor autoritativo:** Node en Railway con Postgres (D-37). Valida cada plan, resuelve el turno con `packages/core` sin cambios y envía los eventos con su hash.
-- **Partidas:** de 2 o 3 personas, un ninja cada una. El bot toma el ninja libre o el de quien se desconecta (D-35, D-45).
+- **Partidas:** de 2 o 3 personas, un ninja cada una. El bot toma el ninja que quedó libre al empezar; el de quien se desconecta queda quieto (D-35, D-92).
 - **Entrada:** salas con código y emparejamiento público, desde el inicio (D-36, D-43, D-44).
-- **Reloj del servidor:** 15 s por turno, sin pausa (D-46).
-- **Persistencia:** el estado de cada partida se guarda en Postgres al final de cada turno (D-49).
+- **Reloj del servidor:** 10 s por turno, sin pausa (D-90).
+- **Reinicios:** si el servidor se reinicia, la partida en curso se pierde y se acreditan las rondas ya terminadas (D-94).
 
 Reemplaza el plan anterior de un Durable Object de Cloudflare por sala (D-03).
 
@@ -915,17 +917,12 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
   - registro, verificación con código, inicio de sesión, recuperación, cambio de contraseña y de correo, y borrado de cuenta (R-43 a R-50 del PRD de v2);
   - progreso en la cuenta (R-25 a R-32 resueltos en el servidor);
   - sandbox con el mazo fijo (D-50) y `GameHost` asíncrono.
-- [ ] **M8: Partida en línea.** Antes va una ronda de ajustes de jugabilidad; después, el M8 empieza por su especificación técnica y por la investigación del teléfono (D-73):
-  - P-20, medida y decidida (D-69 a D-72);
-  - salas con código para 2 o 3 personas, con el bot en el ninja libre, y el mínimo de 5 cartas para Tormenta (R-51 del PRD de v2);
-  - reloj del servidor de 15 s (D-46) y fantasmas compartidos;
-  - cobro por ronda solo para quien estaba conectado (D-31, D-48);
-  - desconexión, reconexión y recuperación tras un reinicio.
-- [ ] **M9: Emparejamiento y estadísticas:**
-  - cola por dificultad y ninja (D-43), que junta a cualquiera dentro de la dificultad (D-70);
-  - empezar con un bot a los 30 s si ambas personas aceptan (D-44);
-  - estadísticas privadas por persona (R-42);
-  - aviso de privacidad y pruebas con personas.
+- [ ] **M8 y M9: el multijugador en línea,** que se entregan juntos como Beta (D-83 y D-84 del PRD de v2):
+  - la cola pública, con el bot a los 30 s si las dos personas aceptan (D-88), y las salas con código (D-89);
+  - el ninja se elige en cada partida (D-87), solo en Clásica (D-85);
+  - el reloj del servidor de 10 s (D-90) y los planes de los compañeros en tiempo real (D-91);
+  - el ninja de quien se desconecta queda quieto (D-92), y quien abandona pierde las monedas de esa partida (D-93);
+  - monedas por ronda al terminar la partida, logros por persona y estadísticas privadas básicas (D-86).
 
 ### M10+ — Jefe y progresión (v3), resumen
 - [ ] Jefe y mentora (§4.9 adaptado a la identidad propia)
@@ -1013,6 +1010,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | ID | Decisión | Estado | Fecha |
 |---|---|---|---|
+| D-83 a D-103 | El multijugador en línea (Beta): acceso, cola y salas, reloj, desconexión, abandono, reinicios, logros por persona, grillas y pantallas. Se registran en `docs/PRD-v2.md`; desde D-83, las decisiones nuevas viven allí y este documento solo las enlaza | ✅ | 2026-10-12 |
 | D-01 | Mecánica fiel; nombre, personajes, arte, audio y textos originales; cero assets del original | ✅ | 2026-09-29 |
 | D-02 | Motor de reglas puro y determinista, separado del render | ✅ | 2026-09-29 |
 | D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | Reemplazada por D-35 a D-37 (`docs/PRD-v2.md`) | 2026-09-29 |
@@ -1089,7 +1087,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | D-34 | Dos modos: sandbox sin cuenta ni progreso, y en línea con cuenta. La progresión de R-25 a R-32 pasa del navegador a la cuenta (`docs/PRD-v2.md`) | ✅ | 2026-09-29 |
 | D-33 | La vida de los gólems en Tormenta (×1,4) se redondea al entero más cercano (R-24). Se registró primero como D-31; se renumeró porque D-31 y D-32 ya estaban aprobadas para otras decisiones. Truncar dejaba a Granizo con 62 en vez de 63, porque en coma flotante 45 × 1,4 da 62,999…. Cambia el hash de las repeticiones de Tormenta en las que aparece un Granizo. Por eso las repeticiones pasan a la versión 2 (`REPLAY_VERSION`) y las de versión 1 se rechazan con un mensaje claro en vez de reproducirse distinto | ✅ | 2026-09-29 |
 | D-32 | Los números de orden muestran el orden real de R-11 según los planes del momento: primero acciones básicas y luego cartas, ambas en orden Fuego, Agua, Nieve; sin acción no hay número (§9) | ✅ | 2026-09-29 |
-| D-31 | Cobro por ronda: cada ronda superada se acredita al instante; resultados y logros se guardan en el evento de fin de partida, antes de la celebración; abandonar antes solo pierde los logros de esa partida (enmienda R-29) | ✅ | 2026-09-29 |
+| D-31 | Cobro por ronda: cada ronda superada se acredita al instante; resultados y logros se guardan en el evento de fin de partida, antes de la celebración; abandonar antes solo pierde los logros de esa partida (enmienda R-29). En el modo en línea la reemplaza D-93 (`docs/PRD-v2.md`): las monedas quedan pendientes hasta el final de la partida | ✅ | 2026-09-29 |
 | D-30 | Las animaciones de interfaz usan Web Animations y CSS: no bloquean el turno y se pueden congelar en un punto exacto para verificarlas | ✅ | 2026-09-29 |
 | D-29 | Coreografía con tabla única de tiempos y estimador de ritmo; metas de duración por turno vigiladas por pruebas | ✅ | 2026-09-29 |
 | D-28 | La pausa de impacto se mide con el delta real de cada cuadro (no con temporizadores): en equipos lentos dura como mucho un cuadro | ✅ | 2026-09-29 |
@@ -1102,6 +1100,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.26 | 2026-10-12 | El multijugador en línea (Beta). Sus decisiones, D-83 a D-103, y sus reglas se registran en `docs/PRD-v2.md` (versión 1.15), que desde ahora es la fuente de las decisiones nuevas. Aquí cambian solo los enlaces: el §8 (el bot al revivir, D-101), el §9.6 (el logro "Barrido perfecto", D-98), el §11.7, los hitos M8 y M9, que se entregan juntos, y las notas de D-31 y de R-29 |
 | 0.10.25 | 2026-10-12 | Ronda de claridad del tablero, séptimo paso (D-82): las demostraciones de los gólems. La franja que nombra al gólem bajo el ratón suma "Ver cómo ataca", que abre la burbuja de las demostraciones con su ataque en bucle, y pierde sus números: los muestra la demostración, y los pone el motor. Cambia el §9.5 |
 | 0.10.24 | 2026-10-12 | Ronda de claridad del tablero, sexto paso (D-81): las demostraciones de las cartas. Un ▶ junto al título de la mano abre un tablero en miniatura donde la carta se juega en bucle, con o sin combo. La juega el propio motor y la anima la escena del juego. Con animaciones reducidas, dos imágenes fijas. El consejo de la primera carta suma su frase: "El ▶ junto al título muestra qué hace." Cambia el §9.5 |
 | 0.10.23 | 2026-10-12 | Ronda de claridad del tablero, quinto paso (D-80): los consejos en el momento. Cuatro consejos salen una sola vez cada uno, en una burbuja que va siempre junto a la mano, nunca sobre el tablero, y marca con un borde dorado el panel o la carta de la que habla: cambiar de ninja, primera carta, combo posible y primera caída, que deja la franja. Se cierran con "Entendido", quedan aprendidos en los ajustes y la ayuda permite volver a verlos. Además, el número de orden baja de esquina cuando en su casilla hay una carta, para que la miniatura de Fuego no lo tape. Cambian el §9.5 y el §9.7 |
@@ -1170,7 +1169,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **R-26 Reserva en batalla.** La reserva de cada ninja es toda la colección de su elemento, con repetidas (D-20). Al llenarse el medidor sale una carta al azar, sin reposición dentro de la partida (R-15 no cambia). Si la reserva se agota, el medidor sigue cargando sin dar cartas.
 - **R-27 Valores y rareza 📌.** Valores del 9 al 12, como las cartas de poder del original. Banco por elemento: 7 cartas de 9, 6 de 10, 4 de 11 y 3 de 12. Cada una de las 20 tiene la misma probabilidad de salir, así que por carta: 35 % / 30 % / 20 % / 15 %.
 - **R-28 Cajas.** Cajas de 1, 2 o 3 cartas (D-22). 📌 La caja es de un elemento a elección y cada carta se sortea por separado entre las 20 del banco, así que puede salir repetida. 📌 Precios: 100, 180 y 250 monedas.
-- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros.
+- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros. En línea rigen D-93 y R-55 del PRD de v2: las monedas se acreditan al terminar la partida, y los logros, cuando ocurren.
 - **R-30 Inicio.** Inventario inicial: 1 carta de 9 por elemento (la categoría más baja) (D-24). Al entrar por primera vez, el jugador elige además su **carta de camino** (D-25). 📌 Se elige entre tres cartas de 12, una por elemento, del banco (cuentan dentro de las 20). La elección es permanente y define el título ("Camino del Fuego"), el color y emblema del perfil y, en v2, el ninja que controla por defecto.
 - **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea. En línea la reemplaza R-51 del PRD de v2: Tormenta pide 5 cartas del elemento del ninja con que se entra (D-69).
 - **R-32 Persistencia.** Colección, monedas y camino se guardan en el navegador hasta que existan cuentas (v2). Borrar los datos del navegador reinicia el progreso.

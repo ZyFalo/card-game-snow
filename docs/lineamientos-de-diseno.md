@@ -438,3 +438,45 @@ En una ventana angosta, lo que ya no cabe lado a lado pasa a ir uno bajo otro, e
 
 - **Las variables** están en `:root`, en `ui/styles.css`: `--grid-cols`, `--grid-gutter`, `--grid-margin`, `--grid-step`, `--space-in`, `--space-item`, `--space-group`, `--space-zone` y `--read-max`.
 - **`ui/grid.ts`** repite esos números y describe las cuatro plantillas (`GRID`, `SPACE`, `BREAKPOINTS` y `TEMPLATES`), con `colLeft` y `span` para medir. `ui/grid.test.ts` comprueba que el código y la hoja de estilos digan lo mismo, y que cada plantilla llene sus columnas.
+
+## 13. Pantallas en línea
+
+Las pantallas del juego en línea (D-100 del PRD de v2) siguen todo lo anterior. Esta sección dice lo que es propio de ellas.
+
+### El escenario y los asientos
+
+- **Un mismo escenario** para la ficha, la búsqueda de equipo y las salas: el fondo de la cumbre, con borde de tinta y sin sombra. Así las tres hablan el mismo idioma.
+- **Cada elemento tiene su lugar fijo:** Fuego a la izquierda, Agua al centro y Nieve a la derecha, en tres columnas iguales. Es el orden de los paneles del combate y de las miniaturas de las cartas.
+- **Tres estados de un asiento:** el ninja a color, con su nombre y el de la persona; la silueta de tinta con el ícono girando, cuando se busca a alguien; y la silueta punteada, cuando el asiento está libre. El asiento de quien juega lleva el aro dorado en su etiqueta.
+- **Los ninjas usan el esqueleto y las poses del tablero** (`art/poses.ts`): en reposo respiran como en la partida, y quien ya eligió va en pose de acción. Con animaciones reducidas quedan quietos.
+
+### Botones y etiquetas
+
+- **`.btn-xl`** es solo para "Jugar", en la ficha: 64 px de alto y texto de 24 px. Va centrado bajo el escenario, con el secundario a su izquierda.
+- **La ✕** de arriba a la derecha hace de "Volver" o de "Salir", y va en el margen de la grilla, sin pisar ninguna columna. Su nombre dice qué hace: "Volver", "Cancelar la búsqueda", "Salir de la sala" o "Salir de la partida".
+- **La etiqueta "Beta"** es una píldora dorada con borde de tinta, junto al título de cada pantalla en línea y junto a "Jugar en línea".
+
+### Diálogos y franjas
+
+- **Un diálogo** es para decidir algo o para enterarse de algo importante: fondo oscurecido, un papel de 6 columnas al centro, un ícono en un círculo, el título, una frase y, al final de la fila, el botón principal, que recibe el foco.
+- **Una franja** es para un estado pasajero de la partida: arriba, sobre el tablero y sin bloquearlo. La de la conexión perdida se queda mientras dura; la de "Volviste" se va sola.
+- **Sobre el escenario**, la oferta del bot y el aviso del ninja ocupado van en una franja de papel, arriba y al centro, con sus botones dentro.
+
+### El combate en línea
+
+- **El verde `--ok`** (`#2f9c60`) es el de lo que ya está hecho: la marca de listo sobre el ninja, el botón "Listo" y la píldora "Listo" del panel. No es el color de ningún elemento, para que no se confunda con el de Escarcha.
+- **La marca de listo** es un círculo grande sobre la cabeza del ninja, al centro de su casilla. Si en esa casilla hay una carta colocada, baja al pecho. `layout.test.ts` mide que no tape el número de orden, los íconos de estado, las miniaturas ni la barra de vida.
+- **El reloj** es una tarta con una porción por segundo. En los últimos 3 segundos pasa al número, en dorado sobre tinta.
+- **Los paneles** dicen de quién es cada ninja y cómo va esa persona. El de quien juega lleva el contorno dorado. El de quien no está, y su ninja en el tablero, van en gris.
+
+### El pergamino
+
+Los resultados en línea y la Libreta ninja van sobre un pergamino: papel crema (`#f7f1e3`), rollos a los lados, que hacen de borde, y el título en una franja de tinta inclinada 2 grados. Sus cajas son de un papel más claro (`#fffaf0`), con borde de tinta y sin sombra.
+
+### Adaptables
+
+- **Fuera del combate, las pantallas en línea y la Libreta son adaptables (D-97).** Desde 1024 px van en el escenario de 1280×720, a escala, como el resto del juego. Por debajo van a lo ancho de la ventana, con 8 o 4 columnas, y se desplazan a lo alto.
+- **El mismo marcado sirve para los tres anchos.** Cada pantalla mide el ancho en que se dibuja con una consulta de contenedor (`@container online`), no el de la ventana: en el escenario siempre mide 1280.
+- **Con 8 columnas** el contenido se apila, y lo que cabe sigue en horizontal: la ficha del ninja va en dos columnas bajo el escenario. **Con 4**, todo va en una columna y los botones ocupan el ancho, con el principal arriba.
+- **El combate en línea es para computador** (D-73): se ve en el escenario a escala, sin adaptar.
+

@@ -2,6 +2,8 @@
 
 Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) está cerrada: sus siete PRs están fusionados y las tablas de P-20, vueltas a correr, no cambiaron. Queda propuesta una segunda prueba con personas, centrada en los consejos y las demostraciones. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
+> **En curso, en la rama `multijugador` (PR #29, en borrador): el multijugador en línea (Beta).** Al 12 de octubre de 2026 están hechas las fases 1 a 6 del encargo: el protocolo y la conexión, la cola y las salas, la partida en el servidor, las recompensas y las pantallas del cliente (la ficha, la cola, las salas, la carga, el combate en línea, los avisos, los resultados y la Libreta ninja). **Falta la fase 7:** las e2e de la partida completa, la desconexión, el abandono y el reinicio; las mutaciones contra las e2e de seguridad y de monedas; `check:prod` ampliado; la revisión del aviso de privacidad; la ayuda con las reglas en línea; y poner al día este traspaso, que todavía describe el juego de antes de la rama. El detalle, las decisiones tomadas en el camino y los textos por revisar están en la descripción del PR.
+
 ## Qué hay
 
 - **Sandbox para un jugador:**

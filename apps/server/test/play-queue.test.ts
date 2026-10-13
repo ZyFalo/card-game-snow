@@ -128,6 +128,31 @@ describe('Cola pública (R-52, D-88)', () => {
     expect(teams).toEqual([]);
   });
 
+  it('D-88: la oferta sale cuando se cumple el plazo, aunque el reloj marque un milisegundo menos', () => {
+    // Un temporizador puede sonar un instante antes de lo que dice la hora: la oferta no depende de ella.
+    let pending: (() => void) | null = null;
+    const seen = new Map<string, QueueState>();
+    const lagging = new Queue({
+      offerMs: OFFER_MS,
+      now: () => 1_000,
+      later: (task) => {
+        pending = task;
+        return () => {
+          pending = null;
+        };
+      },
+      onState: (userId, state) => seen.set(userId, state),
+      onTeam: () => {},
+    });
+    const [ana, beto] = [player('Ana'), player('Beto')];
+    lagging.join(ana, 'fire');
+    lagging.join(beto, 'water');
+    expect(seen.get(ana.userId)?.offer).toBeNull();
+    (pending as (() => void) | null)?.();
+    expect(seen.get(ana.userId)?.offer).toEqual({ bot: 'snow', accepted: false, waitingFor: null });
+    expect(lagging.acceptBot(ana.userId)).toBe(true);
+  });
+
   it('D-88: la partida con el bot empieza cuando aceptan las dos, no antes', () => {
     const [ana, beto] = [player('Ana'), player('Beto')];
     queue.join(ana, 'water');

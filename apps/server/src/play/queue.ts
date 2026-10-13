@@ -66,8 +66,8 @@ export interface QueueOptions {
 
 export class Queue {
   private waiting: Waiting[] = [];
-  /** Desde cuándo está junta cada pareja, y cómo cancelar el aviso de su oferta. */
-  private readonly pairs = new Map<string, { since: number; cancel: () => void }>();
+  /** Cada pareja que está junta: si ya se le ofreció el bot, y cómo cancelar el plazo que falta para eso. */
+  private readonly pairs = new Map<string, { offered: boolean; cancel: () => void }>();
 
   constructor(private readonly options: QueueOptions) {}
 
@@ -110,11 +110,13 @@ export class Queue {
     return true;
   }
 
-  /** ¿Ya se le ofrece el bot a ese grupo? Son dos personas, y llevan juntas lo que pide D-88. */
+  /**
+   * ¿Ya se le ofrece el bot a ese grupo? Son dos personas, y llevan juntas lo que pide D-88. Lo dice el
+   * plazo al cumplirse, no una resta de horas: un temporizador puede sonar un milisegundo antes de lo que
+   * marca el reloj, y entonces la oferta no saldría nunca.
+   */
   private offered(group: readonly Waiting[]): boolean {
-    if (group.length !== 2) return false;
-    const pair = this.pairs.get(pairKey(group));
-    return pair !== undefined && this.options.now() - pair.since >= this.options.offerMs;
+    return group.length === 2 && this.pairs.get(pairKey(group))?.offered === true;
   }
 
   /**
@@ -142,8 +144,12 @@ export class Queue {
       if (this.pairs.has(key)) continue;
       // Una pareja nueva: lo que alguna hubiera aceptado con otra persona ya no cuenta.
       for (const w of group) w.accepted = false;
-      const cancel = this.options.later(() => this.settle(), this.options.offerMs);
-      this.pairs.set(key, { since: this.options.now(), cancel });
+      const pair = { offered: false, cancel: () => {} };
+      pair.cancel = this.options.later(() => {
+        pair.offered = true;
+        this.settle();
+      }, this.options.offerMs);
+      this.pairs.set(key, pair);
     }
     for (const [key, pair] of this.pairs) {
       if (live.has(key)) continue;

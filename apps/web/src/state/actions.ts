@@ -1,5 +1,6 @@
 import {
   type ElementKind,
+  type EnemyKind,
   eq,
   type GameEvent,
   getNinja,
@@ -16,7 +17,7 @@ import { LocalHost } from '../host/LocalHost';
 import { TIPS } from '../i18n/es';
 import { bridge, sceneReady } from './bridge';
 import { type Settings, saveSettings } from './persist';
-import { nextPending, nextPlannable, plansArray, turnClockMs, withoutAction } from './planning';
+import { nextPending, nextPlannable, plansArray, spotAt, turnClockMs, withoutAction } from './planning';
 import { applyEvent, beforeIntro } from './present';
 import { clickOutcome, type StepOutcome, undoOutcome } from './steps';
 import { type CardFlight, type Screen, store } from './store';
@@ -47,7 +48,19 @@ export function notify(text: string): void {
 }
 
 export function setHelp(open: boolean): void {
-  store.setState({ helpOpen: open });
+  store.setState({ helpOpen: open, helpDemo: null });
+}
+
+/**
+ * La demostración de un gólem, abierta desde la ayuda (D-82). No depende de la franja ni del ratón: sirve
+ * con el teclado y con "Consejos en pantalla" apagado. Va sobre la ayuda, no en la partida.
+ */
+export function openHelpDemo(enemy: EnemyKind): void {
+  store.setState({ helpDemo: enemy });
+}
+
+export function closeHelpDemo(): void {
+  if (store.getState().helpDemo) store.setState({ helpDemo: null });
 }
 
 /** Abre la demostración de las cartas de ese ninja (D-81), sin combo. Solo hay una abierta a la vez. */
@@ -55,10 +68,15 @@ export function openCardDemo(ninja: ElementKind): void {
   store.setState({ demo: { kind: 'card', ninja, combo: false }, hover: null });
 }
 
-/** El selector "Sin combo | Con combo" de la demostración abierta. */
+/** Abre la demostración de cómo ataca ese gólem (D-82). */
+export function openGolemDemo(enemy: EnemyKind): void {
+  store.setState({ demo: { kind: 'golem', enemy }, hover: null });
+}
+
+/** El selector "Sin combo | Con combo" de la demostración de una carta. */
 export function setDemoCombo(combo: boolean): void {
   const { demo } = store.getState();
-  if (demo && demo.combo !== combo) store.setState({ demo: { ...demo, combo } });
+  if (demo?.kind === 'card' && demo.combo !== combo) store.setState({ demo: { ...demo, combo } });
 }
 
 export function closeDemo(): void {
@@ -155,9 +173,11 @@ export function beginPlanning(): void {
     void confirmTurn(true);
   });
   setBoost(false);
+  forgetSpotted();
   store.setState({
     phase: 'planning',
     resolveStep: null,
+    spotted: null,
     plans: {},
     active: nextPlannable(match, {}, null, 1),
     pendingCard: null,
@@ -180,9 +200,11 @@ export function loadBoard(state: MatchState): void {
 /** Fin de la planificación: sin planes, selección ni reloj. */
 function closePlanning(): void {
   host.stopTimer();
+  forgetSpotted();
   store.setState({
     phase: 'resolving',
     resolveStep: 'ninjas',
+    spotted: null,
     plans: {},
     pendingCard: null,
     active: null,
@@ -294,6 +316,7 @@ export function selectNinja(id: ElementKind): void {
   if (!canPlan() || !st.match) return;
   const n = getNinja(st.match, id);
   if (!n || n.hp <= 0 || st.active === id) return;
+  dropSpotted();
   // La demostración abierta es la de las cartas de otro ninja: se cierra con el cambio.
   store.setState({ active: id, pendingCard: null, demo: null });
   audio.play('select');
@@ -333,11 +356,13 @@ function apply(o: StepOutcome): void {
 
 export function clickTile(v: Vec): void {
   if (!canPlan()) return;
+  dropSpotted();
   apply(clickOutcome(store.getState(), v));
 }
 
 export function undo(): void {
   if (!canPlan()) return;
+  dropSpotted();
   apply(undoOutcome(store.getState()));
 }
 
@@ -370,16 +395,66 @@ export function suggest(): void {
   if (!canPlan() || !st.active || !st.match) return;
   const plan = suggestPlan(st.match, st.active, plansArray(st.plans));
   if (!plan) return;
+  dropSpotted();
   setPlan(st.active, plan);
   store.setState({ pendingCard: null });
   audio.play('place');
   afterStep();
 }
 
+/*
+ * El gólem que nombra la franja (D-82). Al pasar el ratón sobre un gólem, la franja lo nombra y ofrece
+ * "Ver cómo ataca". Para llegar a ese botón hay que sacar el ratón del gólem, así que el gólem se queda
+ * en la franja un momento más, y todo el tiempo que el ratón esté sobre ella.
+ */
+const SPOTTED_HOLD_MS = 2500;
+let spottedTimer: number | null = null;
+let spottedHeld = false;
+
+function keepSpotted(): void {
+  if (spottedTimer !== null) window.clearTimeout(spottedTimer);
+  spottedTimer = null;
+}
+
+/** El ratón dejó al gólem: la franja lo suelta al rato, salvo que el ratón esté sobre ella. */
+function releaseSpotted(): void {
+  if (spottedHeld || spottedTimer !== null || !store.getState().spotted) return;
+  spottedTimer = window.setTimeout(() => {
+    spottedTimer = null;
+    store.setState({ spotted: null });
+  }, SPOTTED_HOLD_MS);
+}
+
+/** El ratón entra en la franja o sale de ella. */
+export function holdSpotted(held: boolean): void {
+  spottedHeld = held;
+  if (held) keepSpotted();
+  else releaseSpotted();
+}
+
+function forgetSpotted(): void {
+  keepSpotted();
+  spottedHeld = false;
+}
+
+/** Quien juega hizo algo: la franja vuelve al estado del turno, sin esperar. */
+function dropSpotted(): void {
+  keepSpotted();
+  if (store.getState().spotted) store.setState({ spotted: null });
+}
+
 export function setHover(v: Vec | null): void {
-  const h = store.getState().hover;
+  const st = store.getState();
+  const h = st.hover;
   if ((h && v && eq(h, v)) || (!h && !v)) return;
-  store.setState({ hover: v });
+  const kind = st.phase === 'planning' ? spotAt(st.match, v) : null;
+  if (!kind) {
+    store.setState({ hover: v });
+    releaseSpotted();
+    return;
+  }
+  keepSpotted();
+  store.setState({ hover: v, spotted: kind });
 }
 
 /* ---------- Coreografía (fase 3) ---------- */

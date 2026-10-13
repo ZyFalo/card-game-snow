@@ -8,7 +8,7 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 
 ## Documentos que mandan
 
-- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, D-63, D-74 y D-76 a D-81, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
+- `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, D-63, D-74 y D-76 a D-82, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
 - `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-51, las decisiones D-34 a D-62, D-64 a D-73 y D-75, y los hitos M7 a M9. En todo lo del modo en línea manda sobre `docs/PRD.md`.
 - `docs/traspaso.md`: estado del proyecto, puesta en marcha y próximos pasos.
 - `docs/adr/`, `docs/balance-report.md` y `docs/ai-log.md`: decisiones de arquitectura, balance medido y bitácora del trabajo con IA.
@@ -17,12 +17,23 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 
 - **Idioma:** español neutro en la interfaz, la documentación y los mensajes de commit; identificadores de código en inglés.
 - **Terminado significa:** `pnpm run ci` en verde (con Postgres levantado si tocaste el servidor: `docker compose up -d db`), más `pnpm e2e` si tocaste la interfaz o la escena. Si cambias algo visible, verifícalo en el navegador.
-- **Commits pequeños,** uno por paso lógico, con mensajes que expliquen el porqué.
+- **Commits** con mensajes que expliquen el porqué. Cuántos por PR, en "Forma de trabajo".
 - **Registro:** toda decisión de producto o arquitectura va al registro de decisiones del PRD (D-xx), con una línea en `docs/ai-log.md`.
 - **Diseño (D-63):** toda interfaz nueva o modificada sigue `docs/lineamientos-de-diseno.md` y se verifica con una captura a 1280×720 junto a "Tu equipo".
 - **Identidad (D-01):** nunca uses nombres, arte, audio ni textos del juego original. La única mención del original dentro del juego es la pantalla de créditos (D-76), con el texto de `CREDITOS.md`.
 - **Motor puro (D-02):** `packages/core` no conoce el DOM, Phaser ni la red. El multijugador debe reutilizarlo tal cual en el servidor.
 - **Balance y ritmo se miden:** si cambias números, vuelve a correr `pnpm sim` o `pnpm pacing` y actualiza el reporte correspondiente.
+
+## Forma de trabajo
+
+- **PRs visuales, de texto o de interfaz:** pruebas unitarias de lo tocado y solo las e2e afectadas mientras trabajas. La suite completa de e2e, una sola vez, al final. Mutaciones solo contra las pruebas unitarias.
+- **PRs de reglas, motor, cuentas, seguridad o datos:** el rigor completo, incluidas las mutaciones contra las e2e que cubren ese comportamiento.
+- **Maquetas:** antes de la primera captura, contrasta la implementación con la maqueta punto por punto.
+- **Capturas:** una sola ronda; una hoja por maqueta, más "Tu equipo" si cambió algo visible.
+- **Lo que encuentres de paso:** anótalo en el PR y no lo arregles sin que se pida.
+- **Commits:** dos o tres por PR (código, documentación y capturas), sin reconstruir estados intermedios.
+- **Documentación:** una decisión por PR. El PRD de v2 es la fuente; el PRD de v1 solo lo enlaza. El traspaso se actualiza al cerrar cada ronda.
+- **Cambios triviales:** se suman al PR siguiente en vez de abrir uno propio.
 
 ## Modo en línea (v2)
 

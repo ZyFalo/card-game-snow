@@ -447,12 +447,12 @@ test('el panel de cada ninja resume su plan sin números, y el resumen más larg
 test('con el ratón sobre un gólem, la franja dice su nombre y cómo ataca', async ({ page }) => {
   await startPrepared(page);
   const tip = page.locator('.tip-text');
+  // Sin números (D-82): los muestra la demostración de cada gólem.
   await page.mouse.move(tile(4, 2).x, tile(4, 2).y);
-  await expect(tip).toHaveText(
-    'Témpano. Lento pero brutal: barre tres casillas. No se pongan hombro con hombro frente a él.',
-  );
+  await expect(tip).toHaveText('Témpano. Lento pero brutal: barre tres casillas.');
   await page.mouse.move(tile(5, 1).x, tile(5, 1).y);
-  await expect(tip).toHaveText('Carámbano. Pega más fuerte de lejos (3 a 5). Acércate para que duela menos.');
+  await expect(tip).toHaveText('Carámbano. Pega más fuerte de lejos. Acércate para que duela menos.');
+  // Al sacar el ratón, la franja vuelve al estado del turno al rato.
   await page.mouse.move(640, 60);
   await expect(tip).toHaveText(PLAN_TIP('Brasa'));
 });

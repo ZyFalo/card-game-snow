@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { type Board, startBoard, type TestState, type TestWindow } from './helpers';
+import { type Board, clippedElements, smallText, startBoard, type TestState, type TestWindow } from './helpers';
 
 /*
  * Demostraciones de las cartas (D-81): un ▶ junto al título de la mano abre un tablero en miniatura donde
@@ -44,6 +44,10 @@ interface Moment {
   combo: string | null;
   stunned: (boolean | null)[];
   minis: string[];
+  /** La escena tiene casillas pintadas: las de lo planeado o las que golpea un gólem. */
+  tinted: boolean;
+  /** Los números flotantes del daño que siguen a la vista. */
+  floats: number;
 }
 
 /**
@@ -54,8 +58,12 @@ interface Moment {
  */
 async function at(page: Page, name: 'before' | 'combo' | 'after'): Promise<Moment> {
   const from = await page.evaluate(() => {
-    type Img = { type: string; visible: boolean; texture?: { key: string } };
-    type Scene = { units: Map<string, { stunned: boolean }>; children: { list: Img[] } };
+    type Img = { type: string; visible: boolean; alpha: number; depth: number; texture?: { key: string } };
+    type Scene = {
+      units: Map<string, { stunned: boolean }>;
+      children: { list: Img[] };
+      hl?: { commandBuffer: unknown[] };
+    };
     const w = window as unknown as { __beats?: Moment[]; __watched?: Element; __ventiscaDemo?: Scene };
     const bubble = document.querySelector('.demo');
     if (bubble && w.__watched !== bubble) {
@@ -70,6 +78,8 @@ async function at(page: Page, name: 'before' | 'combo' | 'after'): Promise<Momen
           labels: [...bubble.querySelectorAll('.demo-label')].map((l) => l.textContent ?? ''),
           combo: bubble.querySelector('.demo-combo')?.textContent ?? null,
           stunned: ['e1', 'e2'].map((id) => scene.units.get(id)?.stunned ?? null),
+          tinted: (scene.hl?.commandBuffer.length ?? 0) > 0,
+          floats: scene.children.list.filter((o) => o.type === 'Text' && o.depth === 3000 && o.alpha > 0).length,
           minis: scene.children.list
             .filter((o) => o.type === 'Image' && o.visible && (o.texture?.key ?? '').startsWith('placed-'))
             .map((o) => o.texture?.key ?? '')
@@ -97,6 +107,61 @@ async function boxOf(el: Locator) {
 type DemoWindow = {
   __ventiscaDemo: { units: Map<string, { container: { x: number; y: number }; ko: boolean; stunned: boolean }> };
 };
+
+/**
+ * Lo que se lee sobre cada unidad, en el último tablero en miniatura que se ve, no se sale por los lados,
+ * no pisa otra etiqueta y no tapa a ninguna unidad. `view` es la parte del tablero que muestra, en casillas.
+ */
+async function expectLabelsClear(page: Page, what: string, view: { x: number; y: number; w: number; h: number }) {
+  await expect(page.locator('.demo-label').first()).toBeVisible();
+  const found = await page.evaluate(() => {
+    const board = [...document.querySelectorAll('.demo-board')].at(-1) as HTMLElement;
+    const area = board.getBoundingClientRect();
+    const boxes = [...board.querySelectorAll('.demo-label')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { text: el.textContent ?? '', left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    });
+    return {
+      area: { left: area.left, right: area.right, top: area.top, width: area.width, height: area.height },
+      boxes,
+    };
+  });
+  expect(found.boxes.length).toBeGreaterThan(0);
+  // Ninguna etiqueta se sale del tablero en miniatura por los lados.
+  for (const b of found.boxes) {
+    expect(b.left, `${what}: ${b.text}`).toBeGreaterThanOrEqual(found.area.left - 1);
+    expect(b.right, `${what}: ${b.text}`).toBeLessThanOrEqual(found.area.right + 1);
+  }
+  // Ni pisa a otra.
+  for (const [i, a] of found.boxes.entries()) {
+    for (const b of found.boxes.slice(i + 1)) {
+      const apart = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+      expect(apart, `${what}: "${a.text}" pisa "${b.text}"`).toBe(true);
+    }
+  }
+  // Ni tapa a una unidad: cada una está en su casilla, y la etiqueta va sobre la de arriba, que está libre.
+  const units = await page.evaluate(() => {
+    const scenes = (window as unknown as DemoWindow).__ventiscaDemo;
+    return [...scenes.units.values()].map((u) => ({ x: u.container.x, y: u.container.y }));
+  });
+  const cell = { w: found.area.width / view.w, h: found.area.height / view.h };
+  for (const u of units) {
+    // Del escenario (casillas de 100×84 desde (190, 102)) a las casillas del tablero en miniatura.
+    const col = Math.floor((u.x - 190) / 100) - view.x;
+    const row = Math.floor((u.y - 102) / 84) - view.y;
+    if (col < 0 || col >= view.w || row < 0 || row >= view.h) continue;
+    const box = {
+      left: found.area.left + col * cell.w,
+      right: found.area.left + (col + 1) * cell.w,
+      top: found.area.top + row * cell.h + 6,
+      bottom: found.area.top + (row + 1) * cell.h,
+    };
+    for (const b of found.boxes) {
+      const apart = b.right <= box.left || box.right <= b.left || b.bottom <= box.top || box.bottom <= b.top;
+      expect(apart, `${what}: "${b.text}" tapa a la unidad de (${col}, ${row})`).toBe(true);
+    }
+  }
+}
 
 test('D-81: el ▶ junto al título de la mano abre la demostración de la carta, que juega el motor', async ({ page }) => {
   const errors: string[] = [];
@@ -128,11 +193,13 @@ test('D-81: el ▶ junto al título de la mano abre la demostración de la carta
   // Se juega en bucle: lo planeado, el turno, el resultado, y otra vez.
   // Antes de jugar se ve lo planeado: la carta de Brasa colocada, y nada que leer todavía.
   expect(await at(page, 'before')).toMatchObject({ labels: [], stunned: [false, false], minis: ['placed-fire'] });
-  // El resultado lo resolvió el motor: 9 de daño a cada gólem del área, y aturdidos.
+  // El resultado lo resolvió el motor: 9 de daño a cada gólem del área, y aturdidos. Lo planeado ya no se ve.
   expect(await at(page, 'after')).toMatchObject({
     labels: ['−9 · aturdido', '−9 · aturdido'],
     stunned: [true, true],
     minis: [],
+    tinted: false,
+    floats: 0,
   });
   // Y vuelve a empezar, con el tablero como al principio.
   expect(await at(page, 'before')).toMatchObject({ labels: [], stunned: [false, false], minis: ['placed-fire'] });
@@ -282,55 +349,7 @@ test('D-81: lo que se lee sobre cada unidad no tapa a otra unidad ni a otra etiq
     await opener(page, names[id]).click();
     for (const mode of ['Sin combo', 'Con combo']) {
       await demo(page).getByRole('button', { name: mode }).click();
-      await expect(page.locator('.demo-label').first()).toBeVisible();
-      const found = await page.evaluate(() => {
-        const board = [...document.querySelectorAll('.demo-board')].at(-1) as HTMLElement;
-        const area = board.getBoundingClientRect();
-        const boxes = [...board.querySelectorAll('.demo-label')].map((el) => {
-          const r = el.getBoundingClientRect();
-          return { text: el.textContent ?? '', left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-        });
-        return {
-          area: { left: area.left, right: area.right, top: area.top, width: area.width, height: area.height },
-          boxes,
-        };
-      });
-      expect(found.boxes.length).toBeGreaterThan(0);
-      const what = `${names[id]}, ${mode}`;
-      // Ninguna etiqueta se sale del tablero en miniatura por los lados.
-      for (const b of found.boxes) {
-        expect(b.left, `${what}: ${b.text}`).toBeGreaterThanOrEqual(found.area.left - 1);
-        expect(b.right, `${what}: ${b.text}`).toBeLessThanOrEqual(found.area.right + 1);
-      }
-      // Ni pisa a otra.
-      for (const [i, a] of found.boxes.entries()) {
-        for (const b of found.boxes.slice(i + 1)) {
-          const apart = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-          expect(apart, `${what}: "${a.text}" pisa "${b.text}"`).toBe(true);
-        }
-      }
-      // Ni tapa a una unidad: cada una está en su casilla, y la etiqueta va sobre la de arriba, que está libre.
-      const units = await page.evaluate(() => {
-        const scenes = (window as unknown as DemoWindow).__ventiscaDemo;
-        return [...scenes.units.values()].map((u) => ({ x: u.container.x, y: u.container.y }));
-      });
-      const cell = { w: found.area.width / 4, h: found.area.height / 3 };
-      for (const u of units) {
-        // Del escenario (casillas de 100×84 desde (190, 102)) al tablero en miniatura, que empieza en (2, 1).
-        const col = Math.floor((u.x - 190) / 100) - 2;
-        const row = Math.floor((u.y - 102) / 84) - 1;
-        if (col < 0 || col > 3 || row < 0 || row > 2) continue;
-        const box = {
-          left: found.area.left + col * cell.w,
-          right: found.area.left + (col + 1) * cell.w,
-          top: found.area.top + row * cell.h + 6,
-          bottom: found.area.top + (row + 1) * cell.h,
-        };
-        for (const b of found.boxes) {
-          const apart = b.right <= box.left || box.right <= b.left || b.bottom <= box.top || box.bottom <= b.top;
-          expect(apart, `${what}: "${b.text}" tapa a la unidad de (${col}, ${row})`).toBe(true);
-        }
-      }
+      await expectLabelsClear(page, `${names[id]}, ${mode}`, { x: 2, y: 1, w: 4, h: 3 });
     }
     await page.keyboard.press('Escape');
   }
@@ -351,4 +370,244 @@ test('D-81: el consejo de la primera carta dice que el ▶ muestra qué hace, y 
   await expect(page.locator('.tip-mark')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(tip).toHaveCount(1);
+});
+
+/* ---------- Demostraciones de los gólems (D-82) ---------- */
+
+/** Los tres ninjas en la columna 1 y un gólem de cada tipo delante: ninguno al alcance de Brasa. */
+const GOLEMS: Board = {
+  ninjas: { fire: { at: [1, 1] }, water: { at: [1, 2] }, snow: { at: [1, 3] } },
+  golems: [
+    { kind: 'sniper', at: [5, 1] },
+    { kind: 'colossus', at: [4, 2] },
+    { kind: 'artillery', at: [5, 3] },
+  ],
+};
+const GOLEM_AT = { sniper: [5, 1], colossus: [4, 2], artillery: [5, 3] } as const;
+type GolemKind = keyof typeof GOLEM_AT;
+const look = (page: Page, kind: GolemKind) => {
+  const [x, y] = GOLEM_AT[kind];
+  return page.mouse.move(tile(x, y).x, tile(x, y).y);
+};
+const franja = (page: Page) => page.locator('.tip-text');
+const show = (page: Page) => page.getByRole('button', { name: 'Ver cómo ataca' });
+const attack = (page: Page) => page.getByRole('dialog', { name: /, cómo ataca$/ });
+const PLAN_BRASA = 'Elige a dónde se mueve Brasa, o un objetivo desde donde está.';
+
+test('D-82: al mirar a un gólem, la franja lo nombra sin números y ofrece "Ver cómo ataca"', async ({ page }) => {
+  await startBoard(page, GOLEMS, LEARNED);
+  await expect(franja(page)).toHaveText(PLAN_BRASA);
+  await expect(show(page)).toHaveCount(0);
+
+  await look(page, 'sniper');
+  await expect(franja(page)).toHaveText('Carámbano. Pega más fuerte de lejos. Acércate para que duela menos.');
+  await expect(show(page)).toBeVisible();
+  // La franja, con su botón, sigue arriba del tablero: no lo pisa, y su texto se ve entero.
+  const bar = await boxOf(page.locator('.tip'));
+  expect(bar.bottom).toBeLessThanOrEqual(90);
+  const button = await boxOf(show(page));
+  expect(button.left).toBeGreaterThanOrEqual(bar.left);
+  expect(button.right).toBeLessThanOrEqual(bar.right);
+  expect(await franja(page).evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+
+  await look(page, 'artillery');
+  await expect(franja(page)).toHaveText('Granizo. Su granizo salpica a los vecinos del objetivo. No se amontonen.');
+  await look(page, 'colossus');
+  await expect(franja(page)).toHaveText('Témpano. Lento pero brutal: barre tres casillas.');
+
+  // Del gólem a una casilla vacía: la franja lo sigue nombrando un momento, y luego vuelve al estado del turno.
+  await page.mouse.move(tile(7, 4).x, tile(7, 4).y);
+  await expect(franja(page)).toHaveText('Témpano. Lento pero brutal: barre tres casillas.');
+  await expect(franja(page)).toHaveText(PLAN_BRASA, { timeout: 6000 });
+  await expect(show(page)).toHaveCount(0);
+
+  // Para llegar al botón hay que sacar el ratón del gólem: la franja lo sigue nombrando mientras el ratón
+  // está sobre ella, más de lo que tarda en soltarlo.
+  await look(page, 'colossus');
+  await show(page).hover();
+  await page.waitForTimeout(3200);
+  await expect(franja(page)).toHaveText('Témpano. Lento pero brutal: barre tres casillas.');
+  await expect(show(page)).toBeVisible();
+
+  // Al salir de la franja sin volver al tablero, también lo suelta al rato.
+  await page.mouse.move(100, 300);
+  await expect(franja(page)).toHaveText('Témpano. Lento pero brutal: barre tres casillas.');
+  await expect(franja(page)).toHaveText(PLAN_BRASA, { timeout: 6000 });
+  await expect(show(page)).toHaveCount(0);
+
+  // Si quien juega hace algo, vuelve enseguida, aunque el ratón siga sobre el gólem: aquí, un clic en uno
+  // que Brasa no alcanza.
+  await look(page, 'sniper');
+  await expect(show(page)).toBeVisible();
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.locator('.toast')).toBeVisible();
+  await expect(franja(page)).toHaveText(PLAN_BRASA, { timeout: 1500 });
+  await expect(show(page)).toHaveCount(0);
+
+  // Con su demostración abierta, la franja sigue nombrando a ese gólem aunque el ratón ya no esté, y su
+  // botón queda marcado. Al cerrarla, vuelve al estado del turno.
+  await look(page, 'artillery');
+  await show(page).click();
+  await expect(attack(page)).toBeVisible();
+  await page.mouse.move(100, 300);
+  await page.waitForTimeout(3200);
+  await expect(franja(page)).toHaveText('Granizo. Su granizo salpica a los vecinos del objetivo. No se amontonen.');
+  await expect(show(page)).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(attack(page)).toHaveCount(0);
+  await expect(franja(page)).toHaveText(PLAN_BRASA);
+  await expect(show(page)).toHaveCount(0);
+});
+
+test('D-82: "Ver cómo ataca" abre la demostración de cada gólem, con los números del motor', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await startBoard(page, GOLEMS, LEARNED);
+  const expected = {
+    sniper: {
+      title: 'Carámbano, cómo ataca',
+      caption:
+        'Dispara a un solo ninja a hasta 3 casillas. Cuanto más lejos, más duele: 3 de cerca, 4 a dos casillas y 5 a tres.',
+      labels: ['−5', 'a salvo', '−3'],
+    },
+    artillery: {
+      title: 'Granizo, cómo ataca',
+      caption:
+        'Lanza a hasta 2 casillas: 8 al objetivo y 4 a cualquier ninja en las 8 casillas que lo rodean, también en diagonal.',
+      labels: ['−4', 'a salvo', '−8'],
+    },
+    colossus: {
+      title: 'Témpano, cómo ataca',
+      caption:
+        'Golpea a quien tenga al lado y barre las dos casillas a los costados de su objetivo: 10 a cada una. No se pongan hombro con hombro frente a él.',
+      labels: ['a salvo', '−10', '−10'],
+    },
+  } as const;
+  for (const kind of ['sniper', 'artillery', 'colossus'] as const) {
+    await look(page, kind);
+    await show(page).click();
+    await expect(attack(page)).toBeVisible();
+    await expect(attack(page).getByRole('heading')).toHaveText(expected[kind].title);
+    await expect(caption(page)).toHaveText(expected[kind].caption);
+    // Es la misma burbuja de las cartas, sobre la mano, sin el selector del combo.
+    await expect(attack(page).getByRole('button', { name: 'Sin combo' })).toHaveCount(0);
+    await expect(page.locator('.demo-stage canvas')).toHaveCount(1);
+    const bubble = await boxOf(page.locator('.demo'));
+    const hand = await boxOf(page.locator('.hand'));
+    expect(bubble.bottom).toBeLessThanOrEqual(hand.top);
+    expect(bubble.top).toBeGreaterThanOrEqual(0);
+    // Antes del ataque no hay nada que leer; después, el daño de cada golpe y quién queda a salvo. Las
+    // casillas que golpea se ven teñidas todo el bucle.
+    const before = await at(page, 'before');
+    expect(before.labels).toEqual([]);
+    expect(before.tinted).toBe(true);
+    const after = await at(page, 'after');
+    expect(after.labels).toEqual(expected[kind].labels);
+    expect(after.tinted).toBe(true);
+    // El resultado se lee cuando ya se fue el número flotante del golpe: si no, quedaría bajo su etiqueta.
+    expect(after.floats).toBe(0);
+    await page.keyboard.press('Escape');
+    await expect(attack(page)).toHaveCount(0);
+  }
+  // No toca la partida.
+  expect(await state(page)).toMatchObject({ phase: 'planning', active: 'fire', plans: {}, turn: 0, demo: null });
+  expect(errors).toEqual([]);
+});
+
+test('D-82: con animaciones reducidas, cada gólem muestra el antes y el después; nada tapa a una unidad', async ({
+  page,
+}) => {
+  await startBoard(page, GOLEMS, { ...LEARNED, reducedMotion: true });
+  const views = {
+    sniper: { x: 2, y: 1, w: 5, h: 2 },
+    artillery: { x: 2, y: 1, w: 4, h: 3 },
+    colossus: { x: 3, y: 1, w: 3, h: 3 },
+  } as const;
+  for (const kind of ['sniper', 'artillery', 'colossus'] as const) {
+    await look(page, kind);
+    await show(page).click();
+    await beat(page, 'still');
+    await expect(page.locator('.demo-stage canvas')).toHaveCount(2);
+    await expect(page.locator('.demo-stills figcaption')).toHaveText(['Antes', 'Después']);
+    const [before, after] = await Promise.all(
+      [0, 1].map((i) => boxOf(page.locator('.demo-stills .demo-board').nth(i))),
+    );
+    if (!before || !after) throw new Error('faltan los tableros');
+    // El de Carámbano es ancho y bajo: sus dos imágenes van una sobre otra. Los otros, lado a lado.
+    if (kind === 'sniper') expect(before.bottom).toBeLessThanOrEqual(after.top);
+    else expect(before.right).toBeLessThanOrEqual(after.left);
+    const bubble = await boxOf(page.locator('.demo'));
+    expect(bubble.top).toBeGreaterThanOrEqual(0);
+    expect(bubble.left).toBeGreaterThanOrEqual(0);
+    await expectLabelsClear(page, kind, views[kind]);
+    await page.keyboard.press('Escape');
+    await expect(attack(page)).toHaveCount(0);
+  }
+});
+
+test('D-82: con una carta en la mano, la franja no nombra al gólem ni ofrece su demostración', async ({ page }) => {
+  await startBoard(page, { ...GOLEMS, ninjas: { ...GOLEMS.ninjas, fire: { at: [1, 1], hand: [9] } } }, LEARNED);
+  await page.keyboard.press('1');
+  await look(page, 'colossus');
+  await expect(franja(page)).toHaveText('Elige dónde colocar la carta de Brasa. Afecta un área de 3×3.');
+  await expect(show(page)).toHaveCount(0);
+});
+
+test('D-82: en la ayuda, "Ver cómo ataca" junto a cada gólem abre su demostración, sin ratón y sin franja', async ({
+  page,
+}) => {
+  // Con "Consejos en pantalla" apagado no hay franja: la ayuda es el otro camino, y sirve con el teclado.
+  await startBoard(page, GOLEMS, { ...LEARNED, tips: false });
+  await expect(page.locator('.tip')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  const expected = {
+    Carámbano: ['−5', 'a salvo', '−3'],
+    Granizo: ['−4', 'a salvo', '−8'],
+    Témpano: ['a salvo', '−10', '−10'],
+  } as const;
+  for (const name of ['Carámbano', 'Granizo', 'Témpano'] as const) {
+    const open = help.getByRole('button', { name: `Ver cómo ataca ${name}` });
+    await open.scrollIntoViewIfNeeded();
+    await expect(open).toHaveText('Ver cómo ataca');
+    // Con el teclado: el foco en el botón y Enter.
+    await open.focus();
+    await page.keyboard.press('Enter');
+    await expect(attack(page).getByRole('heading')).toHaveText(`${name}, cómo ataca`);
+    await expect(page.locator('.demo-stage canvas')).toHaveCount(1);
+    // Va sobre la ayuda, entera dentro de la pantalla, y es la misma demostración: la juega el motor.
+    const bubble = await boxOf(page.locator('.demo'));
+    expect(bubble.top).toBeGreaterThanOrEqual(0);
+    expect(bubble.bottom).toBeLessThanOrEqual(720);
+    expect(bubble.left).toBeGreaterThanOrEqual(0);
+    expect(bubble.right).toBeLessThanOrEqual(1280);
+    expect((await at(page, 'after')).labels).toEqual(expected[name]);
+    // Esc cierra la demostración, no la ayuda, y el foco vuelve a su botón.
+    await page.keyboard.press('Escape');
+    await expect(attack(page)).toHaveCount(0);
+    await expect(help).toBeVisible();
+    await expect(open).toBeFocused();
+  }
+  // Los botones caben en la ayuda y respetan el tamaño mínimo de texto.
+  expect(await clippedElements(page)).toEqual([]);
+  expect((await smallText(page)).filter((found) => !found.startsWith('span.kbd'))).toEqual([]);
+  // El siguiente Esc cierra la ayuda.
+  await page.keyboard.press('Escape');
+  await expect(help).toHaveCount(0);
+});
+
+test('D-82: la ayuda de la pantalla de inicio también abre la demostración de un gólem', async ({ page }) => {
+  await page.goto('/?speed=0.3');
+  await page.getByRole('button', { name: 'Cómo jugar' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo jugar' });
+  const open = help.getByRole('button', { name: 'Ver cómo ataca Granizo' });
+  await open.scrollIntoViewIfNeeded();
+  await open.click();
+  await expect(attack(page).getByRole('heading')).toHaveText('Granizo, cómo ataca');
+  expect((await at(page, 'after')).labels).toEqual(['−4', 'a salvo', '−8']);
+  // Un clic fuera la cierra, y la ayuda sigue abierta.
+  await page.mouse.click(40, 40);
+  await expect(attack(page)).toHaveCount(0);
+  await expect(help).toBeVisible();
 });

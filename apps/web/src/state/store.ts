@@ -1,4 +1,4 @@
-import type { BonusCondition, ElementKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
+import type { BonusCondition, ElementKind, EnemyKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
 import type { Progress, User } from '@ventisca/protocol';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
@@ -126,12 +126,11 @@ export interface Results {
   state: MatchState;
 }
 
-/** La demostración abierta (D-81): qué hacen las cartas de ese ninja, con o sin combo. Una a la vez. */
-export interface OpenDemo {
-  kind: 'card';
-  ninja: ElementKind;
-  combo: boolean;
-}
+/**
+ * La demostración abierta, una a la vez: qué hacen las cartas de ese ninja, con o sin combo (D-81), o cómo
+ * ataca ese gólem (D-82).
+ */
+export type OpenDemo = { kind: 'card'; ninja: ElementKind; combo: boolean } | { kind: 'golem'; enemy: EnemyKind };
 
 export interface AppState {
   screen: Screen;
@@ -139,6 +138,8 @@ export interface AppState {
   /** La partida corre en este navegador (`GameHost.local`): ahí valen las ayudas opcionales (D-78). */
   local: boolean;
   helpOpen: boolean;
+  /** El gólem cuya demostración se abrió desde la ayuda (D-82): va sobre ella, en cualquier pantalla. */
+  helpDemo: EnemyKind | null;
   paused: boolean;
   phase: Phase;
   /** Estado autoritativo (el último que devolvió el motor). */
@@ -149,6 +150,8 @@ export interface AppState {
   active: ElementKind | null;
   pendingCard: string | null;
   hover: Vec | null;
+  /** El gólem que nombra la franja: el último que miró el ratón, mientras dura (D-82). */
+  spotted: EnemyKind | null;
   demo: OpenDemo | null;
   timer: TimerState;
   overlay: Overlay;
@@ -175,6 +178,7 @@ export const initialState = (): AppState => ({
   settings: loadSettings(),
   local: true,
   helpOpen: false,
+  helpDemo: null,
   paused: false,
   phase: 'idle',
   match: null,
@@ -183,6 +187,7 @@ export const initialState = (): AppState => ({
   active: null,
   pendingCard: null,
   hover: null,
+  spotted: null,
   demo: null,
   timer: { deadline: null, remaining: null, total: null },
   overlay: null,

@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) va en su PR 6 de 7: faltan las demostraciones de los gólems y su cierre. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
+Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) tiene hechos sus siete PRs: falta su cierre, que es volver a correr las tablas de P-20 y proponer una segunda prueba con personas. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
 ## Qué hay
 
@@ -31,11 +31,12 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
   - Al planificar a un ninja, el tablero le ofrece a la vez sus casillas y los objetivos que alcanza desde donde va a estar: un clic en un objetivo lo elige sin moverse, y un clic en una casilla lo mueve y recalcula los objetivos. No hay un paso de moverse, y solo colocar una carta es un modo aparte (casillas rojas). Los planes del equipo quedan en silueta y marca: un ataque elegido lleva un anillo con un arco del color de cada ninja que lo eligió, y una carta colocada, su miniatura, siempre al frente, con un lugar fijo por elemento y un borde dorado cuando hay combo.
-  - El tablero muestra lo que se puede hacer, no el resultado. Lo demás es a pedido: el panel de cada ninja resume su plan sin números, la franja de arriba nombra al gólem que está bajo el ratón, y la vida que perdería un gólem y su alcance son ayudas opcionales, apagadas por defecto y solo en las partidas locales (D-78; `state/aids.ts`).
+  - El tablero muestra lo que se puede hacer, no el resultado. Lo demás es a pedido: el panel de cada ninja resume su plan sin números, la franja de arriba nombra al gólem que está bajo el ratón, sin números, y la vida que perdería un gólem y su alcance son ayudas opcionales, apagadas por defecto y solo en las partidas locales (D-78; `state/aids.ts`).
   - Ningún tinte se mezcla con otro: cada casilla lleva un solo relleno.
   - El foco no salta solo: se elige otro ninja con un clic, en el tablero o en su panel, o con Tab. "Pasar al siguiente ninja" viene apagado, y una migración única lo apagó también en los ajustes ya guardados en el navegador (D-79; `state/persist.ts`).
   - Consejos en el momento (D-80): cuatro consejos salen una sola vez cada uno, en una burbuja que va siempre junto a la mano, nunca sobre el tablero, y se cierran con "Entendido". Lo que señala lleva el borde dorado: el panel del ninja o la carta. Los aprendidos se guardan con los ajustes, y la ayuda permite volver a verlos. `state/tips.ts` decide qué consejo sale, cuándo y dónde.
   - Demostraciones de las cartas (D-81): el ▶ junto al título de la mano abre un tablero en miniatura donde la carta se juega en bucle, con o sin combo. No pausa el reloj ni mira la partida.
+  - Demostraciones de los gólems (D-82): la franja que nombra a un gólem ofrece "Ver cómo ataca", que abre la misma burbuja con su ataque en bucle, las casillas golpeadas teñidas y un ninja a salvo. La franja se queda con el gólem un momento, para que se alcance el botón. Los números los pone el motor (`enemyStrike`, `sniperDamage` y `balance.json`).
   - `state/board.ts` decide qué capa se ve y cuándo, y `state/steps.ts`, qué hace cada clic. Los dos son puros y tienen sus pruebas; la escena solo dibuja y `state/actions.ts` solo aplica.
   - Las capas, sus colores y cuándo se ve cada una están en la sección 11 de `docs/lineamientos-de-diseno.md`.
 - **Motor puro (`packages/core`):** reglas, bot, progresión (R-25 a R-32) y logros. El servidor lo usará tal cual.
@@ -144,29 +145,28 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
 
 El M7 y P-20 están cerrados. Va en este orden:
 
-1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en siete PRs pequeños, cada uno con capturas a 1280×720 junto a "Tu equipo" y, desde el quinto, junto a su maqueta aprobada. **Va en su PR 6 de 7:**
+1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en siete PRs pequeños, cada uno con capturas a 1280×720 junto a "Tu equipo" y, desde el quinto, junto a su maqueta aprobada. **Los siete están hechos; falta el cierre:**
    1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
    2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, y elegir una carta cambia el tablero a modo carta. Ajustado después dos veces, como en el original. Primero: tras moverse, las casillas siguen a la vista y otro clic cambia el destino; el foco no salta tras moverse; y los objetivos elegidos llevan la marca del equipo, con un arco por atacante. Después se quitó el paso de moverse: al activar un ninja se ven a la vez sus casillas y sus objetivos, y un clic en un objetivo lo elige sin moverse.
    3. **La reanimación vuelve a la regla del original.** Hecho (D-77, que reemplaza a D-18): quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. La medición del balance de antes y después está en `docs/balance-report.md`.
    4. **Información a pedido.** Hecho (D-74 y D-78): el panel de cada ninja resume su plan sin números; con el ratón sobre un gólem, la franja dice su nombre y cómo ataca, sin pintar casillas; las cartas colocadas quedan en miniatura, siempre al frente, con un lugar fijo por elemento, un solo contorno para el área compartida y un borde dorado cuando hay combo; ningún tinte se mezcla con otro; y "Ver el daño antes de confirmar" y "Ver el alcance de los enemigos" son ayudas opcionales de las partidas locales, apagadas por defecto.
    5. **Consejos en el momento.** Hecho (D-80), con un alcance más chico que el previsto: cuatro consejos, cada uno una sola vez, en una burbuja que va siempre junto a la mano y marca con un borde dorado el panel o la carta de la que habla. El de la primera caída salió de la franja y pasó a este sistema. La franja de arriba queda como línea de contexto. Ver "Consejos en el momento" en la sección 11 de los lineamientos.
    6. **Demostraciones de las cartas.** Hecho (D-81): un solo ▶ junto al título de la mano abre un tablero en miniatura donde la carta se juega en bucle, con el selector "Sin combo | Con combo". Usa el valor de la carta elegida o el de la primera; con la mano vacía, va sin números. La juega el motor (`state/demos.ts`) y la anima la escena del juego (`game/DemoScene.ts`). Con animaciones reducidas, dos imágenes fijas. El consejo de la primera carta ya dice que el ▶ muestra qué hace.
-   7. **Demostraciones de los gólems.** Pendiente:
-      - La franja que aparece con el ratón sobre un gólem suma "▶ Ver cómo ataca", y un clic abre la misma burbuja con su ataque en bucle.
-      - Los números salen de las funciones del motor (`sniperDamage`, la salpicadura a las 8 vecinas y `sweepTiles`), nunca escritos a mano.
-      - Cada una muestra un ninja fuera del área, para enseñar dónde se está a salvo. Carámbano: un disparo de lejos y otro de cerca. Granizo: el objetivo, un vecino salpicado y un ninja a salvo. Témpano: el objetivo y el barrido a su costado.
+   7. **Demostraciones de los gólems.** Hecho (D-82):
+      - La franja que aparece con el ratón sobre un gólem suma "Ver cómo ataca", y un clic abre la misma burbuja con su ataque en bucle. La franja va sin números y se queda con el gólem un momento, para que se alcance el botón.
+      - Los números salen del motor, nunca escritos a mano: el motor resuelve cada ataque (`enemyStrike`), con la salpicadura a las 8 vecinas y `sweepTiles`, y la línea de texto se arma con `sniperDamage` y con `balance.json`.
+      - Cada una muestra un ninja fuera del área, con la etiqueta "a salvo", y las casillas golpeadas, teñidas. Carámbano: un disparo de lejos y otro de cerca. Granizo: el objetivo, un vecino salpicado y un ninja a salvo. Témpano: el objetivo y el barrido a su costado.
 
    **Hallazgo de la prueba con personas** (octubre de 2026): el juego se siente muy bien. Lo único: la gente elige por su cuenta al siguiente ninja, y el paso automático la confunde. Por eso "Pasar al siguiente ninja" viene apagado (D-79).
 
-   **Reglas para las demostraciones, ya cumplidas en las de las cartas y pendientes en las de los gólems:**
+   **Reglas de las demostraciones, cumplidas en las de las cartas y en las de los gólems:**
    - Una burbuja a la vez; Esc o un clic fuera la cierran.
    - No pausan el reloj y funcionan igual en línea: muestran qué hace algo, nunca cuánto daño hará la jugada.
-   - Sin videos: cada demostración la juega el propio motor, con el arte y las animaciones del juego, en un tablero en miniatura preparado. Ya está hecho para las cartas, y la de los gólems usa lo mismo: `state/demos.ts` prepara el tablero y `game/DemoScene.ts` lo anima.
+   - Sin videos: cada demostración la juega el propio motor, con el arte y las animaciones del juego, en un tablero en miniatura preparado. `state/demos.ts` prepara el tablero y `game/DemoScene.ts` lo anima.
    - Con animaciones reducidas, se muestran el antes y el después como dos imágenes fijas, con una línea de texto.
    - Cada PR registra su decisión con el siguiente número libre, e incluye capturas de cada demostración junto a su maqueta aprobada. Las formas de las maquetas son aproximadas: se usan el arte y las animaciones reales del juego.
 
    **Lo que falta para cerrar la ronda:**
-   - **El PR 7,** las demostraciones de los gólems. Con él, la franja de los gólems pierde sus números ("Pega más fuerte de lejos. Acércate para que duela menos."), porque la demostración los muestra.
    - **Al cerrar la ronda, volver a correr las tablas de P-20** (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y actualizar `docs/balance-report.md`: sus secciones anteriores a D-77 siguen medidas con la reanimación vieja.
    - **Al cerrar la ronda, proponer una segunda prueba con personas,** centrada en los consejos y las demostraciones. La primera ya se hizo y dejó D-79.
 

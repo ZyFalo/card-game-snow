@@ -991,6 +991,54 @@ button {
   height: 26px;
 }
 
+/*
+ * "Ver cómo ataca" (D-82): el botón de la demostración de un gólem. En la franja, el del gólem que está
+ * nombrando; en la ayuda, uno junto a cada gólem.
+ */
+.tip-demo,
+.help-demo {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 10px;
+  font: 700 13px / 1.2 var(--font-ui);
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--paper-hi);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tip-demo svg,
+.help-demo svg {
+  width: 11px;
+  height: 11px;
+}
+
+.tip-demo:hover,
+.help-demo:hover {
+  background: var(--paper-lo);
+}
+
+/* En la ayuda va debajo de la descripción del gólem, a la izquierda. */
+.help-demo {
+  margin: 8px 0 0;
+}
+
+/* Con su demostración abierta, el aro dorado de lo elegido, como el ▶ de las cartas. */
+.tip-demo.on {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+
+.tip-demo:focus-visible,
+.help-demo:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
 .turnbox {
   position: absolute;
   left: 50%;
@@ -1399,6 +1447,19 @@ button {
   width: 484px;
 }
 
+/* Abierta desde la ayuda (D-82): en el centro, sobre ella, con su fondo oscurecido. */
+.demo-backdrop.over {
+  z-index: 20;
+  background: rgba(31, 36, 64, 0.35);
+}
+
+.demo.over {
+  inset: 0;
+  z-index: 21;
+  height: fit-content;
+  margin: auto;
+}
+
 .demo-head {
   display: flex;
   justify-content: space-between;
@@ -1505,6 +1566,13 @@ button {
   display: flex;
   justify-content: center;
   gap: var(--gap-2);
+}
+
+/* Un tablero mucho más ancho que alto no cabe dos veces lado a lado: va uno sobre otro. */
+.demo-stills.stacked {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-1);
 }
 
 .demo-stills figure {

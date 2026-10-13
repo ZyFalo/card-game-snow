@@ -5,6 +5,7 @@ import { PhaserStage, phaserRef } from './game/PhaserStage';
 import { initAccount } from './state/account';
 import {
   closeDemo,
+  closeHelpDemo,
   confirmTurn,
   cycleNinja,
   learnTip,
@@ -108,7 +109,9 @@ function useKeyboard(): void {
       if (st.helpOpen) {
         if (k === 'escape' && fresh) {
           ev.preventDefault();
-          setHelp(false);
+          // Con una demostración abierta sobre la ayuda (D-82), Esc cierra primero la demostración.
+          if (st.helpDemo) closeHelpDemo();
+          else setHelp(false);
         }
         return;
       }

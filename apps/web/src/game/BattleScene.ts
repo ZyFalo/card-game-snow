@@ -1074,8 +1074,8 @@ export class BattleScene extends Phaser.Scene {
     this.fx.burst(at, 'fx-bit', colors, count, { speed });
   }
 
-  protected floatText(u: UnitSprite, text: string, color: string, big = false): void {
-    this.fx.number(u, text, color, big);
+  protected floatText(u: UnitSprite, text: string, color: string, big = false): Phaser.GameObjects.Text | null {
+    return this.fx.number(u, text, color, big);
   }
 
   private async lunge(src: UnitSprite, dst: UnitSprite, frac: number, ms: number): Promise<void> {

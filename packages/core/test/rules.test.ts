@@ -5,6 +5,7 @@ import {
   cardTiles,
   createMatch,
   type EnemyKind,
+  enemyStrike,
   type GameEvent,
   healTargets,
   isActionValid,
@@ -432,6 +433,76 @@ describe('Enemigos (R-12, R-13)', () => {
     expect(types(r.events)).toContain('enemySkip');
     expect(ninja(r.state, 'water').hp).toBe(40);
     expect(r.state.enemies[0]?.stunned).toBe(false);
+  });
+
+  it('R-13: un ataque concreto se resuelve igual que en la fase enemiga, sin moverse ni gastar el azar', () => {
+    // El coloso ya está junto a Marea, con Brasa y Escarcha hombro con hombro: la fase enemiga hace ese ataque.
+    const s = blank();
+    place(s, 'water', 4, 2);
+    place(s, 'fire', 4, 1);
+    place(s, 'snow', 4, 3);
+    const e = addEnemy(s, 'colossus', 5, 2);
+    const before = structuredClone(s);
+    const strike = enemyStrike(s, e.id, 'water');
+    const turn = resolveTurn(s, []);
+    const attack = (ev: GameEvent[]) =>
+      ev.filter((x) => x.t === 'enemyAttack' || x.t === 'damage' || x.t === 'ko' || x.t === 'meter');
+    expect(attack(strike.events)).toEqual(attack(turn.events));
+    expect(strike.events.map((x) => x.t)).toEqual(attack(strike.events).map((x) => x.t));
+    expect(strike.state.ninjas.map((n) => n.hp)).toEqual(turn.state.ninjas.map((n) => n.hp));
+    // Es una consulta: el estado de entrada queda igual, y el azar de la partida no se gasta.
+    expect(s).toEqual(before);
+    expect(strike.state.rng).toBe(s.rng);
+    expect(strike.state.turn).toBe(s.turn);
+  });
+
+  it('R-13: quien pregunta dice quién ataca a quién, también desde donde la fase enemiga no lo haría', () => {
+    // Dos francotiradores: uno a tres casillas de Brasa y otro pegado a Marea. Solo, el segundo se alejaría.
+    const s = blank();
+    place(s, 'fire', 3, 1);
+    place(s, 'water', 5, 2);
+    place(s, 'snow', 0, 4);
+    const far = addEnemy(s, 'sniper', 6, 1);
+    const near = addEnemy(s, 'sniper', 6, 2);
+    const hit = (enemyId: string, target: 'fire' | 'water') =>
+      enemyStrike(s, enemyId, target).events.find((x) => x.t === 'damage');
+    expect(hit(far.id, 'fire')).toMatchObject({ targetId: 'fire', amount: 5, cause: 'enemy', sourceId: far.id });
+    expect(hit(near.id, 'water')).toMatchObject({ targetId: 'water', amount: 3, cause: 'enemy', sourceId: near.id });
+    // El gólem no se movió, y el área del ataque es la del motor: la casilla del objetivo.
+    const strike = enemyStrike(s, near.id, 'water');
+    expect(strike.state.enemies.map((x) => x.pos)).toEqual(s.enemies.map((x) => x.pos));
+    expect(strike.events[0]).toEqual({
+      t: 'enemyAttack',
+      sourceId: near.id,
+      kind: 'sniper',
+      targetId: 'water',
+      area: [{ x: 5, y: 2 }],
+    });
+    // El Escudo anula el golpe, como en la fase enemiga (R-20).
+    ninja(s, 'water').shield = true;
+    expect(enemyStrike(s, near.id, 'water').events.find((x) => x.t === 'damage')).toMatchObject({
+      amount: 0,
+      blocked: true,
+    });
+  });
+
+  it('R-13: un ataque que no se puede hacer no hace nada', () => {
+    const s = blank();
+    place(s, 'fire', 3, 1);
+    place(s, 'water', 0, 2);
+    place(s, 'snow', 0, 4);
+    const e = addEnemy(s, 'colossus', 4, 1);
+    expect(enemyStrike(s, e.id, 'fire').events).not.toEqual([]);
+    // Fuera de alcance: el coloso golpea a quien tenga al lado.
+    expect(enemyStrike(s, e.id, 'water').events).toEqual([]);
+    // Un gólem que no existe, o un ninja caído.
+    expect(enemyStrike(s, 'nadie', 'fire').events).toEqual([]);
+    ninja(s, 'fire').hp = 0;
+    expect(enemyStrike(s, e.id, 'fire').events).toEqual([]);
+    // Un gólem aturdido pierde su turno (R-19).
+    ninja(s, 'fire').hp = 30;
+    e.stunned = true;
+    expect(enemyStrike(s, e.id, 'fire').events).toEqual([]);
   });
 
   it('los enemigos no pueden atravesar ninjas', () => {

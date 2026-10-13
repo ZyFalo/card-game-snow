@@ -1,6 +1,6 @@
 import { BALANCE, difficultyConfig, ELEMENTS } from './balance';
 import { decideEnemy, enemyAttackArea, sniperDamage, sweepTiles } from './enemyAi';
-import { area3x3, eq, key, neighbors8 } from './grid';
+import { area3x3, eq, key, manhattan, neighbors8 } from './grid';
 import { hashState } from './hash';
 import {
   enemyStats,
@@ -295,6 +295,29 @@ function enemyAttack(ctx: Ctx, e: Enemy, target: Ninja): void {
       break;
     }
   }
+}
+
+/**
+ * Lo que pasa cuando ese gólem ataca a ese ninja desde donde está (R-13): los mismos eventos y el mismo
+ * daño que en la fase enemiga, con su salpicadura o su barrido. No se mueve ni elige: quién ataca a quién
+ * lo dice quien pregunta. Es una consulta: no cambia `prev` ni gasta su azar. Si el ataque no se puede
+ * hacer (fuera de alcance, gólem aturdido o alguno de los dos caído), no pasa nada.
+ *
+ * La usan las demostraciones de los gólems (D-82), que enseñan un ataque concreto con los números del
+ * motor. Corre la misma función que `resolveTurn`, así que no puede decir otra cosa.
+ */
+export function enemyStrike(
+  prev: MatchState,
+  enemyId: string,
+  targetId: ElementKind,
+): { state: MatchState; events: GameEvent[] } {
+  const s = structuredClone(prev);
+  const ctx: Ctx = { s, rng: rngFrom(s.rng), ev: [], reviving: [] };
+  const e = getEnemy(s, enemyId);
+  const target = getNinja(s, targetId);
+  const able = !!e && e.hp > 0 && !e.stunned && !!target && target.hp > 0;
+  if (able && manhattan(e.pos, target.pos) <= enemyStats(e).range) enemyAttack(ctx, e, target);
+  return { state: s, events: ctx.ev };
 }
 
 /* ---------- Pasos 5 a 7 ---------- */

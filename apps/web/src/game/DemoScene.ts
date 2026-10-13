@@ -1,7 +1,7 @@
 import type { MatchState } from '@ventisca/core';
-import { type BoardLayers, boardLayers } from '../state/board';
-import type { Demo } from '../state/demos';
-import { DEFAULT_SETTINGS } from '../state/persist';
+import * as Phaser from 'phaser';
+import type { BoardLayers } from '../state/board';
+import { type Demo, demoLayers } from '../state/demos';
 import type { Overlay } from '../state/store';
 import { BattleScene } from './BattleScene';
 import { BOARD_X, BOARD_Y, TH, TW } from './layout';
@@ -34,6 +34,9 @@ export class DemoScene extends BattleScene {
   /** Cada vez que cambia lo que se enseña, el bucle anterior se detiene. */
   private run = 0;
   private ready = false;
+  /** Los números flotantes que siguen a la vista, y quien espera a que se vaya el último. */
+  private readonly floats = new Set<Phaser.GameObjects.Text>();
+  private floatsGone: (() => void) | null = null;
 
   constructor(
     images: Map<string, HTMLImageElement>,
@@ -108,25 +111,35 @@ export class DemoScene extends BattleScene {
     this.setBeat('play');
   }
 
-  /** Antes de jugar se ve lo planeado, como en la partida: la miniatura de cada carta y su área. */
+  /** Lo planeado antes de jugar y, todo el bucle, las casillas que golpea un gólem (`state/demos.ts`). */
   protected override planning(): BoardLayers | null {
-    if (this.beat !== 'before') return null;
-    return boardLayers({
-      phase: 'planning',
-      screen: 'battle',
-      settings: DEFAULT_SETTINGS,
-      local: true,
-      match: this.demo.before,
-      plans: Object.fromEntries(this.demo.plans.map((p) => [p.ninjaId, p])),
-      active: null,
-      pendingCard: null,
-      hover: null,
-    });
+    return demoLayers(this.demo, this.beat === 'before');
   }
 
   /** Con la mano vacía, la demostración no muestra números. */
-  protected override floatText(u: UnitSprite, text: string, color: string, big = false): void {
-    if (this.demo.numbers) super.floatText(u, text, color, big);
+  protected override floatText(u: UnitSprite, text: string, color: string, big = false) {
+    if (!this.demo.numbers) return null;
+    const float = super.floatText(u, text, color, big);
+    if (!float) return null;
+    this.floats.add(float);
+    float.once(Phaser.GameObjects.Events.DESTROY, () => {
+      this.floats.delete(float);
+      if (this.floats.size > 0) return;
+      this.floatsGone?.();
+      this.floatsGone = null;
+    });
+    return float;
+  }
+
+  /**
+   * El resultado se lee cuando ya se fue el último número flotante: si no, quedaría bajo su etiqueta. Se
+   * espera a que se destruya, sin contar el tiempo: la pausa de un impacto frena las animaciones.
+   */
+  private settle(): Promise<void> {
+    if (this.floats.size === 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.floatsGone = resolve;
+    });
   }
 
   private setBeat(beat: DemoBeat): void {
@@ -174,6 +187,8 @@ export class DemoScene extends BattleScene {
       this.setBeat('play');
       this.redrawPlanning();
       await this.playEvents(demo.events, () => undefined, gen);
+      if (!current() || !this.isCurrent(gen)) return;
+      await this.settle();
       if (!current() || !this.isCurrent(gen)) return;
       this.setBeat('after');
       await this.wait(DEMO_TIMING.after);

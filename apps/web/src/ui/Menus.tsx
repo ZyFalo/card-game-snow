@@ -1,9 +1,11 @@
 import { BALANCE, ELEMENTS, ENEMY_KINDS } from '@ventisca/core';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { art } from '../art';
-import { ENEMY_TEXT, ES, HELP, NINJA_TEXT } from '../i18n/es';
+import { DEMO_TEXT, ENEMY_TEXT, ES, HELP, NINJA_TEXT } from '../i18n/es';
 import {
+  closeHelpDemo,
   forgetTips,
+  openHelpDemo,
   quitToMenu,
   replayJson,
   restartMatch,
@@ -13,6 +15,7 @@ import {
 } from '../state/actions';
 import { store, useApp } from '../state/store';
 import { Icon, Modal, Toggle } from './common';
+import { GolemDemo } from './Demos';
 
 export function PauseMenu() {
   const settings = useApp((s) => s.settings);
@@ -124,6 +127,16 @@ function TipsHelp() {
 export function HelpModal() {
   const close = () => setHelp(false);
   const inBattle = store.getState().screen === 'battle';
+  const helpDemo = useApp((s) => s.helpDemo);
+  return (
+    <>
+      <HelpContent inBattle={inBattle} close={close} />
+      {helpDemo ? <GolemDemo key={helpDemo} enemy={helpDemo} onClose={closeHelpDemo} over /> : null}
+    </>
+  );
+}
+
+function HelpContent({ inBattle, close }: { inBattle: boolean; close: () => void }) {
   return (
     <Modal label={ES.howToPlay} className="help" onClose={close}>
       <h2 className="display">{ES.howToPlay}</h2>
@@ -166,11 +179,22 @@ export function HelpModal() {
                   {ENEMY_TEXT[k].name} · {ENEMY_TEXT[k].role}
                 </b>
                 {HELP.golemStats(st.hp, st.range, st.move)} {ENEMY_TEXT[k].tip}
+                {/* La demostración de ese gólem (D-82), también sin ratón y sin la franja de arriba. */}
+                <button
+                  type="button"
+                  className="help-demo"
+                  aria-label={DEMO_TEXT.showAttackOf(ENEMY_TEXT[k].name)}
+                  onClick={() => openHelpDemo(k)}
+                >
+                  <Icon name="play" />
+                  {DEMO_TEXT.showAttack}
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+      <p className="help-note">{HELP.golemsDemo}</p>
 
       <h3>{HELP.cardsTitle}</h3>
       <ul>

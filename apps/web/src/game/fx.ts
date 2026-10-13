@@ -220,7 +220,7 @@ export class Fx {
   }
 
   /** Números que saltan con rebote y luego suben. */
-  number(u: UnitSprite, text: string, color: string, big = false): void {
+  number(u: UnitSprite, text: string, color: string, big = false): Phaser.GameObjects.Text {
     const size = big ? 29 : 21;
     const t = this.track(
       this.scene.add.text(u.container.x + (Math.random() * 18 - 9), u.headY - 2, text, {
@@ -247,6 +247,7 @@ export class Fx {
       ease: 'Cubic.easeIn',
       onComplete: () => t.destroy(),
     });
+    return t;
   }
 
   /* ---------- Suelo ---------- */

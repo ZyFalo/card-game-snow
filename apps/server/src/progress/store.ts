@@ -1,4 +1,6 @@
 import {
+  ACHIEVEMENT_IDS,
+  type AchievementId,
   boxPrice,
   type ClearedRound,
   coinsForRound,
@@ -7,10 +9,10 @@ import {
   rngFrom,
   starterCollection,
 } from '@ventisca/core';
-import type { Progress } from '@ventisca/protocol';
+import type { Progress, StatsLine } from '@ventisca/protocol';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db';
-import { coinLedger, collection, type LEDGER_ROUNDS, profiles } from '../schema';
+import { achievements, coinLedger, collection, type LEDGER_ROUNDS, playerStats, profiles } from '../schema';
 
 /*
  * Progreso en la cuenta (D-34): las reglas R-25 a R-30 las resuelve el servidor con `packages/core`, y
@@ -18,21 +20,39 @@ import { coinLedger, collection, type LEDGER_ROUNDS, profiles } from '../schema'
  */
 
 /** La base o una transacción abierta. */
-type Executor = Db | Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Executor = Db | Parameters<Parameters<Db['transaction']>[0]>[0];
+
+const NO_STATS: StatsLine = { matches: 0, rounds: 0, wins: 0 };
+
+/** Los logros que ya ganó esa cuenta (R-55), en el orden del juego. */
+export async function readAchievements(db: Executor, userId: string): Promise<AchievementId[]> {
+  const rows = await db
+    .select({ id: achievements.achievementId })
+    .from(achievements)
+    .where(eq(achievements.userId, userId));
+  const have = new Set(rows.map((r) => r.id));
+  return ACHIEVEMENT_IDS.filter((id) => have.has(id));
+}
 
 /** El progreso de una cuenta. Sin perfil, la persona todavía no eligió su carta de camino (R-30). */
 export async function readProgress(db: Executor, userId: string): Promise<Progress> {
   const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
-  if (!profile) return { camino: null, coins: 0, boxesOpened: 0, collection: {} };
+  const stats = { classic: { ...NO_STATS }, storm: { ...NO_STATS } };
+  if (!profile) return { camino: null, coins: 0, boxesOpened: 0, collection: {}, achievements: [], stats };
   const cards = await db
     .select({ cardId: collection.cardId, count: collection.count })
     .from(collection)
     .where(eq(collection.userId, userId));
+  for (const row of await db.select().from(playerStats).where(eq(playerStats.userId, userId))) {
+    stats[row.difficulty] = { matches: row.matches, rounds: row.rounds, wins: row.wins };
+  }
   return {
     camino: profile.caminoElement,
     coins: profile.coins,
     boxesOpened: profile.boxesOpened,
     collection: Object.fromEntries(cards.map((c) => [c.cardId, c.count])),
+    achievements: await readAchievements(db, userId),
+    stats,
   };
 }
 
@@ -118,15 +138,15 @@ export async function buyBox(
 }
 
 /**
- * R-29 y D-31: acredita las monedas de una ronda superada. El libro tiene una sola fila por persona,
- * partida y ronda, así que un cobro repetido (una reconexión, un reinicio del servidor) no paga otra
- * vez: devuelve `credited: false`. Sin perfil, falla.
+ * R-29: acredita las monedas de una ronda superada. El libro tiene una sola fila por persona, partida y
+ * ronda, así que un cobro repetido (un reintento, un reinicio del servidor) no paga otra vez: devuelve
+ * `credited: false`. Sin perfil, falla. Las de una partida se acreditan cuando termina (D-93).
  *
- * `doubled`: la persona ya tiene los 9 logros. En el M8 lo calculará el servidor desde su propia
- * tabla de logros, al resolver la partida; nunca debe llegar del cliente.
+ * `doubled`: la persona ya tiene los 9 logros. Lo decide el servidor contando su propia tabla de logros,
+ * al hacer las cuentas de la partida (`play/store.ts`); nunca llega del cliente.
  */
 export async function creditRound(
-  db: Db,
+  db: Executor,
   payment: { userId: string; matchId: string; round: ClearedRound; doubled: boolean },
   now: Date,
 ): Promise<{ credited: boolean; amount: number }> {

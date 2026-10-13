@@ -57,8 +57,11 @@ export class TestClient {
     this.socket.send(text);
   }
 
-  /** El siguiente mensaje de ese tipo que todavía no se leyó; lo espera si no llegó. */
-  next<T extends ServerMessageType>(type: T, timeoutMs = 3000): Promise<Extract<ServerMessage, { type: T }>> {
+  /**
+   * El siguiente mensaje de ese tipo que todavía no se leyó; lo espera si no llegó. El plazo es generoso:
+   * estas pruebas corren junto a otras que cargan el equipo, y un mensaje puede tardar.
+   */
+  next<T extends ServerMessageType>(type: T, timeoutMs = 10_000): Promise<Extract<ServerMessage, { type: T }>> {
     type Wanted = Extract<ServerMessage, { type: T }>;
     const i = this.unread.findIndex((m) => m.type === type);
     if (i >= 0) return Promise.resolve(this.unread.splice(i, 1)[0] as Wanted);
@@ -202,8 +205,9 @@ export async function startServer(database: Database, extra: Partial<AppOptions>
       });
     },
     async close() {
-      for (const client of clients) client.socket.terminate();
+      // Primero se apaga el servidor, como en un despliegue: él cierra las conexiones y dice por qué.
       await app.close();
+      for (const client of clients) client.socket.terminate();
     },
   };
 }

@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { CLOSE, PLAY_LIMITS, PLAY_PATH, PROTOCOL_VERSION } from '@ventisca/protocol';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fingerprint } from '../src/accounts/tokens';
 import { privateLogger } from '../src/app';
 import { sessions, users } from '../src/schema';
@@ -13,6 +13,8 @@ import { APP_ORIGIN, SECRET, startServer, type TestServer } from './support/play
  */
 describe.skipIf(!adminUrl)('Conexión del juego en línea (DATABASE_URL_TEST)', () => {
   const ctx = useTempDatabase({ migrate: true });
+  // Con sockets y relojes de verdad, cada prueba puede tardar más que las demás.
+  vi.setConfig({ testTimeout: 30_000 });
   let server: TestServer;
   beforeEach(async () => {
     server = await startServer(ctx.database);

@@ -1,4 +1,7 @@
 import {
+  type AchievementId,
+  basicHealsBy,
+  type ClearedRound,
   createMatch,
   type DeckCard,
   type Difficulty,
@@ -8,6 +11,7 @@ import {
   getNinja,
   type MatchState,
   type Plan,
+  personalAchievements,
   resolveTurn,
   suggestPlan,
 } from '@ventisca/core';
@@ -50,6 +54,22 @@ export interface MatchTimings {
 export interface MatchOutcome {
   result: 'victory' | 'defeat' | null;
   state: MatchState;
+  /** Quienes estaban conectados al final. */
+  present: string[];
+  /** Quienes se desconectaron y no volvieron antes del final: abandonaron (R-39). */
+  away: string[];
+  /** Quienes salieron con "Salir". */
+  left: string[];
+}
+
+/** Lo que deja un turno para las recompensas (R-40 y R-55). */
+export interface TurnRewards {
+  /** Las rondas que el equipo superó en ese turno. */
+  rounds: ClearedRound[];
+  /** Quienes estaban conectados al resolverlo: son quienes las cobran (D-48). */
+  present: string[];
+  /** Los logros que ganó cada persona conectada. */
+  earned: { userId: string; achievements: AchievementId[] }[];
 }
 
 /** Lo que una partida necesita de afuera. */
@@ -60,8 +80,13 @@ export interface MatchHost {
   later(task: () => void | Promise<void>, ms: number): () => void;
   /** Le manda un mensaje a esa persona, si está conectada. */
   send(userId: string, message: ServerPayload): void;
-  /** La partida terminó: `left` son quienes la abandonaron. */
-  over(match: Match, outcome: MatchOutcome, left: string[]): void | Promise<void>;
+  /**
+   * Un turno dejó rondas superadas o logros: se guardan antes de contarlo. Devuelve `false` si la partida
+   * ya no está viva en la base, porque otro proceso del servidor la dio por interrumpida (R-54).
+   */
+  rewards(match: Match, turn: TurnRewards): Promise<boolean>;
+  /** La partida terminó. */
+  over(match: Match, outcome: MatchOutcome): void | Promise<void>;
 }
 
 interface HumanSeat {
@@ -117,6 +142,8 @@ export class Match {
   private cancel: (() => void) | null = null;
   /** ¿Algún compañero del bot planea carta? El bot se suma al combo cuando eso cambia. */
   private teamPlaysCard = false;
+  /** Las curaciones básicas de cada ninja en la partida, para "Mano sanadora" (R-55). */
+  private readonly heals: Record<ElementKind, number> = { fire: 0, water: 0, snow: 0 };
 
   constructor(
     setup: MatchSetup,
@@ -318,10 +345,25 @@ export class Match {
   /** Resuelve el turno con lo que cada ninja tiene planeado, y lo manda a mirar. */
   private async resolve(): Promise<void> {
     if (this.phase !== 'planning') return;
-    const result = resolveTurn(this.state, [...this.plans.values()]);
+    const before = this.state;
+    const result = resolveTurn(before, [...this.plans.values()]);
     this.state = result.state;
     this.plans.clear();
     this.ready.clear();
+    // Primero se guarda lo que el turno deja ganado; después se cuenta. Así no se pierde si el servidor cae.
+    const record = { before, after: result.state, events: result.events };
+    const rewards: TurnRewards = {
+      rounds: result.events.flatMap((e) => (e.t === 'roundEnd' ? [e.round] : [])),
+      present: this.here.map((s) => s.player.userId),
+      earned: this.here
+        .map((s) => ({
+          userId: s.player.userId,
+          achievements: personalAchievements(record, s.element, this.heals[s.element]),
+        }))
+        .filter((e) => e.achievements.length > 0),
+    };
+    for (const el of ELEMENTS) this.heals[el] += basicHealsBy(result.events, el);
+    if ((rewards.rounds.length > 0 || rewards.earned.length > 0) && !(await this.host.rewards(this, rewards))) return;
     this.toHere((seat) => ({
       type: 'turn.result',
       turn: result.state.turn,
@@ -430,9 +472,15 @@ export class Match {
     this.phase = 'over';
     this.cancel?.();
     this.cancel = null;
+    const ids = (status: SeatStatus) => this.humans.filter((s) => s.status === status).map((s) => s.player.userId);
     // Quien no volvió antes del final también abandonó (R-39).
-    const left = this.humans.filter((s) => s.status !== 'here').map((s) => s.player.userId);
-    await this.host.over(this, { result, state: this.state }, left);
+    await this.host.over(this, {
+      result,
+      state: this.state,
+      present: ids('here'),
+      away: ids('away'),
+      left: ids('left'),
+    });
   }
 
   /** Detiene la partida sin terminarla: el servidor se apaga. */

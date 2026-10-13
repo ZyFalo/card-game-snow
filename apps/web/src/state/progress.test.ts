@@ -23,6 +23,8 @@ const progress = (over: Partial<Progress> = {}): Progress => ({
   coins: 500,
   boxesOpened: 0,
   collection: { 'fire-01': 1, 'water-01': 1, 'snow-01': 1, 'fire-18': 1 },
+  achievements: [],
+  stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
   ...over,
 });
 

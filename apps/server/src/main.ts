@@ -5,6 +5,7 @@ import { resendMailer } from './accounts/resend';
 import { buildApp, privateLogger } from './app';
 import { loadConfig, publicConfigFrom } from './config';
 import { connect } from './db';
+import { dbStore } from './play/store';
 
 /* Arranque: configuración, migraciones pendientes y servidor. Railway manda SIGTERM al reemplazarlo. */
 
@@ -47,6 +48,10 @@ const app = buildApp({
 try {
   await database.migrate();
   app.log.info('Migraciones al día');
+  // Las partidas que quedaron a medias por un reinicio se pierden (R-54): se acreditan sus rondas ya
+  // terminadas, y cada persona se entera la próxima vez que entre a jugar en línea.
+  const lost = await dbStore(database.db).interrupt(null);
+  if (lost > 0) app.log.warn({ matches: lost }, 'Partidas interrumpidas por el reinicio del servidor');
   await app.listen({ port: config.port, host: config.host });
 } catch (err) {
   app.log.fatal({ err }, 'No se pudo arrancar el servidor');

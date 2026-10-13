@@ -563,7 +563,9 @@ describe('Desconectarse y volver (R-38)', () => {
     await w.hub.disconnect(beto);
     await wait(TIMINGS.emptyMs);
     expect(w.hub.live).toBe(0);
-    expect(w.store.closed).toMatchObject([{ result: null, left: [ana.player.userId, beto.player.userId] }]);
+    expect(w.store.closed).toMatchObject([
+      { result: null, present: [], away: [ana.player.userId, beto.player.userId] },
+    ]);
     // Quien vuelve después llega al inicio en línea.
     const ana2 = await w.back(ana);
     expect(ana2.received.map((m) => m.type)).toEqual(['welcome', 'idle']);
@@ -626,7 +628,9 @@ describe('Salir de la partida (R-39)', () => {
     expect(w.hub.live).toBe(1);
     await w.say(beto, { type: 'match.leave' });
     expect(w.hub.live).toBe(0);
-    expect(w.store.closed).toMatchObject([{ result: null, left: [ana.player.userId, beto.player.userId] }]);
+    // Las dos salieron por su cuenta: al cerrar la partida ya no queda nadie por contar.
+    expect(w.store.closed).toMatchObject([{ result: null, present: [], away: [] }]);
+    expect(w.store.abandoned.map((a) => a.userId)).toEqual([ana.player.userId, beto.player.userId]);
   });
 
   it('R-38: si una salió y la otra se desconectó, se espera a la que puede volver', async () => {
@@ -670,7 +674,8 @@ describe('El final de la partida', () => {
       expect(link.last('match.end')).toMatchObject({ result: 'victory' });
     }
     expect(w.hub.live).toBe(0);
-    expect(w.store.closed).toMatchObject([{ result: 'victory', bonusOutcome: 'missed', turns: 1, left: [] }]);
+    expect(w.store.closed).toMatchObject([{ result: 'victory', bonusOutcome: 'missed', turns: 1, away: [] }]);
+    expect(w.store.closed[0]?.present).toHaveLength(3);
   });
 
   it('al perder, el resultado lo dice', async () => {
@@ -684,7 +689,7 @@ describe('El final de la partida', () => {
     await watched(w, [ana, beto, caro], 0);
     await w.say(ana, { type: 'plan.confirm', turn: 1, plan: {} });
     expect(ana.last('match.end')).toMatchObject({ result: 'defeat' });
-    expect(w.store.closed).toMatchObject([{ result: 'defeat', left: [] }]);
+    expect(w.store.closed).toMatchObject([{ result: 'defeat', away: [] }]);
   });
 
   it('R-53: tras una partida de sala, el equipo vuelve a la sala y puede jugar otra', async () => {
@@ -724,7 +729,7 @@ describe('El final de la partida', () => {
     await w.hub.disconnect(caro);
     await w.say(ana, { type: 'plan.confirm', turn: 1, plan: { action: { type: 'attack', targetId: 'e1' } } });
     await w.say(beto, { type: 'plan.confirm', turn: 1, plan: {} });
-    expect(w.store.closed).toMatchObject([{ result: 'victory', left: [caro.player.userId] }]);
+    expect(w.store.closed).toMatchObject([{ result: 'victory', away: [caro.player.userId] }]);
     expect(caro.last('match.end')).toBeUndefined();
     const caro2 = await w.back(caro);
     expect(caro2.received.map((m) => m.type)).toEqual(['welcome', 'idle']);

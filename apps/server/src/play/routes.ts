@@ -54,8 +54,17 @@ export async function playRoutes(app: FastifyInstance, opts: PlayOptions) {
   /** Las conexiones abiertas y si respondieron al último latido. */
   const alive = new Map<{ ping(): void; terminate(): void }, boolean>();
 
-  // `maxPayload`: un mensaje más grande cierra la conexión (código 1009) sin llegar a leerse entero.
-  await app.register(fastifyWebsocket, { options: { maxPayload: PLAY_LIMITS.maxMessageBytes } });
+  await app.register(fastifyWebsocket, {
+    // `maxPayload`: un mensaje más grande cierra la conexión (código 1009) sin llegar a leerse entero.
+    options: { maxPayload: PLAY_LIMITS.maxMessageBytes },
+    // Al apagarse el servidor, antes de soltar las conexiones: las partidas en curso se interrumpen, con
+    // sus cuentas (R-54), y a cada cliente se le dice por qué se cierra, para que vuelva a conectarse.
+    preClose: async () => {
+      await hub.shutdown();
+      for (const client of app.websocketServer.clients) client.close(CLOSE.restart);
+      await new Promise<void>((resolve) => app.websocketServer.close(() => resolve()));
+    },
+  });
 
   const heartbeat = setInterval(() => {
     for (const [socket, answered] of alive) {
@@ -70,7 +79,6 @@ export async function playRoutes(app: FastifyInstance, opts: PlayOptions) {
   heartbeat.unref();
   app.addHook('onClose', async () => {
     clearInterval(heartbeat);
-    await hub.shutdown();
   });
 
   /** ¿Tiene esta cuenta una partida en curso? Para volver a ella al abrir el juego (R-38). */

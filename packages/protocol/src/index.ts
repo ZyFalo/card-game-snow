@@ -1,3 +1,4 @@
+import { ACHIEVEMENT_IDS } from '@ventisca/core';
 import { z } from 'zod';
 
 /*
@@ -165,16 +166,29 @@ export type Session = z.infer<typeof sessionSchema>;
 export const elementSchema = z.enum(['fire', 'water', 'snow']);
 export type Element = z.infer<typeof elementSchema>;
 
+/** Estadísticas privadas de una dificultad (R-42; en la Beta, las básicas, D-86). */
+export const statsLineSchema = z.object({
+  /** Partidas jugadas: las terminadas y las abandonadas (R-39). */
+  matches: z.number().int().nonnegative(),
+  /** Rondas superadas con la persona conectada, contando el bonus. */
+  rounds: z.number().int().nonnegative(),
+  wins: z.number().int().nonnegative(),
+});
+export type StatsLine = z.infer<typeof statsLineSchema>;
+
 /**
  * El progreso de una cuenta (`GET /api/progress`). `camino` es null hasta que la persona elige su
  * carta de camino (R-30); hasta entonces no tiene monedas ni cartas. `collection` dice cuántas copias
- * tiene de cada carta del banco (R-25), por id de carta; las que no tiene no aparecen.
+ * tiene de cada carta del banco (R-25), por id de carta; las que no tiene no aparecen. `achievements`
+ * son los logros que ya ganó (R-55), y `stats`, sus estadísticas por dificultad: solo las ve su dueño.
  */
 export const progressSchema = z.object({
   camino: elementSchema.nullable(),
   coins: z.number().int().nonnegative(),
   boxesOpened: z.number().int().nonnegative(),
   collection: z.record(z.string(), z.number().int().positive()),
+  achievements: z.array(z.enum(ACHIEVEMENT_IDS)),
+  stats: z.object({ classic: statsLineSchema, storm: statsLineSchema }),
 });
 export type Progress = z.infer<typeof progressSchema>;
 

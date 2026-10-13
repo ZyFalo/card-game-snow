@@ -1,8 +1,9 @@
-import { CLOSE, playStatusSchema } from '@ventisca/protocol';
+import { CLOSE, playStatusSchema, progressSchema } from '@ventisca/protocol';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SESSION_COOKIE } from '../src/accounts/session';
-import { matches, matchPlayers } from '../src/schema';
+import { dbStore } from '../src/play/store';
+import { coinLedger, matches, matchPlayers } from '../src/schema';
 import { adminUrl, useTempDatabase } from './support/database';
 import { APP_ORIGIN, startServer, type TestClient, type TestServer } from './support/play';
 import { board } from './support/world';
@@ -13,6 +14,8 @@ import { board } from './support/world';
  */
 describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST)', () => {
   const ctx = useTempDatabase({ migrate: true });
+  // Con sockets y relojes de verdad, cada prueba puede tardar más que las demás.
+  vi.setConfig({ testTimeout: 30_000 });
   const timings = { turnMs: 600, graceMs: 50, watchMs: 400, offerMs: 150, emptyMs: 500 };
   /** La última ronda, con un gólem a punto de caer junto a Brasa: un golpe y la partida se gana. */
   const lastBlow = board({
@@ -44,6 +47,8 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     const b = await server.signUp('water');
     const ana = await server.connect(a.cookie);
     const beto = await server.connect(b.cookie);
+    // El saludo y el inicio en línea: así lo que llegue después es de la sala o de la partida.
+    for (const client of [ana, beto]) await client.next('idle');
     ana.send({ type: 'room.create', element: 'fire' });
     const { code } = await ana.next('room.state');
     beto.send({ type: 'room.join', code, element: 'water' });
@@ -57,6 +62,10 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
   const ready = (clients: TestClient[], turn: number) => {
     for (const c of clients) c.send({ type: 'turn.ready', turn });
   };
+  const progress = async (cookie: string) =>
+    progressSchema.parse(
+      (await server.app.inject({ method: 'GET', url: '/api/progress', cookies: { [SESSION_COOKIE]: cookie } })).json(),
+    );
 
   it('dos personas juegan una partida completa desde una sala, con el bot en el ninja libre', async () => {
     const { ana, beto, code, matchId } = await started();
@@ -69,7 +78,13 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     beto.send({ type: 'plan.confirm', turn: 1, plan: {} });
     for (const client of [ana, beto]) {
       expect((await client.next('turn.result')).state).toMatchObject({ status: 'victory', seed: 0, rng: 0 });
-      expect(await client.next('match.end')).toMatchObject({ result: 'victory', room: code });
+      // El resultado trae las monedas de la ronda, ya acreditadas, y el logro de quien se levantó.
+      expect(await client.next('match.end')).toMatchObject({
+        result: 'victory',
+        coins: { lines: [{ round: 3, coins: 120 }], doubled: false, total: 120 },
+        balance: 120,
+        room: code,
+      });
       // De vuelta en la sala, lista para otra partida.
       expect(await client.next('room.state')).toMatchObject({ code, start: 'bot' });
     }
@@ -85,11 +100,116 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     });
     expect(match?.endedAt).not.toBeNull();
     const players = await db().select().from(matchPlayers).where(eq(matchPlayers.matchId, matchId));
-    expect(players.map((p) => [p.seat, p.userId !== null, p.exit]).sort()).toEqual([
-      ['fire', true, 'finished'],
-      ['snow', false, 'finished'],
-      ['water', true, 'finished'],
+    expect(players.map((p) => [p.seat, p.userId !== null, p.exit, p.rounds]).sort()).toEqual([
+      ['fire', true, 'finished', ['3']],
+      ['snow', false, 'finished', []],
+      ['water', true, 'finished', ['3']],
     ]);
+  });
+
+  it('R-40: al terminar la partida, las monedas ya están en la cuenta de cada persona, una sola vez', async () => {
+    const { a, b, ana, beto, matchId } = await started();
+    ready([ana, beto], 0);
+    await ana.next('turn.start');
+    ana.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'attack', targetId: 'e1' } } });
+    beto.send({ type: 'plan.confirm', turn: 1, plan: {} });
+    await ana.next('match.end');
+    await beto.next('match.end');
+    for (const who of [a, b]) {
+      expect(await progress(who.cookie)).toMatchObject({
+        coins: 120,
+        achievements: [],
+        stats: { classic: { matches: 1, rounds: 1, wins: 1 } },
+      });
+    }
+    const rows = await db().select().from(coinLedger).where(eq(coinLedger.matchId, matchId));
+    expect(rows.map((r) => [r.round, r.amount])).toEqual([
+      ['3', 120],
+      ['3', 120],
+    ]);
+  });
+
+  it('R-55: los logros se guardan cuando ocurren y llegan con el progreso', async () => {
+    await server.close();
+    server = await startServer(ctx.database, {
+      playTimings: timings,
+      matchPrepare: board({
+        ninjas: { fire: { at: [3, 1], hand: [10] }, water: { at: [3, 3], hand: [9] } },
+        golems: [{ kind: 'colossus', at: [5, 2] }],
+      }),
+    });
+    const { a, b, ana, beto } = await started();
+    ready([ana, beto], 0);
+    await ana.next('turn.start');
+    const at = { x: 4, y: 2 };
+    ana.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'card', cardId: 'fire-m1', at } } });
+    beto.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'card', cardId: 'water-m1', at } } });
+    expect((await ana.next('turn.result')).events.some((e) => e.t === 'combo')).toBe(true);
+    // La partida sigue, y el logro ya está en su cuenta.
+    expect((await progress(a.cookie)).achievements).toContain('combo2');
+    expect((await progress(b.cookie)).achievements).toContain('combo2');
+  });
+
+  it('R-54: si el servidor se apaga a mitad de una partida, se acreditan las rondas terminadas y cada quien se entera al volver', async () => {
+    await server.close();
+    const round2 = board({
+      round: 2,
+      ninjas: { fire: { at: [3, 2] }, snow: { everKo: true } },
+      golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+    });
+    server = await startServer(ctx.database, { playTimings: timings, matchPrepare: round2 });
+    const { a, ana, beto, matchId } = await started();
+    ready([ana, beto], 0);
+    await ana.next('turn.start');
+    ana.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'attack', targetId: 'e1' } } });
+    beto.send({ type: 'plan.confirm', turn: 1, plan: {} });
+    expect((await ana.next('turn.result')).state).toMatchObject({ status: 'playing', round: 3 });
+    // Todavía no cobró: las monedas de la ronda 2 están pendientes.
+    expect((await progress(a.cookie)).coins).toBe(0);
+
+    await server.close();
+    expect(await ana.closed).toBe(CLOSE.restart);
+    const [match] = await db().select().from(matches).where(eq(matches.id, matchId));
+    expect(match).toMatchObject({ status: 'interrupted', outcome: null });
+
+    // El servidor vuelve a arrancar, con la misma base.
+    server = await startServer(ctx.database, { playTimings: timings });
+    expect(await dbStore(db()).interrupt(null)).toBe(0);
+    expect(await progress(a.cookie)).toMatchObject({
+      coins: 120,
+      stats: { classic: { matches: 0, rounds: 1, wins: 0 } },
+    });
+    const back = await server.connect(a.cookie);
+    expect(await back.next('idle')).toMatchObject({ reason: null, notice: 'restart' });
+    // El aviso sale una sola vez.
+    back.send({ type: 'notice.seen' });
+    await back.close();
+    const again = await server.connect(a.cookie);
+    expect(await again.next('idle')).toMatchObject({ notice: null });
+  });
+
+  it('R-39: quien sale con «Salir» pierde las monedas pendientes de esa partida', async () => {
+    await server.close();
+    const round2 = board({
+      round: 2,
+      ninjas: { fire: { at: [3, 2] }, snow: { everKo: true } },
+      golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+    });
+    server = await startServer(ctx.database, { playTimings: timings, matchPrepare: round2 });
+    const { a, b, ana, beto } = await started();
+    ready([ana, beto], 0);
+    await ana.next('turn.start');
+    ana.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'attack', targetId: 'e1' } } });
+    beto.send({ type: 'plan.confirm', turn: 1, plan: {} });
+    await ana.next('turn.result');
+    ana.send({ type: 'match.leave' });
+    await ana.next('idle');
+    // El servidor se apaga: a Beto se le acredita la ronda; a Ana, que abandonó, no.
+    await server.close();
+    server = await startServer(ctx.database, { playTimings: timings });
+    expect((await progress(a.cookie)).coins).toBe(0);
+    expect((await progress(b.cookie)).coins).toBe(120);
+    expect((await progress(a.cookie)).stats.classic).toEqual({ matches: 1, rounds: 1, wins: 0 });
   });
 
   it('R-36: sin confirmar, el turno se resuelve solo al vencer el reloj del servidor', async () => {

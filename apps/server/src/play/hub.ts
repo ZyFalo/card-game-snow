@@ -1,8 +1,8 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { type DeckCard, type ElementKind, type MatchState, reserveFor } from '@ventisca/core';
+import { type AchievementId, type DeckCard, type ElementKind, type MatchState, reserveFor } from '@ventisca/core';
 import { CLOSE, type ClientMessage, type PlayError, type SeatStatus, type ServerPayload } from '@ventisca/protocol';
 import type { Link, Player } from './link';
-import { Match, type MatchOutcome, type MatchTimings } from './match';
+import { Match, type MatchOutcome, type MatchTimings, type TurnRewards } from './match';
 import { Queue, type Team } from './queue';
 import { Rooms } from './rooms';
 import type { PlayStore } from './store';
@@ -53,6 +53,8 @@ export class Hub {
   /** La partida de cada persona que está en una y no la abandonó. */
   private readonly playing = new Map<string, Match>();
   private readonly matches = new Set<Match>();
+  /** Los logros que cada persona ganó en su partida en curso, para mostrárselos al final. */
+  private readonly earned = new WeakMap<Match, Map<string, AchievementId[]>>();
   private readonly queue: Queue;
   private readonly rooms: Rooms;
   private readonly timings: PlayTimings;
@@ -176,13 +178,20 @@ export class Hub {
     });
   }
 
-  /** El servidor se apaga: cierra todas las conexiones, y cada cliente volverá a conectarse solo. */
+  /**
+   * El servidor se apaga. Las partidas en curso se pierden (R-54): a cada persona se le acreditan las
+   * rondas que ya había terminado, y le queda el aviso para cuando vuelva. Después se cierran todas las
+   * conexiones, y cada cliente volverá a conectarse solo.
+   */
   shutdown(): Promise<void> {
-    return this.run(() => {
+    return this.run(async () => {
       this.stopped = true;
       this.queue.clear();
       this.rooms.clear();
-      for (const match of this.matches) match.stop();
+      for (const match of this.matches) {
+        match.stop();
+        await this.store.interrupt(match.id);
+      }
       this.matches.clear();
       this.playing.clear();
       for (const link of this.links.values()) link.close(CLOSE.restart);
@@ -208,7 +217,12 @@ export class Hub {
       }
     }
     if (room) return;
-    this.send(userId, { type: 'idle', reason: null, notice: null });
+    await this.idle(userId);
+  }
+
+  /** Lleva a esa persona al inicio en línea, con el aviso pendiente de su última partida si hay uno. */
+  private async idle(userId: string): Promise<void> {
+    this.send(userId, { type: 'idle', reason: null, notice: await this.store.notice(userId) });
   }
 
   /** Esa persona se quedó sin conexión: sale de la cola, y su lugar en la sala o en la partida la espera. */
@@ -233,7 +247,7 @@ export class Hub {
       }
       case 'queue.leave':
         if (!this.queue.leave(userId)) return 'not_now';
-        this.send(userId, { type: 'idle', reason: null, notice: null });
+        await this.idle(userId);
         return null;
       case 'queue.acceptBot':
         return this.queue.acceptBot(userId) ? null : 'not_now';
@@ -261,7 +275,7 @@ export class Hub {
       case 'room.leave':
         if (match || !this.rooms.of(userId)) return 'not_now';
         this.rooms.leave(userId);
-        this.send(userId, { type: 'idle', reason: null, notice: null });
+        await this.idle(userId);
         return null;
       case 'plan.update':
       case 'plan.confirm':
@@ -274,13 +288,16 @@ export class Hub {
       case 'match.leave': {
         if (!match) return 'not_now';
         this.playing.delete(userId);
+        // Abandonó (R-39): pierde las monedas de esta partida. Sus logros ya están guardados.
+        await this.store.abandon(match.id, userId);
         // Quien sale de la partida también sale de su sala, y vuelve al inicio en línea.
         this.rooms.abandon(userId);
         await match.leave(userId);
-        this.send(userId, { type: 'idle', reason: null, notice: null });
+        await this.idle(userId);
         return null;
       }
       case 'notice.seen':
+        await this.store.noticeSeen(userId);
         return null;
     }
   }
@@ -304,7 +321,8 @@ export class Hub {
         now: () => Date.now(),
         later: (task, ms) => this.later(task, ms),
         send: (userId, message) => this.send(userId, message),
-        over: (m, outcome, left) => this.finished(m, outcome, left),
+        rewards: (m, turn) => this.rewards(m, turn),
+        over: (m, outcome) => this.finished(m, outcome),
       },
     );
     await this.store.openMatch({
@@ -327,32 +345,81 @@ export class Hub {
     }
   }
 
-  /** Una partida terminó: se deja escrita, se les dice a quienes siguen en ella y cada quien vuelve a su lugar. */
-  private async finished(match: Match, outcome: MatchOutcome, left: string[]): Promise<void> {
+  /**
+   * Un turno dejó algo ganado: las rondas superadas quedan por cobrar para quienes estaban conectados, y
+   * los logros se guardan en el acto (R-40 y R-55). Si la base dice que la partida ya no está viva, es que
+   * otro proceso del servidor la interrumpió al arrancar (R-54): aquí también se termina.
+   */
+  private async rewards(match: Match, turn: TurnRewards): Promise<boolean> {
+    if (turn.rounds.length > 0 && !(await this.store.recordRounds(match.id, turn.present, turn.rounds))) {
+      await this.interrupted(match);
+      return false;
+    }
+    const fresh = await this.store.grant(match.id, turn.earned);
+    const earned = this.earned.get(match) ?? new Map<string, AchievementId[]>();
+    for (const [userId, ids] of fresh) earned.set(userId, [...(earned.get(userId) ?? []), ...ids]);
+    this.earned.set(match, earned);
+    return true;
+  }
+
+  /** La partida se perdió por un reinicio del servidor: quienes seguían en ella vuelven al inicio, con el aviso. */
+  private async interrupted(match: Match): Promise<void> {
+    match.stop();
     this.matches.delete(match);
-    const { state, result } = outcome;
-    await this.store.closeMatch(match.id, { result, bonusOutcome: state.bonusOutcome, turns: state.turn, left });
+    for (const seat of match.humans) {
+      const { userId } = seat.player;
+      if (this.playing.get(userId) !== match) continue;
+      this.playing.delete(userId);
+      this.rooms.abandon(userId);
+      await this.idle(userId);
+    }
+    if (match.room !== null) this.rooms.finish(match.room);
+    this.options.log.warn({ matchId: match.id }, 'Una partida se interrumpió desde otro proceso');
+  }
+
+  /**
+   * Una partida terminó. Se cierra y se hacen las cuentas: cada persona presente cobra sus rondas, y quien
+   * no volvió a tiempo abandonó (R-39). Después cada quien recibe su resultado y vuelve a su lugar.
+   */
+  private async finished(match: Match, outcome: MatchOutcome): Promise<void> {
+    const { state, result, present, away, left } = outcome;
+    const settled = await this.store.settle(match.id, {
+      result,
+      bonusOutcome: state.bonusOutcome,
+      turns: state.turn,
+      present,
+      away,
+    });
+    if (settled === null) {
+      await this.interrupted(match);
+      return;
+    }
+    this.matches.delete(match);
     // Quienes abandonaron con "Salir" ya no estaban en `playing`; los demás salen ahora.
-    const gone = new Set(left);
     for (const seat of match.humans) {
       const { userId } = seat.player;
       if (this.playing.get(userId) === match) this.playing.delete(userId);
-      // Quien no volvió antes del final también abandonó, y sale de la sala (R-39).
-      if (gone.has(userId)) this.rooms.abandon(userId);
     }
+    // Quien no volvió antes del final también abandonó, y sale de la sala (R-39).
+    for (const userId of away) this.rooms.abandon(userId);
     const open = match.room !== null && this.rooms.survives(match.room);
-    this.options.log.info({ matchId: match.id, result, turns: state.turn }, 'Termina una partida');
+    this.options.log.info(
+      { matchId: match.id, result, turns: state.turn, present: present.length, left: away.length + left.length },
+      'Termina una partida',
+    );
     if (result !== null) {
-      for (const seat of match.humans) {
-        const { userId } = seat.player;
-        if (gone.has(userId)) continue;
+      const earned = this.earned.get(match);
+      for (const userId of present) {
+        const mine = settled.get(userId);
+        // Sin cuentas, esa cuenta se borró a mitad de la partida: no hay resultado que darle.
+        if (!mine) continue;
         this.send(userId, {
           type: 'match.end',
           result,
-          coins: { lines: [], doubled: false, total: 0 },
-          earned: [],
-          achievements: [],
-          balance: 0,
+          coins: { lines: mine.lines, doubled: mine.doubled, total: mine.total },
+          earned: earned?.get(userId) ?? [],
+          achievements: mine.achievements,
+          balance: mine.balance,
           room: open ? match.room : null,
         });
       }

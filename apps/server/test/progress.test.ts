@@ -105,6 +105,11 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     return who;
   }
   const totalCards = (p: Progress) => Object.values(p.collection).reduce((a, b) => a + b, 0);
+  /** Quien todavía no jugó en línea no tiene logros ni estadísticas. */
+  const NOTHING_YET = {
+    achievements: [],
+    stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
+  };
 
   /**
    * Abre todas las conexiones del pool antes de una prueba de concurrencia. Sin esto, la primera
@@ -122,7 +127,13 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('D-34: una cuenta nueva todavía no tiene camino, monedas ni cartas', async () => {
       const { cookie } = await signUp();
-      expect(await progress(cookie)).toEqual({ camino: null, coins: 0, boxesOpened: 0, collection: {} });
+      expect(await progress(cookie)).toEqual({
+        camino: null,
+        coins: 0,
+        boxesOpened: 0,
+        collection: {},
+        ...NOTHING_YET,
+      });
     });
 
     it('R-44: sin verificar el correo no hay progreso, aunque exista una sesión', async () => {
@@ -164,6 +175,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
           [STARTER_CARDS.snow]: 1,
           [CAMINO_CARDS.snow]: 1,
         },
+        ...NOTHING_YET,
       };
       expect(progressSchema.parse(res.json())).toEqual(expected);
       expect(await progress(cookie)).toEqual(expected);

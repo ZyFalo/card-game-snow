@@ -85,9 +85,9 @@ export class NetworkHost implements GameHost {
         this.emit({ type: 'seat', ninja: message.ninja, status: message.status });
         return true;
       case 'match.end': {
-        const { result, coins, earned, achievements, balance, room } = message;
+        const { result, coins, achievements, gained, completed, balance, room } = message;
         this.reset();
-        this.emit({ type: 'matchEnd', end: { result, coins, earned, achievements, balance, room } });
+        this.emit({ type: 'matchEnd', end: { result, coins, achievements, gained, completed, balance, room } });
         return true;
       }
       default:

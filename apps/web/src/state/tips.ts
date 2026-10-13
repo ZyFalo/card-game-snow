@@ -85,11 +85,13 @@ export function momentTip(s: TipState): MomentTip | null {
 /**
  * Dónde se dibuja la burbuja: siempre en la franja de abajo, a la derecha, en el espacio libre junto a la
  * mano. Con tres o cuatro cartas ese espacio ya no existe, y sube encima de la mano, al margen derecho
- * del tablero: así no tapa ninguna carta.
+ * del tablero: así no tapa ninguna carta. Tampoco existe cuando la mano muestra el aviso de mazo agotado
+ * (D-106), que ocupa el lugar de las cartas.
  */
 export type BubbleSlot = 'hand' | 'above-hand';
 
 /** Con más cartas que estas, junto a la mano ya no queda lugar para la burbuja. */
 const CARDS_BESIDE = 2;
 
-export const bubbleSlot = (cards: number): BubbleSlot => (cards <= CARDS_BESIDE ? 'hand' : 'above-hand');
+export const bubbleSlot = (cards: number, deckOut = false): BubbleSlot =>
+  cards <= CARDS_BESIDE && !deckOut ? 'hand' : 'above-hand';

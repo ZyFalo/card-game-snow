@@ -181,4 +181,10 @@ describe('Dónde va la burbuja (D-80): siempre junto a la mano, nunca sobre el t
     expect(bubbleSlot(3)).toBe('above-hand');
     expect(bubbleSlot(4)).toBe('above-hand');
   });
+
+  it('D-106: con el aviso de mazo agotado en el lugar de las cartas tampoco queda espacio: sube encima de la mano', () => {
+    expect(bubbleSlot(0, true)).toBe('above-hand');
+    // El mazo en 0 no cambia nada mientras queden cartas en la mano: el aviso todavía no sale.
+    expect(bubbleSlot(0, false)).toBe('hand');
+  });
 });

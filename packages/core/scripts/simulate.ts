@@ -9,12 +9,27 @@
  *   pnpm sim -- --table                       → tabla del §18.3: todas las colecciones, habilidad 0,6
  *   pnpm sim -- --team fire=new,water=full,snow=bot → un equipo en línea: quién lleva cada ninja (R-34)
  *   pnpm sim -- --mixed                       → tablas de equipos de colecciones mezcladas (P-20), habilidad 0,6
+ *   pnpm sim -- --achievements                → ritmo de los logros (R-55) con equipos mezclados, habilidad 0,6
+ *   pnpm sim -- --achievements --calibrate [--fold-matches 8] [--team-matches 20]
+ *                                             → además, las metas que saldrían de pedir a cada logro lo que suma en
+ *                                               ese número de partidas, y el ritmo que darían
+ *   pnpm sim -- --achievements --goals stunner=30,healer=60
+ *                                             → el ritmo con otras metas, sin tocar el balance
+ *   pnpm sim -- --achievements --skip noOneLeft → el ritmo del resto, dando ese logro por completo
  *
  * Colecciones: fixed (por omisión), empty, starter-no-path, starter, box, random8, full y top7.
  * Asientos de un equipo: bot, new-off, new, box, box3 y full.
  */
 import {
+  ACHIEVEMENT_FOLD_IDS,
+  ACHIEVEMENT_FOLDS,
+  ACHIEVEMENT_IDS,
+  type AchievementCounts,
+  type AchievementFold,
+  type AchievementId,
+  achievementGoal,
   coinsForMatch,
+  countFeats,
   createMatch,
   type DeckCard,
   type Difficulty,
@@ -62,6 +77,8 @@ interface Sample {
   reviveLost: number;
   /** Caídos que levantó una carta de Nieve (R-17). */
   cardRevives: number;
+  /** Lo que la partida suma a los logros de quien lleva a cada ninja (R-55). */
+  feats: Record<ElementKind, AchievementCounts>;
 }
 
 function arg(name: string, fallback: number): number {
@@ -76,9 +93,11 @@ function textArg(name: string, fallback: string): string {
 
 const table = process.argv.includes('--table');
 const mixed = process.argv.includes('--mixed');
-const matches = arg('matches', 2000);
+const achievements = process.argv.includes('--achievements');
+const calibrate = process.argv.includes('--calibrate');
+const matches = arg('matches', achievements ? 400 : 2000);
 // Las tablas se miden con juego flojo (0,6); el resto, con el bot al máximo.
-const skill = arg('skill', table || mixed ? 0.6 : 1);
+const skill = arg('skill', table || mixed || achievements ? 0.6 : 1);
 const seedBase = arg('seed', 20260929);
 const difficulty: Difficulty = process.argv.includes('--storm') ? 'storm' : 'classic';
 const collection = textArg('collection', 'fixed');
@@ -126,9 +145,16 @@ function play(seed: number, diff: Difficulty, decksFor: DeckSource): Sample {
   let reviveTries = 0;
   let reviveLost = 0;
   let cardRevives = 0;
+  const feats: Sample['feats'] = { fire: {}, water: {}, snow: {} };
   while (state.status === 'playing' && state.turn < 200) {
     const plans = planTeam(state, { skill, rng });
     const r = resolveTurn(state, plans);
+    const record = { after: r.state, events: r.events };
+    for (const el of ELEMENTS) {
+      for (const [id, n] of Object.entries(countFeats(record, el)) as [AchievementId, number][]) {
+        feats[el][id] = (feats[el][id] ?? 0) + n;
+      }
+    }
     for (const e of r.events) {
       if (e.t === 'reviveStart') reviveTries += 1;
       else if (e.t === 'reviveInterrupted') reviveLost += 1;
@@ -159,6 +185,7 @@ function play(seed: number, diff: Difficulty, decksFor: DeckSource): Sample {
     reviveTries,
     reviveLost,
     cardRevives,
+    feats,
   };
 }
 
@@ -400,8 +427,267 @@ function mixedReport(): void {
   console.log('');
 }
 
+/* ---------- Logros (R-55): cuánto suma cada partida y cuántas hacen falta ---------- */
+
+/** Lo que una partida le sumó a una persona: con qué colección jugaba, si ganó y sus hazañas. */
+interface PlayerMatch {
+  seat: SeatPreset;
+  counts: AchievementCounts;
+}
+
+type Pools = Record<ElementKind, PlayerMatch[]>;
+type Goals = Record<AchievementId, number>;
+
+const foldName: Record<AchievementFold, string> = { fire: 'Fuego', water: 'Agua', snow: 'Nieve', team: 'Equipo' };
+const achievementName: Record<AchievementId, string> = {
+  perfectSweep: 'Barrido perfecto',
+  stunner: 'Aturdidor',
+  blaze: 'Llamarada',
+  breakwater: 'Rompeolas',
+  highTide: 'Marea alta',
+  upAgain: 'De pie otra vez',
+  reviver: 'Reanimador',
+  healer: 'Mano sanadora',
+  snowShield: 'Escudo de nieve',
+  combo3: 'Combo triple',
+  untouched: 'Sin un rasguño',
+  noOneLeft: 'Nadie se queda atrás',
+};
+
+/** Los equipos en línea con que se mide: tres personas, o dos y el bot, con colecciones mezcladas. */
+const ACHIEVEMENT_TEAMS = MIXED_TEAMS.filter((t) => !t.seats.includes('new-off') && t.seats.some((s) => s !== 'bot'));
+
+/** Juega esos equipos, con todos sus repartos, y junta lo que cada persona sumó en cada partida, por ninja. */
+function playerPools(): Pools {
+  const pools: Pools = { fire: [], water: [], snow: [] };
+  for (const { seats } of ACHIEVEMENT_TEAMS) {
+    for (const t of arrangements(seats)) {
+      for (const sample of run('classic', fromTeam(t)).samples) {
+        // El bot no suma: solo cuentan los asientos que lleva una persona.
+        for (const el of ELEMENTS) if (t[el] !== 'bot') pools[el].push({ seat: t[el], counts: sample.feats[el] });
+      }
+    }
+  }
+  return pools;
+}
+
+/** El tope de partidas de una carrera simulada: si un logro no llega, no se queda dando vueltas. */
+const CAREER_CAP = 2000;
+
+interface Career {
+  folds: Record<AchievementFold, number>;
+  amulet: number;
+}
+
+/**
+ * Una persona que juega hasta completar el amuleto: con cada ninja hasta cerrar su pliegue, y después con
+ * cualquiera hasta cerrar el de equipo, que avanza en todas las partidas.
+ */
+function career(pools: Pools, goals: Goals, rng: ReturnType<typeof rngFrom>): Career {
+  const progress: AchievementCounts = {};
+  const done = (fold: AchievementFold) =>
+    ACHIEVEMENT_FOLDS[fold].every((id) => SKIPPED.includes(id) || (progress[id] ?? 0) >= goals[id]);
+  const folds: Career['folds'] = { fire: 0, water: 0, snow: 0, team: 0 };
+  let played = 0;
+  const playWith = (el: ElementKind) => {
+    const pool = pools[el];
+    const match = pool[rng.int(0, pool.length - 1)];
+    for (const [id, n] of Object.entries(match?.counts ?? {}) as [AchievementId, number][]) {
+      progress[id] = (progress[id] ?? 0) + n;
+    }
+    played += 1;
+    if (folds.team === 0 && done('team')) folds.team = played;
+  };
+  for (const el of ELEMENTS) {
+    const start = played;
+    while (!done(el) && played < CAREER_CAP) playWith(el);
+    folds[el] = played - start;
+  }
+  while (!done('team') && played < CAREER_CAP) playWith(ELEMENTS[played % ELEMENTS.length] as ElementKind);
+  if (folds.team === 0) folds.team = played;
+  return { folds, amulet: played };
+}
+
+function careers(pools: Pools, goals: Goals, n: number): Career[] {
+  const rng = rngFrom((seedBase ^ 0x10c05) >>> 0);
+  return Array.from({ length: n }, () => career(pools, goals, rng));
+}
+
+const isAchievement = (id: string): id is AchievementId => (ACHIEVEMENT_IDS as readonly string[]).includes(id);
+
+/** Las metas que pide `--goals`, para medir otras sin tocar el balance: `stunner=30,healer=60`. */
+function goalOverrides(): Partial<Goals> {
+  const out: Partial<Goals> = {};
+  for (const part of textArg('goals', '').split(',').filter(Boolean)) {
+    const [id = '', n = ''] = part.split('=').map((x) => x.trim());
+    if (!isAchievement(id) || !Number.isInteger(Number(n)) || Number(n) < 1) {
+      console.error(`Meta que no se entiende: ${part}. Ejemplo: --goals stunner=30,healer=60`);
+      process.exit(1);
+    }
+    out[id] = Number(n);
+  }
+  return out;
+}
+
+/** Los logros que `--skip` da por completos, para medir el ritmo del resto. */
+function skipped(): AchievementId[] {
+  const ids = textArg('skip', '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  for (const id of ids) {
+    if (!isAchievement(id)) {
+      console.error(`Logro desconocido: ${id}. Opciones: ${ACHIEVEMENT_IDS.join(', ')}.`);
+      process.exit(1);
+    }
+  }
+  return ids as AchievementId[];
+}
+
+const SKIPPED = skipped();
+const OVERRIDES = goalOverrides();
+
+/** Las metas con que se mide: las del balance, salvo las que cambie `--goals`. */
+const currentGoals = (): Goals =>
+  Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, OVERRIDES[id] ?? achievementGoal(id)])) as Goals;
+
+/** Lo que cada logro suma por partida, en promedio, a quien juega con su ninja; los de equipo, con cualquiera. */
+function ratesOf(pools: Pools): Record<AchievementId, { mean: number; any: number }> {
+  const out = {} as Record<AchievementId, { mean: number; any: number }>;
+  for (const fold of ACHIEVEMENT_FOLD_IDS) {
+    const pool = fold === 'team' ? ELEMENTS.flatMap((el) => pools[el]) : pools[fold];
+    for (const id of ACHIEVEMENT_FOLDS[fold]) {
+      const counts = pool.map((m) => m.counts[id] ?? 0);
+      out[id] = { mean: mean(counts), any: (100 * counts.filter((c) => c > 0).length) / Math.max(1, pool.length) };
+    }
+  }
+  return out;
+}
+
+/**
+ * Las metas que salen de pedirle a cada logro lo que suma, en promedio, en ese número de partidas: las de
+ * un pliegue de ninja, jugando con él; las de equipo, con cualquiera. Ninguna baja de 1.
+ */
+function suggestGoals(pools: Pools, foldMatches: number, teamMatches: number): Goals {
+  const rates = ratesOf(pools);
+  return Object.fromEntries(
+    ACHIEVEMENT_FOLD_IDS.flatMap((fold) =>
+      ACHIEVEMENT_FOLDS[fold].map((id) => {
+        const target = fold === 'team' ? teamMatches : foldMatches;
+        return [id, Math.max(1, Math.round(rates[id].mean * target))];
+      }),
+    ),
+  ) as Goals;
+}
+
+/** Las partidas que tarda, en promedio, ese logro por sí solo en llegar a su meta. */
+function matchesAlone(pool: PlayerMatch[], id: AchievementId, goal: number): number {
+  const rng = rngFrom((seedBase ^ 0xa10e) >>> 0);
+  const runs = 4000;
+  let total = 0;
+  for (let i = 0; i < runs; i++) {
+    let sum = 0;
+    let played = 0;
+    while (sum < goal && played < CAREER_CAP) {
+      sum += pool[rng.int(0, pool.length - 1)]?.counts[id] ?? 0;
+      played += 1;
+    }
+    total += played;
+  }
+  return total / runs;
+}
+
+function achievementsReport(): void {
+  const t0 = Date.now();
+  const pools = playerPools();
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  const total = ELEMENTS.reduce((sum, el) => sum + pools[el].length, 0);
+  console.log(
+    `\nLogros (R-55) · Clásica · ${ACHIEVEMENT_TEAMS.length} equipos de colecciones mezcladas, con todos sus repartos · ${matches} partidas por reparto · bot con habilidad ${skill} · ${secs} s`,
+  );
+  console.log(`${total} partidas de una persona: las que juega cada asiento que no es del bot.\n`);
+
+  const paceTable = (goals: Goals, title: string) => {
+    const rates = ratesOf(pools);
+    const cs = careers(pools, goals, 20_000);
+    console.log(`### ${title}\n`);
+    console.log(
+      '| Pliegue | Logro | Meta | Suma por partida | Partidas en que suma | Partidas para completarlo solo |',
+    );
+    console.log('|---|---|---|---|---|---|');
+    for (const fold of ACHIEVEMENT_FOLD_IDS) {
+      const pool = fold === 'team' ? ELEMENTS.flatMap((el) => pools[el]) : pools[fold];
+      for (const id of ACHIEVEMENT_FOLDS[fold]) {
+        const r = rates[id];
+        const alone = matchesAlone(pool, id, goals[id]);
+        const needs = SKIPPED.includes(id) ? '—' : alone >= CAREER_CAP ? `más de ${CAREER_CAP}` : es(alone, 1);
+        console.log(
+          `| ${foldName[fold]} | ${achievementName[id]} | ${goals[id]} | ${es(r.mean, 2)} | ${es(r.any, 1)} % | ${needs} |`,
+        );
+      }
+    }
+    console.log('\n| | Partidas (media) | p25 · p50 · p75 | p90 |');
+    console.log('|---|---|---|---|');
+    const line = (label: string, xs: number[]) =>
+      console.log(
+        `| ${label} | ${es(mean(xs), 1)} | ${quantile(xs, 0.25)} · ${quantile(xs, 0.5)} · ${quantile(xs, 0.75)} | ${quantile(xs, 0.9)} |`,
+      );
+    for (const el of ELEMENTS)
+      line(
+        `Pliegue de ${foldName[el]}, jugando con su ninja`,
+        cs.map((c) => c.folds[el]),
+      );
+    line(
+      'Pliegue de Equipo, con cualquiera',
+      cs.map((c) => c.folds.team),
+    );
+    line(
+      'Amuleto completo',
+      cs.map((c) => c.amulet),
+    );
+    console.log('');
+  };
+
+  const which = Object.keys(OVERRIDES).length > 0 ? 'las metas pedidas' : 'las metas de hoy';
+  const without =
+    SKIPPED.length > 0 ? `, dando por completo: ${SKIPPED.map((id) => achievementName[id]).join(', ')}` : '';
+  paceTable(currentGoals(), `Con ${which}${without}`);
+
+  console.log(`### Según la colección de quien juega (${which}${without})\n`);
+  console.log('| Colección | Pliegue de Fuego | Pliegue de Agua | Pliegue de Nieve | Amuleto completo |');
+  console.log('|---|---|---|---|---|');
+  for (const seat of ['new', 'box', 'box3', 'full'] as const) {
+    const own: Pools = {
+      fire: pools.fire.filter((m) => m.seat === seat),
+      water: pools.water.filter((m) => m.seat === seat),
+      snow: pools.snow.filter((m) => m.seat === seat),
+    };
+    const cs = careers(own, currentGoals(), 5000);
+    console.log(
+      `| ${SEAT_SHORT[seat]} | ${ELEMENTS.map((el) => es(mean(cs.map((c) => c.folds[el])), 1)).join(' | ')} | ${es(
+        mean(cs.map((c) => c.amulet)),
+        1,
+      )} |`,
+    );
+  }
+  console.log('');
+
+  if (calibrate) {
+    const foldMatches = arg('fold-matches', 8);
+    const teamMatches = arg('team-matches', 20);
+    const goals = suggestGoals(pools, foldMatches, teamMatches);
+    paceTable(
+      goals,
+      `Si cada logro pidiera lo que suma en ${foldMatches} partidas con su ninja, y los de equipo, en ${teamMatches}`,
+    );
+    console.log(`"goals": ${JSON.stringify(goals)}\n`);
+  }
+}
+
 if (table) {
   tableReport();
+} else if (achievements) {
+  achievementsReport();
 } else if (mixed) {
   mixedReport();
 } else if (team) {

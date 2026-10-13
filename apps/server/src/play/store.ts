@@ -1,5 +1,5 @@
 import {
-  type AchievementId,
+  type AchievementCounts,
   type BonusOutcome,
   type ClearedRound,
   type Collection,
@@ -7,11 +7,19 @@ import {
   type ElementKind,
   hasDoubleCoins,
 } from '@ventisca/core';
-import type { MatchNotice } from '@ventisca/protocol';
+import type { Achievements, MatchNotice } from '@ventisca/protocol';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db';
-import { creditRound, type Executor, readAchievements, readProgress } from '../progress/store';
-import { achievements, type LEDGER_ROUNDS, matches, matchPlayers, playerStats, profiles } from '../schema';
+import {
+  type AchievementGain,
+  addFeats,
+  completedAchievements,
+  creditRound,
+  type Executor,
+  readAchievements,
+  readProgress,
+} from '../progress/store';
+import { type LEDGER_ROUNDS, matches, matchPlayers, playerStats, profiles } from '../schema';
 
 /*
  * Lo que el juego en línea lee y deja escrito en Postgres. Las partidas viven en la memoria del servidor;
@@ -20,9 +28,11 @@ import { achievements, type LEDGER_ROUNDS, matches, matchPlayers, playerStats, p
  * Las reglas de las recompensas (R-39, R-40, R-54 y R-55):
  * - Las monedas de cada ronda quedan pendientes en `match_players.rounds`, para quien estaba conectado al
  *   terminarla, y entran al libro cuando la partida termina.
- * - Quien abandona pierde las monedas de esa partida. Sus logros se mantienen.
+ * - El avance de los logros se suma en el turno en que pasa, y solo a quien estaba conectado.
+ * - Quien abandona pierde las monedas de esa partida. Su avance en los logros se mantiene.
  * - Si el servidor se reinicia, se acreditan las rondas ya terminadas, y la partida no cuenta como jugada.
- * - Si las monedas se duplican lo decide el servidor al acreditar, contando los logros de su propia tabla.
+ * - Si las monedas se duplican lo decide el servidor al acreditar, contando los logros completos de su
+ *   propia tabla.
  *
  * Una partida sale de `playing` una sola vez, y quien la saca hace las cuentas en la misma transacción.
  * Así no se pagan dos veces, aunque dos procesos del servidor coincidan durante un despliegue.
@@ -58,8 +68,8 @@ export interface Settlement {
   total: number;
   /** Su saldo después de acreditar. */
   balance: number;
-  /** Todos los logros que tiene. */
-  achievements: AchievementId[];
+  /** Su avance en cada logro, ya con lo de esta partida. */
+  achievements: Achievements;
 }
 
 export interface PlayStore {
@@ -71,11 +81,11 @@ export interface PlayStore {
    * `false` si la partida ya no está viva en la base: otro proceso la dio por interrumpida.
    */
   recordRounds(matchId: string, userIds: string[], rounds: ClearedRound[]): Promise<boolean>;
-  /** Guarda los logros que cada persona acaba de ganar (R-55). Devuelve, por persona, los que no tenía. */
-  grant(
-    matchId: string,
-    earned: { userId: string; achievements: AchievementId[] }[],
-  ): Promise<Map<string, AchievementId[]>>;
+  /**
+   * Suma al avance de cada persona las hazañas de un turno (R-55). Devuelve, por persona, lo que de verdad
+   * sumó y los logros que completó con eso; quien no avanzó en nada no aparece.
+   */
+  addFeats(feats: { userId: string; counts: AchievementCounts }[]): Promise<Map<string, AchievementGain>>;
   /** Esa persona salió de la partida con "Salir": abandonó, y pierde sus monedas pendientes (R-39). */
   abandon(matchId: string, userId: string): Promise<void>;
   /**
@@ -123,11 +133,10 @@ export function dbStore(db: Db, now: () => Date = () => new Date()): PlayStore {
 
   /**
    * Acredita las rondas pendientes de una persona (R-40). Si su amuleto está completo, valen el doble: se
-   * cuentan los logros de su tabla en este momento, incluidos los que ganó en esta partida (D-103).
+   * cuentan los logros completos de su tabla en este momento, incluidos los que cerró en esta partida (D-103).
    */
   async function credit(tx: Executor, matchId: string, userId: string, rounds: string[]): Promise<Settlement> {
-    const owned = await readAchievements(tx, userId);
-    const doubled = hasDoubleCoins(owned);
+    const doubled = hasDoubleCoins(await completedAchievements(tx, userId));
     const lines: Settlement['lines'] = [];
     for (const text of rounds) {
       const round = roundOf(text);
@@ -141,7 +150,7 @@ export function dbStore(db: Db, now: () => Date = () => new Date()): PlayStore {
       doubled,
       total: lines.reduce((sum, line) => sum + line.coins, 0),
       balance: profile?.coins ?? 0,
-      achievements: owned,
+      achievements: await readAchievements(tx, userId),
     };
   }
 
@@ -202,24 +211,19 @@ export function dbStore(db: Db, now: () => Date = () => new Date()): PlayStore {
       });
     },
 
-    async grant(matchId, earned) {
-      const fresh = new Map<string, AchievementId[]>();
-      for (const { userId, achievements: ids } of earned) {
-        if (ids.length === 0) continue;
+    async addFeats(feats) {
+      const gains = new Map<string, AchievementGain>();
+      for (const { userId, counts } of feats) {
         try {
-          const rows = await db
-            .insert(achievements)
-            .values(ids.map((achievementId) => ({ userId, achievementId, matchId, unlockedAt: now() })))
-            .onConflictDoNothing()
-            .returning({ id: achievements.achievementId });
-          if (rows.length > 0) fresh.set(userId, rows.map((r) => r.id) as AchievementId[]);
+          const gain = await addFeats(db, userId, counts, now());
+          if (Object.keys(gain.gained).length > 0 || gain.completed.length > 0) gains.set(userId, gain);
         } catch (err) {
-          // La cuenta se borró a mitad de la partida: ya no hay a quién darle el logro.
+          // La cuenta se borró a mitad de la partida: ya no hay a quién sumarle.
           const e = err as { code?: string; cause?: { code?: string } };
           if ((e.cause ?? e).code !== FOREIGN_KEY_VIOLATION) throw err;
         }
       }
-      return fresh;
+      return gains;
     },
 
     async abandon(matchId, userId) {

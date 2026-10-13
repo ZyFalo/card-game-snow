@@ -1,3 +1,4 @@
+import { ACHIEVEMENT_IDS } from '@ventisca/core';
 import { CLOSE, playStatusSchema, progressSchema } from '@ventisca/protocol';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -78,13 +79,17 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     beto.send({ type: 'plan.confirm', turn: 1, plan: {} });
     for (const client of [ana, beto]) {
       expect((await client.next('turn.result')).state).toMatchObject({ status: 'victory', seed: 0, rng: 0 });
-      // El resultado trae las monedas de la ronda, ya acreditadas, y el logro de quien se levantó.
-      expect(await client.next('match.end')).toMatchObject({
+      // El resultado trae las monedas de la ronda, ya acreditadas, y el avance de sus logros: esta vez, nada.
+      const end = await client.next('match.end');
+      expect(end).toMatchObject({
         result: 'victory',
         coins: { lines: [{ round: 3, coins: 120 }], doubled: false, total: 120 },
+        gained: {},
+        completed: [],
         balance: 120,
         room: code,
       });
+      expect(Object.values(end.achievements)).toEqual(ACHIEVEMENT_IDS.map(() => ({ count: 0, done: false })));
       // De vuelta en la sala, lista para otra partida.
       expect(await client.next('room.state')).toMatchObject({ code, start: 'bot' });
     }
@@ -118,7 +123,6 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     for (const who of [a, b]) {
       expect(await progress(who.cookie)).toMatchObject({
         coins: 120,
-        achievements: [],
         stats: { classic: { matches: 1, rounds: 1, wins: 1 } },
       });
     }
@@ -129,7 +133,7 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     ]);
   });
 
-  it('R-55: los logros se guardan cuando ocurren y llegan con el progreso', async () => {
+  it('R-55: el avance de los logros se guarda cuando ocurre y llega con el progreso de cada quien', async () => {
     await server.close();
     server = await startServer(ctx.database, {
       playTimings: timings,
@@ -145,9 +149,15 @@ describe.skipIf(!adminUrl)('Juego en línea, de punta a punta (DATABASE_URL_TEST
     ana.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'card', cardId: 'fire-m1', at } } });
     beto.send({ type: 'plan.confirm', turn: 1, plan: { action: { type: 'card', cardId: 'water-m1', at } } });
     expect((await ana.next('turn.result')).events.some((e) => e.t === 'combo')).toBe(true);
-    // La partida sigue, y el logro ya está en su cuenta.
-    expect((await progress(a.cookie)).achievements).toContain('combo2');
-    expect((await progress(b.cookie)).achievements).toContain('combo2');
+    // La partida sigue, y el avance ya está en la cuenta de cada quien: Ana, con Brasa, aturdió y quemó al
+    // coloso; Beto, con Marea, les dio Potencia a sus dos compañeros.
+    const mine = (await progress(a.cookie)).achievements;
+    expect(mine.stunner).toEqual({ count: 1, done: false });
+    expect(mine.blaze).toEqual({ count: 1, done: false });
+    expect(mine.highTide).toEqual({ count: 0, done: false });
+    const his = (await progress(b.cookie)).achievements;
+    expect(his.highTide).toEqual({ count: 2, done: false });
+    expect(his.stunner).toEqual({ count: 0, done: false });
   });
 
   it('R-54: si el servidor se apaga a mitad de una partida, se acreditan las rondas terminadas y cada quien se entera al volver', async () => {

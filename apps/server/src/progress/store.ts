@@ -1,6 +1,8 @@
 import {
   ACHIEVEMENT_IDS,
+  type AchievementCounts,
   type AchievementId,
+  advance,
   boxPrice,
   type ClearedRound,
   coinsForRound,
@@ -9,8 +11,8 @@ import {
   rngFrom,
   starterCollection,
 } from '@ventisca/core';
-import type { Progress, StatsLine } from '@ventisca/protocol';
-import { and, eq, sql } from 'drizzle-orm';
+import type { Achievements, Progress, StatsLine } from '@ventisca/protocol';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../db';
 import { achievements, coinLedger, collection, type LEDGER_ROUNDS, playerStats, profiles } from '../schema';
 
@@ -24,21 +26,93 @@ export type Executor = Db | Parameters<Parameters<Db['transaction']>[0]>[0];
 
 const NO_STATS: StatsLine = { matches: 0, rounds: 0, wins: 0 };
 
-/** Los logros que ya ganó esa cuenta (R-55), en el orden del juego. */
-export async function readAchievements(db: Executor, userId: string): Promise<AchievementId[]> {
+/** Sin avance en ningún logro: así empieza una cuenta. */
+const noAchievements = (): Achievements =>
+  Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }])) as Achievements;
+
+/** El avance de esa cuenta en cada logro (R-55): lo que lleva contado y si ya lo completó. */
+export async function readAchievements(db: Executor, userId: string): Promise<Achievements> {
+  const rows = await db
+    .select({ id: achievements.achievementId, progress: achievements.progress, unlockedAt: achievements.unlockedAt })
+    .from(achievements)
+    .where(eq(achievements.userId, userId));
+  const out = noAchievements();
+  for (const row of rows) {
+    // Una fila de un logro que ya no existe no se muestra ni cuenta.
+    if (!(ACHIEVEMENT_IDS as readonly string[]).includes(row.id)) continue;
+    out[row.id as AchievementId] = { count: row.progress, done: row.unlockedAt !== null };
+  }
+  return out;
+}
+
+/** Los logros que esa cuenta ya completó. Con los 12, las monedas valen el doble (R-29). */
+export async function completedAchievements(db: Executor, userId: string): Promise<AchievementId[]> {
   const rows = await db
     .select({ id: achievements.achievementId })
     .from(achievements)
-    .where(eq(achievements.userId, userId));
+    .where(and(eq(achievements.userId, userId), isNotNull(achievements.unlockedAt)));
   const have = new Set(rows.map((r) => r.id));
   return ACHIEVEMENT_IDS.filter((id) => have.has(id));
+}
+
+/** Lo que cambió en los logros de una persona al sumarle unas hazañas. */
+export interface AchievementGain {
+  /** Lo que de verdad sumó cada logro: el avance no pasa de la meta. */
+  gained: AchievementCounts;
+  /** Los que llegaron a su meta con esto. */
+  completed: AchievementId[];
+}
+
+/**
+ * R-55: suma esas hazañas al avance de una persona. Cada logro avanza hasta su meta y ahí se queda; al
+ * llegar, queda completo desde ese momento, y ya no se pierde. Devuelve lo que cambió.
+ */
+export async function addFeats(
+  db: Executor,
+  userId: string,
+  counts: AchievementCounts,
+  now: Date,
+): Promise<AchievementGain> {
+  const gain: AchievementGain = { gained: {}, completed: [] };
+  const feats = ACHIEVEMENT_IDS.flatMap((id) => {
+    const n = counts[id] ?? 0;
+    return Number.isInteger(n) && n > 0 ? [{ id, n }] : [];
+  });
+  if (feats.length === 0) return gain;
+  return db.transaction(async (tx) => {
+    // Con sus filas bloqueadas, nadie más mueve su avance mientras se hacen las cuentas.
+    const rows = await tx
+      .select({ id: achievements.achievementId, progress: achievements.progress, unlockedAt: achievements.unlockedAt })
+      .from(achievements)
+      .where(eq(achievements.userId, userId))
+      .for('update');
+    for (const { id, n } of feats) {
+      const row = rows.find((r) => r.id === id);
+      // Un logro completo ya no cambia.
+      if (row?.unlockedAt) continue;
+      const next = advance(id, { count: row?.progress ?? 0, done: false }, n);
+      const unlockedAt = next.done ? now : null;
+      await tx
+        .insert(achievements)
+        .values({ userId, achievementId: id, progress: next.count, unlockedAt })
+        .onConflictDoUpdate({
+          target: [achievements.userId, achievements.achievementId],
+          set: { progress: next.count, unlockedAt },
+        });
+      if (next.gained > 0) gain.gained[id] = next.gained;
+      if (next.done) gain.completed.push(id);
+    }
+    return gain;
+  });
 }
 
 /** El progreso de una cuenta. Sin perfil, la persona todavía no eligió su carta de camino (R-30). */
 export async function readProgress(db: Executor, userId: string): Promise<Progress> {
   const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
   const stats = { classic: { ...NO_STATS }, storm: { ...NO_STATS } };
-  if (!profile) return { camino: null, coins: 0, boxesOpened: 0, collection: {}, achievements: [], stats };
+  if (!profile) {
+    return { camino: null, coins: 0, boxesOpened: 0, collection: {}, achievements: noAchievements(), stats };
+  }
   const cards = await db
     .select({ cardId: collection.cardId, count: collection.count })
     .from(collection)
@@ -142,8 +216,9 @@ export async function buyBox(
  * ronda, así que un cobro repetido (un reintento, un reinicio del servidor) no paga otra vez: devuelve
  * `credited: false`. Sin perfil, falla. Las de una partida se acreditan cuando termina (D-93).
  *
- * `doubled`: la persona ya tiene los 9 logros. Lo decide el servidor contando su propia tabla de logros,
- * al hacer las cuentas de la partida (`play/store.ts`); nunca llega del cliente.
+ * `doubled`: la persona ya completó los cuatro pliegues del amuleto, con sus 12 logros. Lo decide el servidor
+ * contando su propia tabla de logros, al hacer las cuentas de la partida (`play/store.ts`); nunca llega del
+ * cliente.
  */
 export async function creditRound(
   db: Executor,

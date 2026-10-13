@@ -1,3 +1,4 @@
+import { ACHIEVEMENT_IDS } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import {
   clientMessageSchema,
@@ -143,7 +144,8 @@ describe('Protocolo: del servidor al cliente', () => {
     expect(ok({ v, seq: 0, type: 'error', code: 'porque_si' })).toBe(false);
   });
 
-  it('el resultado de una partida lleva las monedas, los logros y el saldo de esa persona', () => {
+  it('el resultado de una partida lleva las monedas, el avance de los logros y el saldo de esa persona', () => {
+    const achievements = Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }]));
     const end = {
       v,
       seq: 90,
@@ -157,13 +159,26 @@ describe('Protocolo: del servidor al cliente', () => {
         doubled: false,
         total: 180,
       },
-      earned: ['combo2'],
-      achievements: ['combo2', 'reviver'],
+      achievements: { ...achievements, reviver: { count: 4, done: false }, upAgain: { count: 1, done: true } },
+      gained: { reviver: 2, upAgain: 1 },
+      completed: ['upAgain'],
       balance: 430,
       room: null,
     };
     expect(ok(end)).toBe(true);
-    expect(ok({ ...end, earned: ['logro_inventado'] })).toBe(false);
+    expect(ok({ ...end, gained: {} })).toBe(true);
     expect(ok({ ...end, balance: -5 })).toBe(false);
+    // R-55: lo que sumó la partida y lo que completó son de logros del juego, en cantidades enteras de 1 o más.
+    expect(ok({ ...end, gained: { logro_inventado: 1 } })).toBe(false);
+    expect(ok({ ...end, gained: { reviver: 0 } })).toBe(false);
+    expect(ok({ ...end, gained: { reviver: 1.5 } })).toBe(false);
+    expect(ok({ ...end, completed: ['logro_inventado'] })).toBe(false);
+    expect(ok({ ...end, gained: undefined })).toBe(false);
+    expect(ok({ ...end, completed: undefined })).toBe(false);
+    // El avance trae los 12 logros: ni uno menos, ni uno de más.
+    const { reviver: _, ...missing } = end.achievements;
+    expect(ok({ ...end, achievements: missing })).toBe(false);
+    expect(ok({ ...end, achievements: { ...end.achievements, combo2: { count: 1, done: true } } })).toBe(false);
+    expect(ok({ ...end, achievements: ['reviver'] })).toBe(false);
   });
 });

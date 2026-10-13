@@ -124,5 +124,21 @@
   "starter": {
     "value": 9,
     "stormRecommendedPerElement": 4
+  },
+  "achievements": {
+    "goals": {
+      "perfectSweep": 4,
+      "stunner": 30,
+      "blaze": 20,
+      "breakwater": 25,
+      "highTide": 25,
+      "upAgain": 1,
+      "reviver": 1,
+      "healer": 55,
+      "snowShield": 30,
+      "combo3": 16,
+      "untouched": 4,
+      "noOneLeft": 1
+    }
   }
 }

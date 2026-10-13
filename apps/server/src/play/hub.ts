@@ -8,6 +8,7 @@ import {
   type SeatStatus,
   type ServerPayload,
 } from '@ventisca/protocol';
+import type { AchievementGain } from '../progress/store';
 import type { Link, Player } from './link';
 import { Match, type MatchOutcome, type MatchTimings, type PrepareMatch, type TurnRewards } from './match';
 import { Queue, type Team } from './queue';
@@ -60,8 +61,11 @@ export class Hub {
   /** La partida de cada persona que está en una y no la abandonó. */
   private readonly playing = new Map<string, Match>();
   private readonly matches = new Set<Match>();
-  /** Los logros que cada persona ganó en su partida en curso, para mostrárselos al final. */
-  private readonly earned = new WeakMap<Match, Map<string, AchievementId[]>>();
+  /**
+   * Lo que cada persona lleva sumado a sus logros en su partida en curso, para mostrárselo al final. Vive
+   * solo en la memoria, mientras dura la partida: en la base queda el avance de la cuenta, no el de cada partida.
+   */
+  private readonly gains = new WeakMap<Match, Map<string, AchievementGain>>();
   private readonly queue: Queue;
   private readonly rooms: Rooms;
   private readonly timings: PlayTimings;
@@ -295,7 +299,7 @@ export class Hub {
       case 'match.leave': {
         if (!match) return 'not_now';
         this.playing.delete(userId);
-        // Abandonó (R-39): pierde las monedas de esta partida. Sus logros ya están guardados.
+        // Abandonó (R-39): pierde las monedas de esta partida. Su avance en los logros ya está guardado.
         await this.store.abandon(match.id, userId);
         // Quien sale de la partida también sale de su sala, y vuelve al inicio en línea.
         this.rooms.abandon(userId);
@@ -354,18 +358,26 @@ export class Hub {
 
   /**
    * Un turno dejó algo ganado: las rondas superadas quedan por cobrar para quienes estaban conectados, y
-   * los logros se guardan en el acto (R-40 y R-55). Si la base dice que la partida ya no está viva, es que
-   * otro proceso del servidor la interrumpió al arrancar (R-54): aquí también se termina.
+   * el avance de los logros se suma en el acto (R-40 y R-55). Si la base dice que la partida ya no está viva,
+   * es que otro proceso del servidor la interrumpió al arrancar (R-54): aquí también se termina.
    */
   private async rewards(match: Match, turn: TurnRewards): Promise<boolean> {
     if (turn.rounds.length > 0 && !(await this.store.recordRounds(match.id, turn.present, turn.rounds))) {
       await this.interrupted(match);
       return false;
     }
-    const fresh = await this.store.grant(match.id, turn.earned);
-    const earned = this.earned.get(match) ?? new Map<string, AchievementId[]>();
-    for (const [userId, ids] of fresh) earned.set(userId, [...(earned.get(userId) ?? []), ...ids]);
-    this.earned.set(match, earned);
+    if (turn.feats.length === 0) return true;
+    const fresh = await this.store.addFeats(turn.feats);
+    const gains = this.gains.get(match) ?? new Map<string, AchievementGain>();
+    for (const [userId, gain] of fresh) {
+      const mine = gains.get(userId) ?? { gained: {}, completed: [] };
+      for (const [id, n] of Object.entries(gain.gained) as [AchievementId, number][]) {
+        mine.gained[id] = (mine.gained[id] ?? 0) + n;
+      }
+      mine.completed.push(...gain.completed);
+      gains.set(userId, mine);
+    }
+    this.gains.set(match, gains);
     return true;
   }
 
@@ -415,7 +427,7 @@ export class Hub {
       'Termina una partida',
     );
     if (result !== null) {
-      const earned = this.earned.get(match);
+      const gains = this.gains.get(match);
       for (const userId of present) {
         const mine = settled.get(userId);
         // Sin cuentas, esa cuenta se borró a mitad de la partida: no hay resultado que darle.
@@ -424,8 +436,9 @@ export class Hub {
           type: 'match.end',
           result,
           coins: { lines: mine.lines, doubled: mine.doubled, total: mine.total },
-          earned: earned?.get(userId) ?? [],
           achievements: mine.achievements,
+          gained: gains?.get(userId)?.gained ?? {},
+          completed: gains?.get(userId)?.completed ?? [],
           balance: mine.balance,
           room: open ? match.room : null,
         });

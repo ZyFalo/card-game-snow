@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { ACHIEVEMENT_IDS, type ClearedRound } from '@ventisca/core';
+import { ACHIEVEMENT_IDS, type AchievementId, achievementGoal, type ClearedRound } from '@ventisca/core';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SESSION_COOKIE } from '../src/accounts/session';
 import { dbStore, type MatchEnd, type PlayStore } from '../src/play/store';
-import { creditRound, readProgress } from '../src/progress/store';
+import { completedAchievements, creditRound, readProgress } from '../src/progress/store';
 import { achievements, coinLedger, matches, matchPlayers, playerStats, profiles, users } from '../src/schema';
 import { adminUrl, useTempDatabase } from './support/database';
 import { APP_ORIGIN, startServer, type TestServer } from './support/play';
@@ -71,10 +71,27 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
     )[0];
   const status = async (matchId: string) => (await db().select().from(matches).where(eq(matches.id, matchId)))[0];
   const stats = async (userId: string) => (await readProgress(db(), userId)).stats.classic;
-  const giveAll = (userId: string, except: string[] = []) =>
+  /** Deja completos todos los logros de esa cuenta, menos esos. */
+  const giveAll = (userId: string, except: AchievementId[] = []) =>
     db()
       .insert(achievements)
-      .values(ACHIEVEMENT_IDS.filter((id) => !except.includes(id)).map((achievementId) => ({ userId, achievementId })));
+      .values(
+        ACHIEVEMENT_IDS.filter((id) => !except.includes(id)).map((achievementId) => ({
+          userId,
+          achievementId,
+          progress: achievementGoal(achievementId),
+          unlockedAt: NOW,
+        })),
+      );
+  /** Lo que esa cuenta tiene guardado de cada logro en que avanzó. */
+  const saved = async (userId: string) =>
+    Object.fromEntries(
+      (await db().select().from(achievements).where(eq(achievements.userId, userId))).map((r) => [
+        r.achievementId,
+        [r.progress, r.unlockedAt],
+      ]),
+    );
+  const progressOf = async (userId: string) => (await readProgress(db(), userId)).achievements;
 
   describe('Al empezar', () => {
     it('la partida queda escrita con sus tres asientos; el del bot, sin cuenta', async () => {
@@ -150,7 +167,7 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
           doubled: false,
           total: 420,
           balance: 420,
-          achievements: [],
+          achievements: Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }])),
         });
         expect(await coins(who.userId)).toBe(420);
         expect((await ledger(who.userId)).map((l) => [l.round, l.amount, l.matchId])).toEqual([
@@ -365,32 +382,77 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
   });
 
   describe('Logros y doble de monedas (R-55, R-29)', () => {
-    it('R-55: cada logro se guarda una vez, y se dice cuáles eran nuevos', async () => {
-      const { a, b, matchId } = await trio();
-      const first = await store.grant(matchId, [
-        { userId: a.userId, achievements: ['combo2', 'reviver'] },
-        { userId: b.userId, achievements: ['combo2'] },
+    it('R-55: el avance de cada logro se acumula entre un turno y otro, y se dice cuánto sumó cada vez', async () => {
+      const { a, b } = await trio();
+      const first = await store.addFeats([
+        { userId: a.userId, counts: { stunner: 3, blaze: 2 } },
+        { userId: b.userId, counts: { breakwater: 1 } },
       ]);
-      expect(Object.fromEntries(first)).toEqual({ [a.userId]: ['combo2', 'reviver'], [b.userId]: ['combo2'] });
-      const second = await store.grant(matchId, [{ userId: a.userId, achievements: ['combo2', 'combo3'] }]);
-      expect(Object.fromEntries(second)).toEqual({ [a.userId]: ['combo3'] });
-      const rows = await db().select().from(achievements).where(eq(achievements.userId, a.userId));
-      expect(rows.map((r) => [r.achievementId, r.matchId, r.unlockedAt]).sort()).toEqual([
-        ['combo2', matchId, NOW],
-        ['combo3', matchId, NOW],
-        ['reviver', matchId, NOW],
-      ]);
-      expect((await readProgress(db(), a.userId)).achievements).toEqual(['combo2', 'combo3', 'reviver']);
+      expect(Object.fromEntries(first)).toEqual({
+        [a.userId]: { gained: { stunner: 3, blaze: 2 }, completed: [] },
+        [b.userId]: { gained: { breakwater: 1 }, completed: [] },
+      });
+      const second = await store.addFeats([{ userId: a.userId, counts: { stunner: 4, combo3: 1 } }]);
+      expect(Object.fromEntries(second)).toEqual({
+        [a.userId]: { gained: { stunner: 4, combo3: 1 }, completed: [] },
+      });
+      expect(await saved(a.userId)).toEqual({ stunner: [7, null], blaze: [2, null], combo3: [1, null] });
+      const mine = await progressOf(a.userId);
+      expect(mine.stunner).toEqual({ count: 7, done: false });
+      expect(mine.blaze).toEqual({ count: 2, done: false });
+      // Los que no tocó siguen en cero, y están los 12.
+      expect(mine.reviver).toEqual({ count: 0, done: false });
+      expect(Object.keys(mine).sort()).toEqual([...ACHIEVEMENT_IDS].sort());
+      // Lo de una persona no se mezcla con lo de otra.
+      expect((await progressOf(b.userId)).stunner).toEqual({ count: 0, done: false });
+      expect((await progressOf(b.userId)).breakwater).toEqual({ count: 1, done: false });
     });
 
-    it('R-55: los logros se mantienen aunque la persona abandone', async () => {
+    it('R-55: al llegar a su meta, el logro queda completo desde ese momento, y el avance no pasa de ahí', async () => {
+      const { a } = await trio();
+      const goal = achievementGoal('stunner');
+      await store.addFeats([{ userId: a.userId, counts: { stunner: goal - 2 } }]);
+      expect(await completedAchievements(db(), a.userId)).toEqual([]);
+      // Le faltaban 2 y el turno le da 5: suma solo los 2 que faltaban.
+      const last = await store.addFeats([{ userId: a.userId, counts: { stunner: 5 } }]);
+      expect(Object.fromEntries(last)).toEqual({ [a.userId]: { gained: { stunner: 2 }, completed: ['stunner'] } });
+      expect(await saved(a.userId)).toEqual({ stunner: [goal, NOW] });
+      expect((await progressOf(a.userId)).stunner).toEqual({ count: goal, done: true });
+      expect(await completedAchievements(db(), a.userId)).toEqual(['stunner']);
+    });
+
+    it('R-55: un logro completo ya no cambia, ni vuelve a salir como recién completado', async () => {
+      const { a } = await trio();
+      const later = dbStore(db(), () => new Date('2026-11-01T00:00:00Z'));
+      await store.addFeats([{ userId: a.userId, counts: { upAgain: achievementGoal('upAgain') } }]);
+      expect(Object.fromEntries(await later.addFeats([{ userId: a.userId, counts: { upAgain: 3 } }]))).toEqual({});
+      expect(await saved(a.userId)).toEqual({ upAgain: [achievementGoal('upAgain'), NOW] });
+    });
+
+    it('R-55: lo que no es una cantidad entera de 1 o más no suma nada', async () => {
+      const { a } = await trio();
+      const gains = await store.addFeats([{ userId: a.userId, counts: { stunner: 0, blaze: -3, healer: 1.5 } }]);
+      expect(Object.fromEntries(gains)).toEqual({});
+      expect(await saved(a.userId)).toEqual({});
+    });
+
+    it('R-55: el avance se mantiene aunque la persona abandone', async () => {
       const { a, matchId } = await trio();
-      await store.grant(matchId, [{ userId: a.userId, achievements: ['combo2'] }]);
+      await store.addFeats([{ userId: a.userId, counts: { stunner: 2 } }]);
       await store.abandon(matchId, a.userId);
-      expect((await readProgress(db(), a.userId)).achievements).toEqual(['combo2']);
+      expect((await progressOf(a.userId)).stunner).toEqual({ count: 2, done: false });
     });
 
-    it('R-29: con los 9 logros en su tabla, cada ronda paga el doble', async () => {
+    it('R-55: una fila de un logro que ya no existe no se muestra ni cuenta', async () => {
+      const { a } = await trio();
+      await db()
+        .insert(achievements)
+        .values({ userId: a.userId, achievementId: 'combo2', progress: 1, unlockedAt: NOW });
+      expect(Object.keys(await progressOf(a.userId)).sort()).toEqual([...ACHIEVEMENT_IDS].sort());
+      expect(await completedAchievements(db(), a.userId)).toEqual([]);
+    });
+
+    it('R-29: con los 12 logros completos en su tabla, cada ronda paga el doble', async () => {
       const { a, b, c, matchId } = await trio();
       const all = [a.userId, b.userId, c.userId];
       await giveAll(a.userId);
@@ -402,9 +464,20 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
       expect(await coins(a.userId)).toBe(840);
     });
 
-    it('R-29: con 8 logros no hay doble: el servidor cuenta su tabla, y nada más', async () => {
+    it('R-29: si falta un logro de cualquier pliegue no hay doble: el servidor cuenta su tabla, y nada más', async () => {
+      for (const missing of ['perfectSweep', 'upAgain', 'snowShield', 'untouched'] as const) {
+        const { a, b, c, matchId } = await trio();
+        await giveAll(a.userId, [missing]);
+        await store.recordRounds(matchId, [a.userId], [1]);
+        const settled = await store.settle(matchId, victory({ present: [a.userId, b.userId, c.userId] }));
+        expect(settled?.get(a.userId), missing).toMatchObject({ doubled: false, total: 60 });
+      }
+    });
+
+    it('R-29: un logro a punto de completarse todavía no cuenta para el doble', async () => {
       const { a, b, c, matchId } = await trio();
-      await giveAll(a.userId, ['untouched']);
+      await giveAll(a.userId, ['stunner']);
+      await store.addFeats([{ userId: a.userId, counts: { stunner: achievementGoal('stunner') - 1 } }]);
       await store.recordRounds(matchId, [a.userId], [1]);
       const settled = await store.settle(matchId, victory({ present: [a.userId, b.userId, c.userId] }));
       expect(settled?.get(a.userId)).toMatchObject({ doubled: false, total: 60 });
@@ -412,15 +485,16 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
 
     it('D-103: el logro que completa el amuleto en esa partida ya duplica su pago', async () => {
       const { a, b, c, matchId } = await trio();
-      await giveAll(a.userId, ['bonusWon']);
+      await giveAll(a.userId, ['noOneLeft']);
       await store.recordRounds(matchId, [a.userId], [1, 2, 3, 'bonus']);
-      await store.grant(matchId, [{ userId: a.userId, achievements: ['bonusWon'] }]);
+      await store.addFeats([{ userId: a.userId, counts: { noOneLeft: achievementGoal('noOneLeft') } }]);
       const settled = await store.settle(
         matchId,
         victory({ bonusOutcome: 'won', present: [a.userId, b.userId, c.userId] }),
       );
       expect(settled?.get(a.userId)).toMatchObject({ doubled: true, total: 840 });
-      expect(settled?.get(a.userId)?.achievements).toEqual([...ACHIEVEMENT_IDS]);
+      const mine = settled?.get(a.userId)?.achievements;
+      for (const id of ACHIEVEMENT_IDS) expect(mine?.[id], id).toEqual({ count: achievementGoal(id), done: true });
     });
 
     it('R-54: el doble también vale para lo que se acredita por un reinicio', async () => {
@@ -495,9 +569,7 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
       const seats = await db().select().from(matchPlayers).where(eq(matchPlayers.matchId, matchId));
       expect(seats.find((s) => s.seat === 'snow')).toMatchObject({ userId: null });
       expect(await store.recordRounds(matchId, all, [2])).toBe(true);
-      expect(Object.fromEntries(await store.grant(matchId, [{ userId: c.userId, achievements: ['combo2'] }]))).toEqual(
-        {},
-      );
+      expect(Object.fromEntries(await store.addFeats([{ userId: c.userId, counts: { reviver: 1 } }]))).toEqual({});
       const settled = await store.settle(matchId, victory({ present: all }));
       expect([...(settled?.keys() ?? [])].sort()).toEqual([a.userId, b.userId].sort());
       expect(await coins(a.userId)).toBe(180);
@@ -506,11 +578,12 @@ describe.skipIf(!adminUrl)('Cuentas de las partidas en línea (DATABASE_URL_TEST
       ).toBe(true);
     });
 
-    it('D-56: al borrar la cuenta se borran sus logros y sus estadísticas, y su lugar en las partidas queda anónimo', async () => {
+    it('D-56: al borrar la cuenta se borran sus logros, con su avance, y sus estadísticas, y su lugar en las partidas queda anónimo', async () => {
       const { a, b, c, matchId } = await trio();
       const all = [a.userId, b.userId, c.userId];
       await store.recordRounds(matchId, all, [1]);
-      await store.grant(matchId, [{ userId: a.userId, achievements: ['combo2'] }]);
+      await store.addFeats([{ userId: a.userId, counts: { stunner: 3, combo3: 1 } }]);
+      expect(await saved(a.userId)).not.toEqual({});
       await store.settle(matchId, victory({ present: all }));
       await erase(a.cookie);
       expect(await db().select().from(users).where(eq(users.id, a.userId))).toEqual([]);

@@ -1,24 +1,33 @@
 import {
-  ACHIEVEMENT_FOLDS,
+  ACHIEVEMENT_FOLD_IDS,
+  type AchievementFold,
   BALANCE,
   BOX_SIZES,
   bankFor,
   boxPrice,
   collectionSummary,
   ELEMENTS,
-  type ElementKind,
 } from '@ventisca/core';
-import type { Progress } from '@ventisca/protocol';
+import type { Achievements, Progress } from '@ventisca/protocol';
 import { useId } from 'react';
 import { art } from '../art';
-import { ACHIEVEMENT_TEXT, CAMINO_TITLE, ES, NOTEBOOK_TEXT as N, NINJA_TEXT, PROGRESS_TEXT as P } from '../i18n/es';
+import {
+  ACHIEVEMENT_TEXT,
+  CAMINO_TITLE,
+  ES,
+  FOLD_TEXT,
+  NOTEBOOK_TEXT as N,
+  NINJA_TEXT,
+  PROGRESS_TEXT as P,
+} from '../i18n/es';
 import { openProgress } from '../state/account';
+import { type AchievementRow, completeFolds, type FoldView, foldView } from '../state/achievements';
 import {
   closeNotebook,
-  PAGE_COUNT,
   PAGE_SIZE,
   PAGES_PER_ELEMENT,
   pageElement,
+  pageWithin,
   setNotebookTab,
   showCardsOf,
   turnPage,
@@ -30,60 +39,139 @@ import { ElementGlyph, Icon, Notice } from './common';
 import { RevealModal } from './Progress';
 
 /*
- * La Libreta ninja (D-100): un pergamino con pestañas a la izquierda. "Mi progreso" trae las estadísticas
- * privadas, las cartas y los logros de cada elemento y el amuleto de papel; "Mis cartas", la colección en
- * páginas de 2 × 5, con la tienda de cajas. Reemplaza a "Tu progreso" y a "Colección y tienda": su
- * contenido es el mismo, y todo lo que muestra lo decidió el servidor.
+ * La Libreta ninja (D-100 y D-105): un pergamino con pestañas a la izquierda. "Mi progreso" trae el amuleto
+ * de papel, las estadísticas privadas y los cuatro pliegues con el avance de sus logros; "Mis cartas", la
+ * colección de un elemento a la vez, en páginas de 2 × 5, con la tienda de cajas. Todo lo que muestra lo
+ * decidió el servidor.
  */
 
-/* ---------- El amuleto de papel (D-100) ---------- */
+/* ---------- El amuleto de papel (D-104) ---------- */
 
-/** Los logros que ya tiene de cada pliegue. */
-export function foldProgress(have: readonly string[]): Record<ElementKind, number> {
-  const count = (el: ElementKind) => ACHIEVEMENT_FOLDS[el].filter((id) => have.includes(id)).length;
-  return { fire: count('fire'), water: count('water'), snow: count('snow') };
-}
-
-const FOLD_SHAPE: Record<ElementKind, string> = {
+const FOLD_SHAPE: Record<AchievementFold, string> = {
   fire: '80,70 46,96 52,136 80,112',
   water: '80,70 114,96 108,136 80,112',
   snow: '52,136 80,112 108,136 80,158',
+  // El de equipo va en el centro, sobre los otros tres.
+  team: '80,92 95,112 80,128 65,112',
 };
 
-const FOLD_FILL: Record<ElementKind, string> = { fire: 'var(--fire)', water: 'var(--water)', snow: 'var(--snow)' };
+const FOLD_FILL: Record<AchievementFold, string> = {
+  fire: 'var(--fire)',
+  water: 'var(--water)',
+  snow: 'var(--snow)',
+  team: 'var(--ink)',
+};
 
 /**
- * Tres pliegues de color: cada uno se colorea al completar sus tres logros, y mientras tanto queda en
- * blanco, con el borde punteado. Completo, su cordón y su nudo se vuelven dorados: es el doble de monedas.
+ * Cuatro pliegues: los de Fuego, Agua y Nieve se colorean con su elemento al completarse, y el del centro,
+ * el de equipo, se pinta de tinta. Mientras le falta, cada uno queda en blanco, con el borde punteado. Con
+ * los cuatro, su cordón y su nudo se vuelven dorados: es el doble de monedas.
  */
-export function Amulet({ have }: { have: readonly string[] }) {
-  const folds = foldProgress(have);
-  const done = ELEMENTS.filter((el) => folds[el] === ACHIEVEMENT_FOLDS[el].length);
-  const complete = done.length === ELEMENTS.length;
+export function Amulet({ achievements }: { achievements: Achievements }) {
+  const done = completeFolds(achievements);
+  const complete = done.length === ACHIEVEMENT_FOLD_IDS.length;
   const cord = complete ? 'var(--gold)' : 'var(--ink-3)';
   return (
-    <figure className={`amulet ${complete ? 'complete' : ''}`} data-folds={done.length}>
-      <svg viewBox="30 30 100 136" role="img" aria-label={N.amulet(done.length, ELEMENTS.length)}>
-        <path d="M80 70 C70 58 70 46 80 40 C90 46 90 58 80 70" fill="none" stroke={cord} strokeWidth="4" />
-        <circle cx="80" cy="40" r="6" fill={cord} stroke="var(--ink)" strokeWidth="2.5" />
-        {ELEMENTS.map((el) => {
-          const full = done.includes(el);
-          return (
-            <polygon
-              key={el}
-              points={FOLD_SHAPE[el]}
-              fill={full ? FOLD_FILL[el] : '#fffaf0'}
-              stroke="var(--ink)"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-              strokeDasharray={full ? undefined : '5 4'}
-            />
-          );
-        })}
-        <polygon points="80,96 92,112 80,124 68,112" fill="var(--ink)" />
-      </svg>
-      <figcaption>{complete ? N.doubleActive : N.doubleHint}</figcaption>
-    </figure>
+    <svg
+      className={`amulet ${complete ? 'complete' : ''}`}
+      viewBox="30 30 100 136"
+      role="img"
+      aria-label={`${N.amuletTitle}. ${N.amulet(done.length, ACHIEVEMENT_FOLD_IDS.length)}`}
+      data-folds={done.length}
+    >
+      <path d="M80 70 C70 58 70 46 80 40 C90 46 90 58 80 70" fill="none" stroke={cord} strokeWidth="4" />
+      <circle cx="80" cy="40" r="6" fill={cord} stroke="var(--ink)" strokeWidth="2.5" />
+      {ACHIEVEMENT_FOLD_IDS.map((fold) => {
+        const full = done.includes(fold);
+        return (
+          <polygon
+            key={fold}
+            data-fold={fold}
+            data-full={full}
+            points={FOLD_SHAPE[fold]}
+            fill={full ? FOLD_FILL[fold] : '#fffaf0'}
+            stroke="var(--ink)"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeDasharray={full ? undefined : fold === 'team' ? '4 3' : '5 4'}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ---------- El avance de un logro ---------- */
+
+/**
+ * Un logro con su contador y su barra. `detail`: con la explicación de qué cuenta, siempre a la vista. En
+ * los resultados, lo que sumó la partida va en dorado, sobre la barra y al final de ella.
+ */
+export function AchievementLine({
+  row,
+  detail = false,
+  results = false,
+}: {
+  row: AchievementRow;
+  detail?: boolean;
+  results?: boolean;
+}) {
+  const t = ACHIEVEMENT_TEXT[row.id];
+  return (
+    <li
+      className={`ach-line ${row.done ? 'done' : ''} ${row.fresh ? 'fresh' : ''}`}
+      data-achievement={row.id}
+      data-count={row.count}
+      data-done={row.done}
+    >
+      <div className="ach-head">
+        <b>
+          {row.done ? <Icon name="check" /> : null}
+          {t.name}
+          {row.done ? <span className="sr-only">: {N.earned}</span> : null}
+        </b>
+        <span className="ach-count">
+          {results ? (
+            row.gained > 0 ? (
+              <span className="ach-gain" data-gained={row.gained}>
+                {N.gain(row.gained)}
+              </span>
+            ) : (
+              <span className="ach-none">{N.noGain}</span>
+            )
+          ) : null}
+          {results ? ' · ' : null}
+          {N.count(row.count, row.goal)}
+        </span>
+      </div>
+      {detail ? <p className="ach-what">{t.counts}</p> : null}
+      <div
+        className="ach-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={row.goal}
+        aria-valuenow={row.count}
+        aria-label={N.countLong(t.name, row.count, row.goal)}
+      >
+        <i style={{ width: `${row.fillBefore}%` }} />
+        {row.gained > 0 ? <i className="new" style={{ width: `${row.fill - row.fillBefore}%` }} /> : null}
+      </div>
+    </li>
+  );
+}
+
+/** El título de un pliegue: su glifo, su nombre y cuántos de sus logros están completos. */
+function FoldTitle({ view }: { view: FoldView }) {
+  const t = FOLD_TEXT[view.fold];
+  return (
+    <h3 className="display">
+      {view.fold === 'team' ? <Icon name="team" /> : <ElementGlyph el={view.fold} />}
+      {t.name}
+      <span className="fold-count">
+        <span aria-hidden="true">{N.fold(view.done, view.rows.length)}</span>
+        <span className="sr-only">{N.foldLong(t.name, view.done, view.rows.length)}</span>
+      </span>
+    </h3>
   );
 }
 
@@ -91,31 +179,36 @@ export function Amulet({ have }: { have: readonly string[] }) {
 
 function ProgressTab({ data }: { data: Progress }) {
   const stats = data.stats.classic;
-  const folds = foldProgress(data.achievements);
   const camino = data.camino;
+  const done = completeFolds(data.achievements);
+  const complete = done.length === ACHIEVEMENT_FOLD_IDS.length;
   return (
     <div className="note-progress">
-      <header className="note-top">
+      <header className="note-strip">
         {camino ? (
           <div className={`note-camino el-${camino}`}>
             <img src={art.bust(camino)} alt="" />
-            <div>
-              <h2 className="display">{CAMINO_TITLE[camino]}</h2>
-              <p>
-                {NINJA_TEXT[camino].name} · {NINJA_TEXT[camino].role}
-              </p>
-            </div>
+            <p>
+              <b>{CAMINO_TITLE[camino]}</b> · {NINJA_TEXT[camino].name}
+            </p>
           </div>
         ) : null}
         <div className="note-wallet">
-          <Coins amount={data.coins} chip />
           <span>
             {P.boxes}: <b>{data.boxesOpened}</b> {P.boxesOpened(data.boxesOpened)}
           </span>
+          <Coins amount={data.coins} chip />
         </div>
-        <Amulet have={data.achievements} />
       </header>
-      <div className="note-cards">
+      <div className="note-top">
+        <Amulet achievements={data.achievements} />
+        <div className="note-amulet">
+          <h2 className="display" data-amulet={done.length}>
+            {N.amulet(done.length, ACHIEVEMENT_FOLD_IDS.length)}
+          </h2>
+          {complete ? <p className="amulet-double">{N.doubleActive}</p> : null}
+          <p>{N.amuletHint}</p>
+        </div>
         <section className="note-card note-stats" aria-label={N.statsTitle}>
           <h3 className="display">{N.statsTitle}</h3>
           <p className="note-quiet">{N.statsPrivate}</p>
@@ -134,40 +227,39 @@ function ProgressTab({ data }: { data: Progress }) {
             </div>
           </dl>
         </section>
-        {ELEMENTS.map((el) => {
-          const t = NINJA_TEXT[el];
-          const summary = collectionSummary(data.collection, el);
-          const ids = ACHIEVEMENT_FOLDS[el];
-          const full = folds[el] === ids.length;
+      </div>
+      <div className="note-cards">
+        {ACHIEVEMENT_FOLD_IDS.map((fold) => {
+          const view = foldView(fold, data.achievements);
+          const t = FOLD_TEXT[fold];
           return (
-            <section key={el} className={`note-card note-el el-${el} ${full ? 'full' : ''}`} aria-label={t.element}>
-              <h3 className="display">
-                <ElementGlyph el={el} />
-                {t.element}
-              </h3>
-              <img src={art.ninja(el)} alt="" />
-              <p>{N.cardsOf(summary.distinct, bankFor(el).length)}</p>
-              <ul className="note-fold">
-                {ids.map((id) => {
-                  const got = data.achievements.includes(id);
-                  return (
-                    <li key={id} className={got ? 'got' : ''} title={ACHIEVEMENT_TEXT[id].how} data-achievement={id}>
-                      <i aria-hidden="true" />
-                      <span>{ACHIEVEMENT_TEXT[id].name}</span>
-                      <span className="sr-only">: {got ? N.earned : N.pending}</span>
-                    </li>
-                  );
-                })}
+            <section
+              key={fold}
+              className={`note-card note-fold fold-${fold} ${fold === 'team' ? '' : `el-${fold}`} ${view.complete ? 'full' : ''}`}
+              aria-label={t.name}
+              data-fold={fold}
+              data-done={view.done}
+            >
+              <FoldTitle view={view} />
+              <p className="note-quiet">{t.who}</p>
+              <ul className="ach-list">
+                {view.rows.map((row) => (
+                  <AchievementLine key={row.id} row={row} detail />
+                ))}
               </ul>
-              <p className="note-quiet">{N.fold(folds[el], ids.length)}</p>
-              <button
-                type="button"
-                className="link"
-                aria-label={N.toCardsOf(t.element)}
-                onClick={() => showCardsOf(el)}
-              >
-                {N.toCards} ▸
-              </button>
+              {fold === 'team' ? null : (
+                <p className="fold-foot">
+                  <span>{N.cardsOf(collectionSummary(data.collection, fold).distinct, bankFor(fold).length)}</span>
+                  <button
+                    type="button"
+                    className="link"
+                    aria-label={N.toCardsOf(t.name)}
+                    onClick={() => showCardsOf(fold)}
+                  >
+                    {N.toCards} ▸
+                  </button>
+                </p>
+              )}
             </section>
           );
         })}
@@ -180,20 +272,42 @@ function ProgressTab({ data }: { data: Progress }) {
 
 function CardsTab({ data }: { data: Progress }) {
   const page = useApp((s) => s.notebook.page);
+  const tabsId = useId();
   const el = pageElement(page);
   const t = NINJA_TEXT[el];
-  const start = (page % PAGES_PER_ELEMENT) * PAGE_SIZE;
+  const within = pageWithin(page);
+  const start = within * PAGE_SIZE;
   const cards = bankFor(el).slice(start, start + PAGE_SIZE);
   return (
     <div className={`note-collection el-${el}`}>
       <header className="note-bar">
-        <h2 aria-live="polite">
-          <ElementGlyph el={el} />
-          {N.page(t.element, page + 1, PAGE_COUNT)}
-        </h2>
+        <div className="tabs" role="tablist" aria-label={N.elements}>
+          {ELEMENTS.map((tab) => {
+            const owned = collectionSummary(data.collection, tab).distinct;
+            const of = bankFor(tab).length;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                id={`${tabsId}-${tab}`}
+                aria-selected={tab === el}
+                aria-controls={`${tabsId}-panel`}
+                aria-label={N.ownedLong(NINJA_TEXT[tab].element, owned, of)}
+                className={`tab el-${tab}`}
+                data-element={tab}
+                onClick={() => showCardsOf(tab)}
+              >
+                <ElementGlyph el={tab} />
+                {NINJA_TEXT[tab].element}
+                <span className="count">{N.ownedOf(owned, of)}</span>
+              </button>
+            );
+          })}
+        </div>
         <Coins amount={data.coins} chip />
       </header>
-      <div className="note-pages">
+      <div className="note-pages" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${el}`}>
         <button
           type="button"
           className="icon-btn"
@@ -220,8 +334,11 @@ function CardsTab({ data }: { data: Progress }) {
         </button>
       </div>
       <div className="note-actions">
+        <p className="note-page" aria-live="polite">
+          {N.page(t.element, within + 1, PAGES_PER_ELEMENT)}
+        </p>
         <button type="button" className="btn btn-primary" onClick={() => setNotebookTab('boxes')}>
-          {N.boxes}
+          {N.boxesOf(t.element)}
         </button>
       </div>
     </div>

@@ -1,5 +1,7 @@
+import { ACHIEVEMENT_IDS } from '@ventisca/core';
 import { describe, expect, it } from 'vitest';
 import {
+  achievementsSchema,
   apiError,
   apiErrorSchema,
   boxResultSchema,
@@ -28,13 +30,15 @@ describe('Protocolo: API HTTP', () => {
 
 describe('Protocolo: progreso en la cuenta', () => {
   const none = { matches: 0, rounds: 0, wins: 0 };
-  const empty = { achievements: [], stats: { classic: none, storm: none } };
+  /** Sin avance en ningún logro: así empieza una cuenta. */
+  const nothing = Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }]));
+  const empty = { achievements: nothing, stats: { classic: none, storm: none } };
   const progress = {
     camino: 'snow',
     coins: 240,
     boxesOpened: 1,
     collection: { 'snow-18': 1, 'fire-01': 2 },
-    achievements: ['combo2', 'reviver'],
+    achievements: { ...nothing, reviver: { count: 9, done: false }, combo3: { count: 3, done: true } },
     stats: { classic: { matches: 24, rounds: 61, wins: 19 }, storm: none },
   };
 
@@ -52,8 +56,21 @@ describe('Protocolo: progreso en la cuenta', () => {
     expect(progressSchema.safeParse({ ...progress, camino: 'tierra' }).success).toBe(false);
   });
 
+  it('R-55: el avance trae los 12 logros del juego, cada uno con lo que lleva contado y si está completo', () => {
+    expect(achievementsSchema.safeParse(nothing).success).toBe(true);
+    expect(Object.keys(achievementsSchema.parse(progress.achievements)).sort()).toEqual([...ACHIEVEMENT_IDS].sort());
+    const { reviver: _, ...missing } = nothing;
+    expect(achievementsSchema.safeParse(missing).success).toBe(false);
+    expect(achievementsSchema.safeParse({ ...nothing, logro_inventado: { count: 1, done: false } }).success).toBe(
+      false,
+    );
+    for (const bad of [{ count: -1, done: false }, { count: 1.5, done: false }, { count: 1 }, { done: true }, 3]) {
+      expect(achievementsSchema.safeParse({ ...nothing, reviver: bad }).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
   it('R-55 y R-42: los logros son los del juego, y las estadísticas, contadores sin negativos', () => {
-    expect(progressSchema.safeParse({ ...progress, achievements: ['logro_inventado'] }).success).toBe(false);
+    expect(progressSchema.safeParse({ ...progress, achievements: ['reviver'] }).success).toBe(false);
     expect(progressSchema.safeParse({ ...progress, achievements: undefined }).success).toBe(false);
     const stats = { classic: { matches: -1, rounds: 0, wins: 0 }, storm: none };
     expect(progressSchema.safeParse({ ...progress, stats }).success).toBe(false);

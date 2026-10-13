@@ -1,4 +1,4 @@
-import { ACHIEVEMENT_IDS } from '@ventisca/core';
+import { ACHIEVEMENT_IDS, achievementGoal } from '@ventisca/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hub } from '../src/play/hub';
 import { again, type FakeLink } from './support/fake-link';
@@ -257,70 +257,202 @@ describe('Logros por persona (R-55)', () => {
       golems: [{ kind: 'colossus', at: [5, 2] }],
     });
   const card = (id: string) => ({ action: { type: 'card' as const, cardId: id, at: { x: 4, y: 2 } } });
+  /** Brasa y Marea juegan su carta sobre el coloso: un combo de dos. */
+  async function playCombo(w: World, links: FakeLink[]): Promise<void> {
+    const [ana, beto, caro] = links as [FakeLink, FakeLink, FakeLink | undefined];
+    await watched(w, links, 0);
+    await w.say(ana, { type: 'plan.confirm', turn: 1, plan: card('fire-m1') });
+    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: card('water-m1') });
+    if (caro) await w.say(caro, { type: 'plan.confirm', turn: 1, plan: {} });
+  }
+  /** La última ronda, a un golpe de llegar al bonus con los tres a vida completa. */
+  const toBonus = () =>
+    board({ round: 3, ninjas: { fire: { at: [3, 2] } }, golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }] });
 
-  it('R-55: el logro se guarda en el momento en que ocurre, para quien lo ganó', async () => {
+  it('R-55: el avance se suma en el turno en que pasa, y el de cada pliegue, solo a quien lleva a ese ninja', async () => {
+    const w = world({ prepare: combo() });
+    const { ana, beto, caro } = await trio(w);
+    await playCombo(w, [ana, beto, caro]);
+    expect(ana.last('turn.result')?.state.status).toBe('playing');
+    // Ana, con Brasa, aturdió y quemó al coloso. Beto, con Marea, les dio Potencia a sus dos compañeros.
+    expect(w.store.countsOf(ana.player.userId)).toEqual({ stunner: 1, blaze: 1 });
+    expect(w.store.countsOf(beto.player.userId)).toEqual({ highTide: 2 });
+    // Caro, con Escarcha, no hizo nada de lo suyo: lo de Brasa y lo de Marea no es para ella.
+    expect(w.store.countsOf(caro.player.userId)).toEqual({});
+  });
+
+  it('R-55: el avance se mantiene aunque después abandone', async () => {
+    const w = world({ prepare: combo() });
+    const { ana, beto, caro } = await trio(w);
+    await playCombo(w, [ana, beto, caro]);
+    await w.say(ana, { type: 'match.leave' });
+    expect(w.store.countsOf(ana.player.userId)).toEqual({ stunner: 1, blaze: 1 });
+  });
+
+  it('R-55: un turno que solo deja rondas superadas tampoco pide sumar hazañas', async () => {
+    const w = world({ prepare: oneBlow(2) });
+    const { ana, beto, caro } = await trio(w);
+    await clearRound(w, [ana, beto, caro], 1);
+    expect(seat(w, ana)?.rounds).toEqual([2]);
+    expect(w.store.featsAsked).toBe(0);
+  });
+
+  it('R-55: lo que logra el equipo se le suma a todas las personas conectadas cuando pasa', async () => {
+    const w = world({ prepare: toBonus() });
+    const { ana, beto, caro } = await trio(w);
+    await clearRound(w, [ana, beto, caro], 1);
+    expect(ana.last('turn.result')?.state.round).toBe('bonus');
+    for (const link of [ana, beto, caro]) expect(w.store.countsOf(link.player.userId)).toEqual({ untouched: 1 });
+  });
+
+  it('R-55: a quien está desconectado cuando pasa no se le suma, ni lo del equipo ni lo de su ninja', async () => {
+    const team = world({ prepare: toBonus() });
+    const first = await trio(team);
+    await watched(team, [first.ana, first.beto, first.caro], 0);
+    await team.hub.disconnect(first.caro);
+    await team.say(first.ana, { type: 'plan.confirm', turn: 1, plan: blow });
+    await team.say(first.beto, { type: 'plan.confirm', turn: 1, plan: {} });
+    expect(first.ana.last('turn.result')?.state.round).toBe('bonus');
+    expect(team.store.countsOf(first.ana.player.userId)).toEqual({ untouched: 1 });
+    expect(team.store.countsOf(first.caro.player.userId)).toEqual({});
+
+    // Marea había caído y gana de pie, pero Beto no estaba: "De pie otra vez" no se le suma.
+    const own = world({
+      prepare: board({
+        round: 3,
+        ninjas: { fire: { at: [3, 2] }, water: { everKo: true } },
+        golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+      }),
+    });
+    const second = await trio(own);
+    await watched(own, [second.ana, second.beto, second.caro], 0);
+    await own.hub.disconnect(second.beto);
+    await own.say(second.ana, { type: 'plan.confirm', turn: 1, plan: blow });
+    await own.say(second.caro, { type: 'plan.confirm', turn: 1, plan: {} });
+    expect(second.ana.last('match.end')).toMatchObject({ result: 'victory' });
+    expect(own.store.countsOf(second.beto.player.userId)).toEqual({});
+  });
+
+  it('R-55: el bot no suma: solo avanzan las cuentas de las personas', async () => {
+    const w = world({ prepare: toBonus() });
+    const { ana, beto } = await duo(w);
+    await clearRound(w, [ana, beto], 1);
+    expect(ana.last('turn.result')?.state.round).toBe('bonus');
+    expect([...w.store.progress.keys()].sort()).toEqual([ana.player.userId, beto.player.userId].sort());
+    expect(w.store.countsOf(beto.player.userId)).toEqual({ untouched: 1 });
+  });
+
+  it('R-55: un turno en que nadie hace nada de lo que cuentan no le pide nada a la base', async () => {
     const w = world({ prepare: combo() });
     const { ana, beto, caro } = await trio(w);
     await watched(w, [ana, beto, caro], 0);
-    await w.say(ana, { type: 'plan.confirm', turn: 1, plan: card('fire-m1') });
-    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: card('water-m1') });
+    for (const link of [ana, beto, caro]) await w.say(link, { type: 'plan.confirm', turn: 1, plan: {} });
+    expect(ana.last('turn.result')?.turn).toBe(1);
+    expect(w.store.featsAsked).toBe(0);
+    expect([...w.store.progress.keys()]).toEqual([]);
+    // En el turno siguiente sí hay hazañas, y se piden una sola vez.
+    await watched(w, [ana, beto, caro], 1);
+    await w.say(ana, { type: 'plan.confirm', turn: 2, plan: card('fire-m1') });
+    await w.say(beto, { type: 'plan.confirm', turn: 2, plan: card('water-m1') });
+    await w.say(caro, { type: 'plan.confirm', turn: 2, plan: {} });
+    expect(w.store.featsAsked).toBe(1);
+    expect(w.store.countsOf(ana.player.userId)).toEqual({ stunner: 1, blaze: 1 });
+  });
+
+  it('R-55: lo que un logro suma en varios turnos de la partida se junta en el resultado', async () => {
+    // Dos gólems a un golpe de Marea, que derriba uno por turno: el coloso se queda a su lado, pegándole.
+    // Sin bonus: Escarcha ya había caído.
+    const w = world({
+      prepare: board({
+        round: 3,
+        ninjas: { water: { at: [4, 2] }, snow: { everKo: true } },
+        golems: [
+          { kind: 'sniper', at: [5, 2], hp: 1 },
+          { kind: 'colossus', at: [4, 3], hp: 1 },
+        ],
+      }),
+    });
+    const { ana, beto, caro } = await trio(w);
+    const hit = (targetId: string) => ({ action: { type: 'attack' as const, targetId } });
+    await watched(w, [ana, beto, caro], 0);
+    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: hit('e1') });
+    await w.say(ana, { type: 'plan.confirm', turn: 1, plan: {} });
+    await w.say(caro, { type: 'plan.confirm', turn: 1, plan: {} });
+    expect(beto.last('turn.result')?.state.status).toBe('playing');
+    expect(w.store.countsOf(beto.player.userId)).toEqual({ breakwater: 1 });
+    await watched(w, [ana, beto, caro], 1);
+    await w.say(beto, { type: 'plan.confirm', turn: 2, plan: hit('e2') });
+    await w.say(ana, { type: 'plan.confirm', turn: 2, plan: {} });
+    await w.say(caro, { type: 'plan.confirm', turn: 2, plan: {} });
+    const end = beto.last('match.end');
+    expect(end).toMatchObject({ result: 'victory', gained: { breakwater: 2 }, completed: [] });
+    expect(end?.achievements.breakwater).toEqual({ count: 2, done: false });
+    expect(ana.last('match.end')).toMatchObject({ gained: {}, completed: [] });
+  });
+
+  it('R-55: el resultado dice cuánto sumó cada logro en esa partida, entre todos sus turnos, y cómo queda', async () => {
+    // Un gólem que aguanta la carta de Brasa y cae con su ataque del turno siguiente.
+    const w = world({
+      prepare: board({
+        round: 3,
+        ninjas: { fire: { at: [3, 2], hand: [10] }, snow: { everKo: true } },
+        golems: [{ kind: 'sniper', at: [5, 2], hp: 11 }],
+      }),
+    });
+    const { ana, beto, caro } = await trio(w);
+    w.store.giveProgress(ana.player.userId, { stunner: 3 });
+    await watched(w, [ana, beto, caro], 0);
+    await w.say(ana, {
+      type: 'plan.confirm',
+      turn: 1,
+      plan: { action: { type: 'card', cardId: 'fire-m1', at: { x: 5, y: 2 } } },
+    });
+    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: {} });
     await w.say(caro, { type: 'plan.confirm', turn: 1, plan: {} });
     expect(ana.last('turn.result')?.state.status).toBe('playing');
-    expect(w.store.achievementsOf(ana.player.userId)).toEqual(['combo2']);
-    expect(w.store.achievementsOf(beto.player.userId)).toEqual(['combo2']);
-    // Caro no jugó carta: el combo no es suyo.
-    expect(w.store.achievementsOf(caro.player.userId)).toEqual([]);
+    await clearRound(w, [ana, beto, caro], 2);
+    const end = ana.last('match.end');
+    expect(end).toMatchObject({ result: 'victory', gained: { stunner: 1 }, completed: [] });
+    expect(end?.achievements.stunner).toEqual({ count: 4, done: false });
+    expect(end?.achievements.blaze).toEqual({ count: 0, done: false });
+    // A cada quien, lo suyo: Beto y Caro no sumaron nada.
+    expect(beto.last('match.end')).toMatchObject({ gained: {}, completed: [] });
+    expect(caro.last('match.end')?.achievements.stunner).toEqual({ count: 0, done: false });
   });
 
-  it('R-55: los logros se mantienen aunque después abandone', async () => {
-    const w = world({ prepare: combo() });
+  /** La última ronda, con Marea de pie después de haber caído: al ganar, suma "De pie otra vez". */
+  const upAgain = () =>
+    board({
+      round: 3,
+      ninjas: { fire: { at: [3, 2] }, water: { everKo: true } },
+      golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+    });
+
+  it('R-55: el logro que llega a su meta en la partida sale como recién completado', async () => {
+    const w = world({ prepare: upAgain() });
     const { ana, beto, caro } = await trio(w);
-    await watched(w, [ana, beto, caro], 0);
-    await w.say(ana, { type: 'plan.confirm', turn: 1, plan: card('fire-m1') });
-    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: card('water-m1') });
-    await w.say(caro, { type: 'plan.confirm', turn: 1, plan: {} });
-    await w.say(ana, { type: 'match.leave' });
-    expect(w.store.achievementsOf(ana.player.userId)).toEqual(['combo2']);
+    const goal = achievementGoal('upAgain');
+    w.store.giveProgress(beto.player.userId, { upAgain: goal - 1 });
+    await clearRound(w, [ana, beto, caro], 1);
+    const end = beto.last('match.end');
+    expect(end).toMatchObject({ gained: { upAgain: 1 }, completed: ['upAgain'] });
+    expect(end?.achievements.upAgain).toEqual({ count: goal, done: true });
+    expect(ana.last('match.end')).toMatchObject({ gained: {}, completed: [] });
   });
 
-  it('R-55: quien está desconectado cuando pasa no gana el logro del equipo', async () => {
-    const w = world({ prepare: oneBlow(3) });
+  it('R-55: un logro que ya estaba completo no vuelve a sumar ni a salir como nuevo', async () => {
+    const w = world({ prepare: upAgain() });
     const { ana, beto, caro } = await trio(w);
-    await watched(w, [ana, beto, caro], 0);
-    await w.hub.disconnect(caro);
-    await w.say(ana, { type: 'plan.confirm', turn: 1, plan: blow });
-    await w.say(beto, { type: 'plan.confirm', turn: 1, plan: {} });
-    expect(ana.last('match.end')).toMatchObject({ result: 'victory' });
-    // Escarcha había caído y ganó de pie, pero Caro no estaba: "De pie otra vez" no es para ella.
-    expect(w.store.achievementsOf(caro.player.userId)).toEqual([]);
-  });
-
-  it('R-55: el resultado dice qué logros ganó en esa partida y todos los que tiene', async () => {
-    const w = world({ prepare: oneBlow(3) });
-    const { ana, beto, caro } = await trio(w);
-    w.store.giveAchievements(caro.player.userId, ['combo2', 'reviver']);
     w.store.giveAchievements(beto.player.userId, ['upAgain']);
     await clearRound(w, [ana, beto, caro], 1);
-    // Escarcha, que lleva Caro, había caído y terminó de pie una partida ganada.
-    expect(caro.last('match.end')).toMatchObject({
-      earned: ['upAgain'],
-      achievements: ['combo2', 'reviver', 'upAgain'],
-    });
-    expect(ana.last('match.end')).toMatchObject({ earned: [], achievements: [] });
-    expect(beto.last('match.end')).toMatchObject({ earned: [], achievements: ['upAgain'] });
-  });
-
-  it('R-55: un logro que ya tenía no vuelve a salir como nuevo', async () => {
-    const w = world({ prepare: oneBlow(3) });
-    const { ana, beto, caro } = await trio(w);
-    w.store.giveAchievements(caro.player.userId, ['upAgain']);
-    await clearRound(w, [ana, beto, caro], 1);
-    expect(caro.last('match.end')).toMatchObject({ earned: [], achievements: ['upAgain'] });
+    const end = beto.last('match.end');
+    expect(end).toMatchObject({ gained: {}, completed: [] });
+    expect(end?.achievements.upAgain).toEqual({ count: achievementGoal('upAgain'), done: true });
   });
 });
 
 describe('El doble de monedas (R-29, D-103)', () => {
-  it('R-29: con los 9 logros, las monedas de la partida valen el doble', async () => {
+  it('R-29: con los cuatro pliegues completos, las monedas de la partida valen el doble', async () => {
     const w = world({ prepare: oneBlow(3) });
     const { ana, beto, caro } = await trio(w);
     w.store.giveAchievements(ana.player.userId, ACHIEVEMENT_IDS);
@@ -333,28 +465,42 @@ describe('El doble de monedas (R-29, D-103)', () => {
     expect(beto.last('match.end')).toMatchObject({ coins: { doubled: false, total: 120 }, balance: 120 });
   });
 
-  it('R-29: con 8 logros no hay doble', async () => {
-    const w = world({ prepare: oneBlow(3) });
-    const { ana, beto, caro } = await trio(w);
-    w.store.giveAchievements(ana.player.userId, ACHIEVEMENT_IDS.slice(1));
-    await clearRound(w, [ana, beto, caro], 1);
-    expect(ana.last('match.end')).toMatchObject({ coins: { doubled: false, total: 120 } });
+  it('R-29: con un pliegue sin completar no hay doble, aunque sea el de equipo', async () => {
+    for (const missing of ['blaze', 'combo3'] as const) {
+      const w = world({ prepare: oneBlow(3) });
+      const { ana, beto, caro } = await trio(w);
+      w.store.giveAchievements(
+        ana.player.userId,
+        ACHIEVEMENT_IDS.filter((id) => id !== missing),
+      );
+      await clearRound(w, [ana, beto, caro], 1);
+      expect(ana.last('match.end'), missing).toMatchObject({ coins: { doubled: false, total: 120 } });
+    }
   });
 
   it('D-103: quien completa el amuleto en esa misma partida ya cobra el doble', async () => {
-    const w = world({ prepare: oneBlow(3) });
+    // Los tres cayeron y están de pie: al ganar, el equipo suma "Nadie se queda atrás".
+    const w = world({
+      prepare: board({
+        round: 3,
+        ninjas: { fire: { at: [3, 2], everKo: true }, water: { everKo: true }, snow: { everKo: true } },
+        golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+      }),
+    });
     const { ana, beto, caro } = await trio(w);
-    // A Caro solo le falta "De pie otra vez", que gana en el turno que termina la partida.
+    // A Caro solo le falta una vez de ese logro, que suma en el turno que termina la partida.
     w.store.giveAchievements(
       caro.player.userId,
-      ACHIEVEMENT_IDS.filter((id) => id !== 'upAgain'),
+      ACHIEVEMENT_IDS.filter((id) => id !== 'noOneLeft'),
     );
+    w.store.giveProgress(caro.player.userId, { noOneLeft: achievementGoal('noOneLeft') - 1 });
     await clearRound(w, [ana, beto, caro], 1);
     expect(caro.last('match.end')).toMatchObject({
-      earned: ['upAgain'],
+      gained: { noOneLeft: 1 },
+      completed: ['noOneLeft'],
       coins: { lines: [{ round: 3, coins: 240 }], doubled: true, total: 240 },
     });
-    expect(caro.last('match.end')?.achievements).toEqual([...ACHIEVEMENT_IDS]);
+    expect(w.store.completedOf(caro.player.userId)).toEqual([...ACHIEVEMENT_IDS]);
   });
 });
 

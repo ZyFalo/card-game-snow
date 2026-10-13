@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { bankFor, CAMINO_CARDS, openBox, rngFrom, STARTER_CARDS } from '@ventisca/core';
+import { ACHIEVEMENT_IDS, bankFor, CAMINO_CARDS, openBox, rngFrom, STARTER_CARDS } from '@ventisca/core';
 import { apiErrorSchema, boxResultSchema, type Progress, progressSchema, sessionSchema } from '@ventisca/protocol';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -105,9 +105,9 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
     return who;
   }
   const totalCards = (p: Progress) => Object.values(p.collection).reduce((a, b) => a + b, 0);
-  /** Quien todavía no jugó en línea no tiene logros ni estadísticas. */
+  /** Quien todavía no jugó en línea no tiene avance en ningún logro, ni estadísticas. */
   const NOTHING_YET = {
-    achievements: [],
+    achievements: Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }])),
     stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
   };
 
@@ -266,7 +266,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
       expect((await progress(cookie)).coins).toBe(120);
     });
 
-    it('R-29: con los 9 logros, la ronda paga el doble', async () => {
+    it('R-29: con el amuleto completo, la ronda paga el doble', async () => {
       const { cookie, userId } = await player();
       expect(await pay(userId, await newMatch(), 1, true)).toEqual({ credited: true, amount: 120 });
       expect((await progress(cookie)).coins).toBe(120);

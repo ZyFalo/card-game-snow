@@ -24,7 +24,11 @@ export interface OnlineTestState {
   phase: string;
   local: boolean;
   plans: Record<string, { moveTo?: { x: number; y: number } } | undefined>;
-  match: { turn: number; ninjas: { id: string; hp: number; pos: { x: number; y: number } }[] } | null;
+  match: {
+    turn: number;
+    round: number | 'bonus';
+    ninjas: { id: string; hp: number; pos: { x: number; y: number } }[];
+  } | null;
   online: {
     link: string;
     place: string | null;
@@ -105,12 +109,28 @@ export const LAST_BLOW: Board = {
   golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
 };
 
-/** La misma ronda, con una carta en la mano de Brasa y otra en la de Marea, y el gólem al alcance de las dos. */
-export const COMBO: Board = {
+/**
+ * La última ronda, con un gólem que aguanta la carta de Brasa y cae con la de Marea: jugadas en el mismo
+ * turno, Brasa lo aturde y lo quema, Marea lo derriba y les da Potencia a sus dos compañeros. Escarcha está
+ * herida, así que no hay bonus y la partida se gana en ese turno.
+ */
+export const COMBO_FEATS: Board = {
   round: 3,
   bonus: 'fullHealth',
   ninjas: { fire: { at: [3, 1], hand: [10] }, water: { at: [3, 3], hand: [9] }, snow: { hp: 20 } },
-  golems: [{ kind: 'sniper', at: [5, 2], hp: 1 }],
+  golems: [{ kind: 'sniper', at: [5, 2], hp: 12 }],
+};
+
+/**
+ * La última ronda con los tres a vida completa, y un gólem que aguanta dos cartas de Brasa. En el primer
+ * turno Brasa juega una sola: lo aturde, y la ronda sigue. En el segundo, su otra carta y la de Marea, en
+ * combo, lo derriban: el equipo llega a la ronda bonus, y la partida sigue.
+ */
+export const TO_BONUS: Board = {
+  round: 3,
+  bonus: 'fullHealth',
+  ninjas: { fire: { at: [3, 1], hand: [10, 10] }, water: { at: [3, 3], hand: [9] } },
+  golems: [{ kind: 'sniper', at: [5, 2], hp: 22 }],
 };
 
 /**
@@ -195,16 +215,25 @@ export async function passUntil(
 export const passUntilEnd = (players: Player[], maxMs?: number) =>
   passUntil(players, (states) => states.every((s) => s.online.end !== null || s.online.match === null), maxMs);
 
-/** El progreso de esa persona tal como lo guarda el servidor: sus monedas, sus estadísticas y sus logros. */
+/**
+ * El progreso de esa persona tal como lo guarda el servidor: sus monedas, sus estadísticas y sus logros.
+ * `counts` es lo que lleva contado en los logros en que avanzó, y `done`, los que ya completó.
+ */
 export function progressOf(page: Page) {
   return page.evaluate(async () => {
     const res = await fetch('/api/progress');
     const body = (await res.json()) as {
       coins: number;
-      achievements: string[];
+      achievements: Record<string, { count: number; done: boolean }>;
       stats: { classic: { matches: number; rounds: number; wins: number } };
     };
-    return { coins: body.coins, achievements: body.achievements, stats: body.stats.classic };
+    const all = Object.entries(body.achievements);
+    return {
+      coins: body.coins,
+      counts: Object.fromEntries(all.filter(([, a]) => a.count > 0).map(([id, a]) => [id, a.count])),
+      done: all.filter(([, a]) => a.done).map(([id]) => id),
+      stats: body.stats.classic,
+    };
   });
 }
 

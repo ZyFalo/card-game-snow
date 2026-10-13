@@ -1,5 +1,5 @@
-import { ACHIEVEMENT_IDS } from '@ventisca/core';
 import { z } from 'zod';
+import { achievementsSchema } from './achievements';
 
 /*
  * Protocolo entre el cliente y el servidor (D-53). Cada entrada de la API y cada mensaje del juego
@@ -180,14 +180,14 @@ export type StatsLine = z.infer<typeof statsLineSchema>;
  * El progreso de una cuenta (`GET /api/progress`). `camino` es null hasta que la persona elige su
  * carta de camino (R-30); hasta entonces no tiene monedas ni cartas. `collection` dice cuántas copias
  * tiene de cada carta del banco (R-25), por id de carta; las que no tiene no aparecen. `achievements`
- * son los logros que ya ganó (R-55), y `stats`, sus estadísticas por dificultad: solo las ve su dueño.
+ * es su avance en cada logro (R-55), y `stats`, sus estadísticas por dificultad: solo los ve su dueño.
  */
 export const progressSchema = z.object({
   camino: elementSchema.nullable(),
   coins: z.number().int().nonnegative(),
   boxesOpened: z.number().int().nonnegative(),
   collection: z.record(z.string(), z.number().int().positive()),
-  achievements: z.array(z.enum(ACHIEVEMENT_IDS)),
+  achievements: achievementsSchema,
   stats: z.object({ classic: statsLineSchema, storm: statsLineSchema }),
 });
 export type Progress = z.infer<typeof progressSchema>;
@@ -212,4 +212,5 @@ export type BuyBoxBody = z.infer<typeof buyBoxSchema>;
 export const boxResultSchema = z.object({ cards: z.array(z.string()), progress: progressSchema });
 export type BoxResult = z.infer<typeof boxResultSchema>;
 
+export * from './achievements';
 export * from './play';

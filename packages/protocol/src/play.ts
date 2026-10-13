@@ -1,5 +1,6 @@
 import { ACHIEVEMENT_IDS, type GameEvent, type MatchState } from '@ventisca/core';
 import { z } from 'zod';
+import { achievementsSchema } from './achievements';
 
 /*
  * El juego en línea (PRD de v2, "Protocolo de mensajes"). Toda la partida viaja por una sola conexión
@@ -10,8 +11,11 @@ import { z } from 'zod';
  * motor. Lo que manda el servidor también tiene su esquema, para que el cliente no anime algo mal formado.
  */
 
-/** Sube cuando un cambio deja de entenderse con los clientes ya abiertos: esos reciben `protocol_version`. */
-export const PROTOCOL_VERSION = 1;
+/**
+ * Sube cuando un cambio deja de entenderse con los clientes ya abiertos: esos reciben `protocol_version`.
+ * La 2 llegó con el avance de los logros (D-104): cambió lo que trae el final de la partida.
+ */
+export const PROTOCOL_VERSION = 2;
 
 /** La ruta de la conexión. Va bajo `/api`, en el mismo origen que el juego: la cookie de sesión viaja sola. */
 export const PLAY_PATH = '/api/play';
@@ -313,8 +317,8 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ ...fromServer, type: z.literal('player.status'), ninja: element, status: seatStatusSchema }),
   /**
    * La partida terminó. Cada persona recibe lo suyo: las rondas que cobró, sus monedas ya acreditadas (con
-   * `doubled` si su amuleto está completo), los logros que ganó en esta partida, todos los que tiene y su
-   * saldo. `room`: la sala a la que vuelve, si sigue abierta.
+   * `doubled` si su amuleto está completo), su avance en cada logro, lo que esta partida le sumó (`gained`),
+   * los logros que completó en ella (`completed`) y su saldo. `room`: la sala a la que vuelve, si sigue abierta.
    */
   z.object({
     ...fromServer,
@@ -325,8 +329,9 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       doubled: z.boolean(),
       total: z.number().int().nonnegative(),
     }),
-    earned: z.array(achievement),
-    achievements: z.array(achievement),
+    achievements: achievementsSchema,
+    gained: z.partialRecord(achievement, z.number().int().positive()),
+    completed: z.array(achievement),
     balance: z.number().int().nonnegative(),
     room: z.string().nullable(),
   }),

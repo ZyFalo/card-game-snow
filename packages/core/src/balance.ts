@@ -1,3 +1,4 @@
+import type { AchievementId } from './achievements';
 import raw from './balance.json';
 import type { Difficulty, ElementKind, EnemyKind } from './types';
 
@@ -62,6 +63,8 @@ export interface Balance {
   bank: { valuesPerElement: number[] };
   /** Inventario inicial (R-30) y recomendación para Tormenta (R-31). */
   starter: { value: number; stormRecommendedPerElement: number };
+  /** Logros (R-55): las veces que hay que repetir la hazaña de cada uno, por su id en `achievements.ts`. */
+  achievements: { goals: Record<AchievementId, number> };
 }
 
 export const BALANCE: Balance = raw as Balance;

@@ -52,7 +52,8 @@ export type NinjaId = 'fire' | 'water' | 'snow';
 
 /** Un tablero preparado: dónde va cada quien, con cuánta vida y, cada ninja, con qué cartas en la mano. */
 export interface Board {
-  ninjas: Record<NinjaId, { at: [number, number]; hp?: number; hand?: number[] }>;
+  /** `deck`: cuántas cartas le quedan a ese ninja en el mazo. Sin decirlo, las que trae. */
+  ninjas: Record<NinjaId, { at: [number, number]; hp?: number; hand?: number[]; deck?: number }>;
   golems: { kind: 'sniper' | 'artillery' | 'colossus'; at: [number, number] }[];
 }
 
@@ -74,7 +75,7 @@ export async function startBoard(page: Page, board: Board, settings: Record<stri
   await page.evaluate((board) => {
     type Unit = { id: string; pos: { x: number; y: number }; hp: number; maxHp: number };
     type Match = {
-      ninjas: (Unit & { everKo: boolean; hand: unknown[] })[];
+      ninjas: (Unit & { everKo: boolean; hand: unknown[]; deck: unknown[] })[];
       enemies: unknown[];
       nextEnemySeq: number;
       difficulty: string;
@@ -90,6 +91,7 @@ export async function startBoard(page: Page, board: Board, settings: Record<stri
       n.hp = spec.hp ?? n.maxHp;
       n.everKo = n.hp <= 0;
       n.hand = (spec.hand ?? []).map((value, i) => ({ id: `${n.id}-${i + 1}`, element: n.id, value }));
+      if (spec.deck !== undefined) n.deck = n.deck.slice(0, spec.deck);
     }
     const life = { sniper: 30, artillery: 45, colossus: 60 };
     m.enemies = board.golems.map((g, i) => ({

@@ -1,6 +1,9 @@
 import {
   ACHIEVEMENT_IDS,
+  type AchievementCounts,
   type AchievementId,
+  achievementGoal,
+  advance,
   type ClearedRound,
   type Collection,
   coinsForRound,
@@ -8,8 +11,9 @@ import {
   hasDoubleCoins,
   starterCollection,
 } from '@ventisca/core';
-import type { MatchNotice } from '@ventisca/protocol';
+import type { Achievements, MatchNotice } from '@ventisca/protocol';
 import type { MatchEnd, OpenMatch, PlayStore, Settlement } from '../../src/play/store';
+import type { AchievementGain } from '../../src/progress/store';
 
 /*
  * Un almacén en memoria, para probar el centro del juego sin Postgres. Sigue las mismas reglas que el de
@@ -33,7 +37,10 @@ export class MemoryStore implements PlayStore {
   /** La colección de cada cuenta. Quien no aparece aquí todavía no eligió su carta de camino. */
   readonly collections = new Map<string, Collection>();
   readonly coins = new Map<string, number>();
-  readonly owned = new Map<string, Set<AchievementId>>();
+  /** El avance de cada cuenta en sus logros. */
+  readonly progress = new Map<string, Achievements>();
+  /** Las veces que se le pidió sumar hazañas: una por turno que dejó alguna. */
+  featsAsked = 0;
   readonly stats = new Map<string, { matches: number; rounds: number; wins: number }>();
   readonly matches = new Map<string, Stored>();
   /** Lo que se le pidió, en orden, para comprobarlo. */
@@ -48,14 +55,37 @@ export class MemoryStore implements PlayStore {
     this.collections.set(userId, starterCollection(camino));
   }
 
-  /** Le da a esa cuenta esos logros, como si los hubiera ganado en partidas anteriores. */
-  giveAchievements(userId: string, ids: readonly AchievementId[]): void {
-    this.owned.set(userId, new Set([...(this.owned.get(userId) ?? []), ...ids]));
+  /** El avance de esa cuenta en cada logro. */
+  achievementsOf(userId: string): Achievements {
+    const have = this.progress.get(userId);
+    if (have) return have;
+    const fresh = Object.fromEntries(ACHIEVEMENT_IDS.map((id) => [id, { count: 0, done: false }])) as Achievements;
+    this.progress.set(userId, fresh);
+    return fresh;
   }
 
-  achievementsOf(userId: string): AchievementId[] {
-    const have = this.owned.get(userId) ?? new Set<AchievementId>();
-    return ACHIEVEMENT_IDS.filter((id) => have.has(id));
+  /** Le da a esa cuenta esos logros completos, como si los hubiera cerrado en partidas anteriores. */
+  giveAchievements(userId: string, ids: readonly AchievementId[]): void {
+    const have = this.achievementsOf(userId);
+    for (const id of ids) have[id] = { count: achievementGoal(id), done: true };
+  }
+
+  /** Deja a esa cuenta con ese avance en esos logros, sin completarlos. */
+  giveProgress(userId: string, counts: AchievementCounts): void {
+    const have = this.achievementsOf(userId);
+    for (const [id, count] of Object.entries(counts) as [AchievementId, number][]) have[id] = { count, done: false };
+  }
+
+  /** Los logros que esa cuenta ya completó. */
+  completedOf(userId: string): AchievementId[] {
+    const have = this.achievementsOf(userId);
+    return ACHIEVEMENT_IDS.filter((id) => have[id].done);
+  }
+
+  /** Lo que esa cuenta lleva contado en los logros en que avanzó. */
+  countsOf(userId: string): AchievementCounts {
+    const have = this.achievementsOf(userId);
+    return Object.fromEntries(ACHIEVEMENT_IDS.filter((id) => have[id].count > 0).map((id) => [id, have[id].count]));
   }
 
   statsOf(userId: string) {
@@ -72,8 +102,7 @@ export class MemoryStore implements PlayStore {
   }
 
   private credit(matchId: string, userId: string, rounds: ClearedRound[]): Settlement {
-    const owned = this.achievementsOf(userId);
-    const doubled = hasDoubleCoins(owned);
+    const doubled = hasDoubleCoins(this.completedOf(userId));
     const lines: Settlement['lines'] = [];
     for (const round of rounds) {
       if (this.ledger.some((l) => l.userId === userId && l.matchId === matchId && l.round === round)) continue;
@@ -87,7 +116,7 @@ export class MemoryStore implements PlayStore {
       doubled,
       total: lines.reduce((sum, l) => sum + l.coins, 0),
       balance: this.coins.get(userId) ?? 0,
-      achievements: owned,
+      achievements: structuredClone(this.achievementsOf(userId)),
     };
   }
 
@@ -113,19 +142,22 @@ export class MemoryStore implements PlayStore {
     return true;
   }
 
-  async grant(
-    _matchId: string,
-    earned: { userId: string; achievements: AchievementId[] }[],
-  ): Promise<Map<string, AchievementId[]>> {
-    const fresh = new Map<string, AchievementId[]>();
-    for (const { userId, achievements } of earned) {
-      const have = this.owned.get(userId) ?? new Set<AchievementId>();
-      const news = achievements.filter((id) => !have.has(id));
-      for (const id of news) have.add(id);
-      this.owned.set(userId, have);
-      if (news.length > 0) fresh.set(userId, news);
+  async addFeats(feats: { userId: string; counts: AchievementCounts }[]): Promise<Map<string, AchievementGain>> {
+    this.featsAsked += 1;
+    const gains = new Map<string, AchievementGain>();
+    for (const { userId, counts } of feats) {
+      const have = this.achievementsOf(userId);
+      const gain: AchievementGain = { gained: {}, completed: [] };
+      for (const [id, n] of Object.entries(counts) as [AchievementId, number][]) {
+        if (have[id].done) continue;
+        const next = advance(id, have[id], n);
+        have[id] = { count: next.count, done: next.done };
+        if (next.gained > 0) gain.gained[id] = next.gained;
+        if (next.done) gain.completed.push(id);
+      }
+      if (Object.keys(gain.gained).length > 0 || gain.completed.length > 0) gains.set(userId, gain);
     }
-    return fresh;
+    return gains;
   }
 
   async abandon(matchId: string, userId: string): Promise<void> {

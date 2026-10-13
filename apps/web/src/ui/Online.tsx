@@ -3,8 +3,19 @@ import { formatRoomCode } from '@ventisca/protocol';
 import { type FormEvent, type ReactNode, useEffect, useReducer, useRef, useState } from 'react';
 import { art } from '../art';
 import { audio } from '../audio/audio';
-import { ACCOUNT_TEXT, DIFFICULTIES, ES, NINJA_TEXT, ONLINE_TEXT as O, PLAY_ERRORS, SCREEN_TEXT } from '../i18n/es';
+import {
+  ACCOUNT_TEXT,
+  DIFFICULTIES,
+  ES,
+  NOTEBOOK_TEXT as N,
+  NINJA_TEXT,
+  ONLINE_TEXT as O,
+  PLAY_ERRORS,
+  SCREEN_TEXT,
+} from '../i18n/es';
+import { type FoldView, foldView } from '../state/achievements';
 import { updateSettings } from '../state/actions';
+import { openNotebook } from '../state/notebook';
 import {
   acceptBot,
   backToTitle,
@@ -28,6 +39,7 @@ import {
 import { type OnlineState, type QueueView, type RoomView, useApp } from '../state/store';
 import { Icon, type IconName, NinjaTrio, Notice, Toggle } from './common';
 import { PickDemo } from './Demos';
+import { AchievementLine } from './Notebook';
 
 /*
  * Las pantallas del juego en línea fuera del tablero (D-87 a D-89 y D-100): la ficha para elegir ninja, la búsqueda
@@ -89,6 +101,20 @@ function LinkLine() {
 
 /* ---------- La ficha: elegir ninja (D-87) ---------- */
 
+/** Un pliegue al pie de la ficha (D-105): su título, con cuántos logros lleva, y el avance de cada uno. */
+function PickFold({ view, title }: { view: FoldView; title: string }) {
+  return (
+    <section className={`pick-fold fold-${view.fold}`} data-fold={view.fold} aria-label={title}>
+      <h2>{title}</h2>
+      <ul className="ach-list">
+        {view.rows.map((row) => (
+          <AchievementLine key={row.id} row={row} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function PickScreen() {
   const element = useApp((s) => s.online.element);
   const busy = useApp((s) => s.online.busy);
@@ -97,6 +123,7 @@ function PickScreen() {
   const roomClosed = useApp((s) => s.online.roomClosed);
   const camino = useApp((s) => s.progress.data?.camino ?? null);
   const collection = useApp((s) => s.progress.data?.collection);
+  const achievements = useApp((s) => s.progress.data?.achievements);
   const tips = useApp((s) => s.settings.tips);
   const reduced = useApp((s) => s.settings.reducedMotion);
   const [demo, setDemo] = useState<'card' | 'combo' | null>(null);
@@ -129,6 +156,9 @@ function PickScreen() {
           <div className="online-kicker">
             <span>{O.kicker}</span>
             <BetaChip />
+            <button type="button" className="link pick-notebook" onClick={() => openNotebook('progress')}>
+              {N.link} ▸
+            </button>
           </div>
           <header>
             <img src={art.bust(element)} alt="" />
@@ -177,6 +207,22 @@ function PickScreen() {
               <b>{SCREEN_TEXT.comboLabel}</b> {capital(t.comboShort)}
             </p>
           </div>
+          {/* El avance que se juega con este ninja: su pliegue y el de equipo. Cambia con las flechas. */}
+          {achievements ? (
+            <div className="pick-folds">
+              {[foldView(element, achievements), foldView('team', achievements)].map((view) => (
+                <PickFold
+                  key={view.fold}
+                  view={view}
+                  title={
+                    view.fold === 'team'
+                      ? N.teamFold(view.done, view.rows.length)
+                      : N.yourFold(t.element, view.done, view.rows.length)
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
           <div className="pick-foot">
             <Toggle label={ES.tipsMode} checked={tips} onChange={(v) => updateSettings({ tips: v })} />
           </div>

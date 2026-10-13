@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { giveAchievements } from './account-helpers';
 import { FULL_TRACE } from './helpers';
 import {
   clickTile,
@@ -55,6 +56,53 @@ test('D-87: la ficha ofrece el ninja del camino, con sus datos, y sus flechas lo
   // La ✕ vuelve a la portada.
   await page.getByRole('button', { name: 'Volver', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ventisca' })).toBeVisible();
+  await ana.context.close();
+});
+
+test('D-105: al pie de la ficha van el pliegue del ninja elegido y el de equipo, con su avance, y cambian con las flechas', async ({
+  browser,
+}) => {
+  const ana = await newPlayer(browser, 'snow');
+  const { page } = ana;
+  // Su avance, tal como lo guarda el servidor: algo de Nieve, algo de Fuego y un logro de equipo completo.
+  giveAchievements(ana.email, { healer: 9, snowShield: 4, stunner: 7, combo3: 999 });
+  await openOnline(page);
+  const card = page.getByRole('region', { name: 'Elige tu ninja' });
+  await expect(card.getByRole('heading', { name: 'Escarcha' })).toBeVisible();
+  const mine = card.locator('.pick-fold').first();
+  const team = card.locator('.pick-fold').last();
+  await expect(card.locator('.pick-fold')).toHaveCount(2);
+  await expect(mine.getByRole('heading')).toHaveText('Tu pliegue de Nieve · 0/3');
+  await expect(mine.locator('.ach-head b')).toHaveText(['Reanimador', 'Mano sanadora', 'Escudo de nieve']);
+  await expect(mine.locator('[data-achievement="healer"] .ach-count')).toHaveText(/^9\/\d+$/);
+  await expect(mine.locator('[data-achievement="snowShield"]')).toHaveAttribute('data-count', '4');
+  await expect(mine.locator('[data-achievement="reviver"]')).toHaveAttribute('data-count', '0');
+  await expect(team.getByRole('heading')).toHaveText('Equipo · 1/3');
+  // El que ya está completo lo dice, también a quien no ve la pantalla.
+  await expect(team.locator('.ach-head b')).toHaveText([
+    'Combo triple: Logrado',
+    'Sin un rasguño',
+    'Nadie se queda atrás',
+  ]);
+  await expect(team.locator('[data-achievement="combo3"]')).toHaveAttribute('data-done', 'true');
+  // Con las flechas cambia el pliegue del ninja; el de equipo es el mismo con cualquiera.
+  await page.getByRole('button', { name: 'Ninja siguiente' }).click();
+  await expect(card.getByRole('heading', { name: 'Brasa' })).toBeVisible();
+  await expect(mine.getByRole('heading')).toHaveText('Tu pliegue de Fuego · 0/3');
+  await expect(mine.locator('.ach-head b')).toHaveText(['Barrido perfecto', 'Aturdidor', 'Llamarada']);
+  await expect(mine.locator('[data-achievement="stunner"]')).toHaveAttribute('data-count', '7');
+  await expect(team.getByRole('heading')).toHaveText('Equipo · 1/3');
+  await page.getByRole('button', { name: 'Ninja siguiente' }).click();
+  await expect(mine.getByRole('heading')).toHaveText('Tu pliegue de Agua · 0/3');
+  await expect(mine.locator('.ach-head b')).toHaveText(['Rompeolas', 'Marea alta', 'De pie otra vez']);
+  // Todo cabe en la ficha: nada queda por debajo del interruptor de los consejos.
+  await expect(card.getByText('Consejos en pantalla')).toBeInViewport({ ratio: 1 });
+  // "Libreta" abre "Mi progreso", y al cerrarla se vuelve a la ficha.
+  await card.getByRole('button', { name: 'Libreta ▸' }).click();
+  await expect(page.getByRole('heading', { name: 'Mi progreso' })).toBeVisible();
+  await expect(page.locator('.note-fold [data-achievement="healer"]')).toHaveAttribute('data-count', '9');
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
+  await expect(card.getByRole('heading', { name: 'Marea' })).toBeVisible();
   await ana.context.close();
 });
 

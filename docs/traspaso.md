@@ -127,7 +127,7 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
 
 - **Dónde:** https://ventisca.wpena.dev, en Railway (plan Hobby, región EE. UU. Este), con su Postgres. La base no tiene copias de seguridad: es un riesgo aceptado, a revisar antes de que el proyecto crezca.
 - **Cómo se despliega:** con cada push a `main`, es decir, al fusionar un PR, toque lo que toque (D-64).
-  - En el panel está activado "Wait for CI": Railway espera a que termine la CI de `main` y entonces construye la imagen del Dockerfile. Medido el 1 de octubre de 2026: no dejó ningún estado en el commit mientras corría la CI, empezó a desplegar 4 segundos después de que terminó y tardó 38. Así que entre fusionar y ver el cambio en producción pasa lo que dure la CI (de 3 a 10 minutos) y un minuto más.
+  - En el panel está activado "Wait for CI": Railway espera a que termine la CI de `main` y entonces construye la imagen del Dockerfile. Medido el 1 de octubre de 2026: no dejó ningún estado en el commit mientras corría la CI, empezó a desplegar 4 segundos después de que terminó y tardó 38. Así que entre fusionar y ver el cambio en producción pasa lo que dure la CI y un minuto más. Con las e2e del juego en línea, la CI tarda unos 20 minutos: abren dos y tres navegadores por prueba, y en la CI el tablero se dibuja sin tarjeta gráfica.
   - GitHub muestra en cada commit dos suites en cola, de `railway-app` y `cursor`, que nunca corren nada. No detienen el despliegue.
   - `railway.json` es la fuente de verdad del despliegue. Fija el comando de arranque, la comprobación de salud (`/api/health`), los reinicios y la región. No lleva `watchPatterns`: con una lista de rutas vigiladas, un PR solo de documentación dejaría producción atrás a propósito, y `pnpm check:prod` exige que corra el último commit de `main`.
   - **En el panel del servicio deben quedar vacíos "Watch Paths", "Custom Build Command", "Custom Start Command" y "Root Directory".** El panel puede pisar a `railway.json` sin que se note. Al importar el monorepo, Railway puso por su cuenta un comando de arranque y uno de build con pnpm, y unas "Watch Paths" (`/apps/server/**`) que saltaron los despliegues de los PR #12 y #13, que solo tocaban `apps/web/` y documentación.
@@ -177,7 +177,7 @@ El M7, P-20, la ronda de claridad del tablero y la Beta del modo en línea está
 1. **Publicar la Beta.**
    1. Revisar el PR #29: su descripción trae las decisiones tomadas en el camino, los textos por revisar y las capturas.
    2. Fusionarlo cuando nadie esté jugando (D-95), con merge commit y sin squash. No hay variables nuevas que cargar en Railway.
-   3. Esperar el despliegue (la CI de `main` y un minuto más) y correr `pnpm check:prod`: todo debe pasar, incluidas las dos comprobaciones del juego en línea.
+   3. Esperar el despliegue (la CI de `main`, unos 20 minutos, y un minuto más) y correr `pnpm check:prod`: todo debe pasar, incluidas las dos comprobaciones del juego en línea.
    4. Mirar en los registros de Railway que el arranque diga "Migraciones al día". La migración `0004_partidas_en_linea` crea las cuatro tablas del juego en línea.
    5. Entrar con una cuenta verificada a "Jugar en línea": la ficha debe aparecer sin quedarse en "Conectando…". Eso prueba que la conexión WebSocket pasa por Railway, lo único que `check:prod` no puede ver sin una cuenta.
    6. Con otra persona, o en dos ventanas con dos cuentas: una sala con código, "Empezar con el bot" y un turno.
@@ -214,6 +214,7 @@ Para que no se pierdan. Los que tienen hito están también en el PRD de v2.
 - **Dos pruebas que fallan a veces, sin relación con lo que se esté cambiando:**
   - la e2e de `tips.spec.ts` que mide la burbuja de "cambiar de ninja" junto a la mano falló una vez en la CI por 2 px, al parecer en plena animación de entrada;
   - la prueba del servidor `D-61: 50 intentos fallidos por IP` puede pasarse de sus 5 s con el equipo muy cargado.
+- **La CI tarda unos 20 minutos,** unos 6 más que antes de la Beta, por las e2e del juego en línea, y Railway espera a la CI para desplegar. Si estorba, hay dos salidas sin quitar pruebas: correr las e2e con tres procesos en vez de dos, o repartirlas en dos trabajos de la CI. Ninguna está probada.
 - **La base de producción no tiene copias de seguridad** (ver "Despliegue"). Con la Beta guarda monedas y logros de otras personas: conviene decidirlo antes de que crezca.
 - Validar con personas: balance, ritmo y animaciones están calibrados con datos; la primera prueba dejó D-79.
 - QA en Firefox y Safari, control táctil, rangos y experiencia (P-18) y el video de demo.

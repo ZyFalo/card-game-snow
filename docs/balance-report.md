@@ -267,7 +267,7 @@ Respondidas el 6 de octubre de 2026. Con ellas se cerró P-20.
 - **¿Se acepta que Clásica en línea sea trivial desde la primera caja?** Es la misma pregunta de la sección anterior, ahora con tres personas: 99,7 %.
   - **Respuesta (D-72):** sí. Es el modo para empezar, y el simulador es un techo para personas reales.
 
-**Tras la ronda de ajustes de jugabilidad** que viene antes del M8 hay que volver a correr estas tablas (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`), porque los ajustes pueden mover sus números.
+**Tras la ronda de claridad del tablero** se volvieron a correr estas tablas (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`), el 12 de octubre de 2026, con la ronda ya fusionada. Dan, cifra por cifra, las de la columna "después" de la sección "La reanimación del original (D-77)": las 99 de victoria y las 84 del límite del bonus. De esa ronda, solo D-77 cambió una regla; lo demás fue interfaz, y no mueve el balance.
 
 ## La reanimación del original (D-77): antes y después
 

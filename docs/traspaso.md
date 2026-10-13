@@ -1,6 +1,6 @@
 # Traspaso a Claude Code
 
-Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) tiene hechos sus siete PRs: falta su cierre, que es volver a correr las tablas de P-20 y proponer una segunda prueba con personas. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
+Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 trajo las cuentas y el progreso en el servidor, todavía sin multijugador, y P-20 fijó la curva de dificultad en línea. La ronda de claridad del tablero (D-74) está cerrada: sus siete PRs están fusionados y las tablas de P-20, vueltas a correr, no cambiaron. Queda propuesta una segunda prueba con personas, centrada en los consejos y las demostraciones. Después viene el M8, que empieza por su especificación técnica y por la investigación del teléfono (ver "Lo que sigue"). El modo en línea se describe en `docs/PRD-v2.md`. El juego se construyó en claude.ai hasta la v0.9, y desde entonces continúa en Claude Code. Ventisca empezó como proyecto de clase y hoy es el piloto de un proyecto personal, que su responsable avanza en sus ratos libres (D-75).
 
 ## Qué hay
 
@@ -145,7 +145,7 @@ Estado al 12 de octubre de 2026: **v0.10, con el M7 y P-20 cerrados.** El M7 tra
 
 El M7 y P-20 están cerrados. Va en este orden:
 
-1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en siete PRs pequeños, cada uno con capturas a 1280×720 junto a "Tu equipo" y, desde el quinto, junto a su maqueta aprobada. **Los siete están hechos; falta el cierre:**
+1. **Ronda de claridad del tablero** (D-74), antes del M8. Quienes probaron el juego dicen que es confuso: los planes de los tres ninjas se superponen. Los ajustes los pasa el dueño de producto. Va en siete PRs pequeños, cada uno con capturas a 1280×720 junto a "Tu equipo" y, desde el quinto, junto a su maqueta aprobada. **Cerrada el 12 de octubre de 2026:**
    1. **Orden visual.** Hecho: ver la sección 11 de `docs/lineamientos-de-diseno.md`.
    2. **Foco y pasos.** Hecho: solo el ninja activo muestra sus opciones, y elegir una carta cambia el tablero a modo carta. Ajustado después dos veces, como en el original. Primero: tras moverse, las casillas siguen a la vista y otro clic cambia el destino; el foco no salta tras moverse; y los objetivos elegidos llevan la marca del equipo, con un arco por atacante. Después se quitó el paso de moverse: al activar un ninja se ven a la vez sus casillas y sus objetivos, y un clic en un objetivo lo elige sin moverse.
    3. **La reanimación vuelve a la regla del original.** Hecho (D-77, que reemplaza a D-18): quien revive queda ocupado durante la fase enemiga, y el caído se levanta al final del turno con 1 de vida; si quien revive cae antes, la reanimación no ocurre. La medición del balance de antes y después está en `docs/balance-report.md`.
@@ -166,9 +166,10 @@ El M7 y P-20 están cerrados. Va en este orden:
    - Con animaciones reducidas, se muestran el antes y el después como dos imágenes fijas, con una línea de texto.
    - Cada PR registra su decisión con el siguiente número libre, e incluye capturas de cada demostración junto a su maqueta aprobada. Las formas de las maquetas son aproximadas: se usan el arte y las animaciones reales del juego.
 
-   **Lo que falta para cerrar la ronda:**
-   - **Al cerrar la ronda, volver a correr las tablas de P-20** (`pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`) y actualizar `docs/balance-report.md`: sus secciones anteriores a D-77 siguen medidas con la reanimación vieja.
-   - **Al cerrar la ronda, proponer una segunda prueba con personas,** centrada en los consejos y las demostraciones. La primera ya se hizo y dejó D-79.
+   **Cierre de la ronda:**
+   - **Las tablas de P-20 no cambiaron.** `pnpm sim -- --mixed` y `pnpm sim -- --mixed --skill 1`, con la ronda ya fusionada, dan las mismas cifras que la sección de D-77 de `docs/balance-report.md`. De la ronda, solo D-77 cambió una regla.
+   - **Las demostraciones de los gólems se abren también desde la ayuda,** con un "Ver cómo ataca" junto a cada gólem: sirve con el teclado, sin ratón y con "Consejos en pantalla" apagado.
+   - **Segunda prueba con personas, propuesta y por decidir.** Cuatro a seis personas, la mitad sin haber jugado nunca, una partida de Clásica en el sandbox con los ajustes por defecto, pensando en voz alta y sin explicación previa. Se mira, sin preguntar: si leen los consejos o los cierran, si después de cada uno hacen lo que dice, si encuentran solas el ▶ de la mano y "Ver cómo ataca", y si tras ver a Granizo y a Témpano dejan de amontonarse. Al final, tres preguntas: qué hace cada gólem, cómo se logra un combo y qué fue lo más confuso. La primera prueba dejó D-79.
 
    Para toda la ronda:
    - cada cambio de reglas o de balance lleva su regla o su decisión en el PRD, y sus pruebas;

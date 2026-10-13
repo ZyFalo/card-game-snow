@@ -6,6 +6,8 @@ El 1 de octubre de 2026 se agregó la sección "En línea: equipos de coleccione
 
 El 6 de octubre de 2026 también cambió una regla: la reanimación vuelve a completarse al final del turno (D-77, que reemplaza a D-18). La sección "La reanimación del original (D-77): antes y después" trae todos los números con una regla y con la otra. Las demás secciones conservan la medición hecha con D-18.
 
+El 13 de octubre de 2026 se agregó la sección "Logros: metas y ritmo", con las metas de los 12 logros del amuleto de 4 pliegues (D-104 y D-107 del PRD de v2) y lo que tarda en completarse cada pliegue. No cambia ninguna regla de combate.
+
 ## Por qué se rehízo
 
 Desde la v0.5, la reserva de cada ninja es la colección del jugador (R-26). El reporte de M4 medía con el mazo fijo de v1 (6 cartas de 8 a 12), que el juego ya no usa, así que describía un juego distinto al que se juega. Este reporte mide la progresión real en tres etapas. El mazo fijo queda solo como referencia, en el anexo.
@@ -558,6 +560,112 @@ Habilidad 0,6, salvo en las dos columnas que dicen "con habilidad 1". La columna
 8. **El límite del bonus no se mueve para los equipos con cartas.** Con personas nuevas, en Tormenta, baja entre 1 y 4 puntos: superan la ronda 3 partidas que antes se perdían, y esas llegan tarde.
 
 Las secciones anteriores de este reporte conservan su medición, hecha con el bot de antes.
+
+## Logros: metas y ritmo (D-104 y D-107)
+
+Agregado el 13 de octubre de 2026. Fija las metas de los 12 logros (`achievements.goals` en `balance.json`) y mide cuántas partidas tarda en completarse cada pliegue. Las reglas de combate no cambian.
+
+### Qué se buscaba
+
+D-104 pide el amuleto completo, con sus 4 pliegues, en unas 30 partidas en promedio: unas 10 con cada ninja, y el pliegue de Equipo, que avanza en todas. Qué cuenta cada logro está en R-55 del PRD de v2.
+
+### Método
+
+- `pnpm sim -- --achievements` juega los equipos en línea de la sección de P-20: los 11 de tres personas y los 6 de dos personas y el bot, con todos sus repartos entre Fuego, Agua y Nieve. Son 17 equipos, en Clásica, que es lo único que hay en la Beta (D-85), con 400 partidas por reparto y habilidad 0,6.
+- **Una partida de una persona** es lo que suma, en una de esas partidas, cada asiento que no es del bot: 55.200 en total. Las hazañas las cuenta la misma función que usa el servidor (`countFeats`).
+- **Cuántas partidas tarda** sale de simular 20.000 personas que juegan hasta completar el amuleto. Cada una juega con Brasa hasta cerrar el pliegue de Fuego, después con Marea y después con Escarcha, y si le falta el de Equipo sigue con cualquiera. Cada partida suya se sortea entre las partidas de una persona con ese ninja.
+- **Otras metas** se prueban sin tocar el balance: `--goals stunner=30,healer=60`. `--skip noOneLeft` da un logro por completo, para medir el resto. `--calibrate --fold-matches 7 --team-matches 18` propone las metas que salen de pedirle a cada logro lo que suma en ese número de partidas.
+- **Límites del método:**
+  - El bot planifica a los tres ninjas, sin reloj y con la misma habilidad. No juega como una persona que empieza.
+  - El bot casi no cae: es lo que más pesa en estos números, y se explica abajo.
+  - La persona simulada cambia de ninja en cuanto cierra un pliegue. Quien juegue siempre con el mismo tardará lo mismo en ese pliegue, y no avanzará en los otros dos.
+
+### Las metas
+
+| Pliegue | Logro | Meta | Suma por partida | Partidas en que suma | Partidas para completarlo solo |
+|---|---|---|---|---|---|
+| Fuego | Barrido perfecto | 4 | 0,62 | 46,3 % | 7,0 |
+| Fuego | Aturdidor | 30 | 4,86 | 98,0 % | 6,7 |
+| Fuego | Llamarada | 20 | 3,10 | 91,4 % | 7,1 |
+| Agua | Rompeolas | 25 | 3,86 | 99,4 % | 7,0 |
+| Agua | Marea alta | 25 | 4,29 | 96,1 % | 6,3 |
+| Agua | De pie otra vez | 1 | 0,10 | 9,5 % | 10,6 |
+| Nieve | Reanimador | 1 | 0,19 | 11,5 % | 8,6 |
+| Nieve | Mano sanadora | 55 | 8,80 | 100,0 % | 6,8 |
+| Nieve | Escudo de nieve | 30 | 4,70 | 94,7 % | 6,9 |
+| Equipo | Combo triple | 16 | 0,90 | 64,8 % | 18,2 |
+| Equipo | Sin un rasguño | 4 | 0,22 | 21,6 % | 18,6 |
+| Equipo | Nadie se queda atrás | 1 | 0,00 | 0,3 % | 365,4 |
+
+"Suma por partida" es el promedio de lo que suma quien juega con ese ninja; en los de Equipo, con cualquiera. "Partidas para completarlo solo" es lo que tarda ese logro por sí mismo.
+
+Cada logro pide lo que suma en unas 7 partidas con su ninja, y los de Equipo, en unas 18, con números redondos. Tres quedaron en el mínimo, 1, y por eso no piden repetir: son los que dependen de caer.
+
+### El ritmo
+
+Con las metas de arriba:
+
+| | Partidas (media) | p25 · p50 · p75 | p90 |
+|---|---|---|---|
+| Pliegue de Fuego, jugando con su ninja | 8,2 | 6 · 8 · 9 | 11 |
+| Pliegue de Agua, jugando con su ninja | 12,3 | 7 · 9 · 14 | 23 |
+| Pliegue de Nieve, jugando con su ninja | 10,9 | 7 · 8 · 12 | 19 |
+| Pliegue de Equipo, con cualquiera | 369,1 | 104 · 254 · 510 | 851 |
+| Amuleto completo | 369,7 | 104 · 254 · 510 | 851 |
+
+Dando por completo "Nadie se queda atrás" (`--skip noOneLeft`), para ver el resto:
+
+| | Partidas (media) | p25 · p50 · p75 | p90 |
+|---|---|---|---|
+| Pliegue de Fuego, jugando con su ninja | 8,2 | 6 · 8 · 9 | 11 |
+| Pliegue de Agua, jugando con su ninja | 12,3 | 7 · 9 · 14 | 23 |
+| Pliegue de Nieve, jugando con su ninja | 10,9 | 7 · 8 · 12 | 19 |
+| Pliegue de Equipo, con cualquiera | 21,4 | 17 · 20 · 24 | 30 |
+| Amuleto completo | 32,4 | 25 · 29 · 37 | 47 |
+
+Según la colección de quien juega, también sin ese logro:
+
+| Colección | Pliegue de Fuego | Pliegue de Agua | Pliegue de Nieve | Amuleto completo |
+|---|---|---|---|---|
+| Nueva | 17,0 | 11,5 | 11,2 | 41,1 |
+| Una caja | 6,9 | 14,9 | 11,2 | 33,7 |
+| Tres cajas | 6,5 | 24,2 | 22,1 | 53,0 |
+| Completa | 6,6 | 14,8 | 10,9 | 33,1 |
+
+"Tres cajas" sale de un solo equipo, el de tres personas con tres cajas cada una, que casi no cae: por eso tarda más en Agua y en Nieve.
+
+Con otra habilidad del bot, sin ese logro, el amuleto tarda casi lo mismo: 30,8 partidas con habilidad 1 y 32,5 con 0,3.
+
+### Lectura
+
+1. **Los tres pliegues de ninja quedan cerca de lo pedido:** 8, 12 y 11 partidas en promedio, y 8, 9 y 8 de mediana. El promedio de Agua y de Nieve lo sube la espera de un solo suceso: "De pie otra vez" y "Reanimador" tardan unas 10 y 9 partidas, pero a una de cada diez personas le tardan más de 20.
+2. **El bot casi no cae.** En estos equipos hay 0,5 caídas por partida y se gana el 99 %: Clásica es fácil desde la primera caja (D-72). Los tres logros que dependen de caer salen por eso con meta 1. Con meta 2 (`--goals upAgain=2,reviver=2`), "De pie otra vez" tardaría 21 partidas y "Reanimador", 14: el pliegue de Agua pasaría a 21, el de Nieve a 15, y el amuleto, sin "Nadie se queda atrás", a 45.
+3. **"Nadie se queda atrás" no entra en el ritmo con ninguna meta.** Que los tres caigan y estén de pie al ganar pasa en el 0,3 % de las partidas: una de cada 365. Con él, el amuleto tarda lo mismo que él; sin él, 32 partidas.
+4. **El pliegue de Equipo, sin ese logro, tarda 21 partidas** y se completa antes que los tres de ninja, que suman 31.
+5. **Una persona nueva tarda el doble en Fuego:** 17 partidas con su 9 y su 12, contra 7 desde la primera caja. Casi todo lo de ese pliegue sale de jugar cartas, y con dos cartas se juegan pocas.
+6. **La habilidad del bot casi no mueve el ritmo.** Lo que no se sabe es cuánto caen las personas, y de eso dependen tres logros.
+
+### "Nadie se queda atrás": lo que se midió
+
+Con variantes de la regla, fuera del repositorio, sobre 8.250 partidas de los mismos equipos (150 por reparto):
+
+| Qué contaría | Partidas en que pasa |
+|---|---|
+| Los tres cayeron y están de pie al ganar (lo que quedó, D-107) | 0,2 % |
+| Los tres cayeron, y a los tres los revivieron alguna vez | 0,4 % |
+| Los tres cayeron y el equipo ganó, sin mirar si volvieron (la regla anterior) | 4,7 % |
+| Dos o más cayeron, y los tres están de pie al ganar | 2,5 % |
+| Alguien cayó, y los tres están de pie al ganar | 15,6 % |
+
+Casi todo lo que daba la regla anterior era perder la ronda bonus con los tres caídos, que cuenta como victoria (R-22): el 4,2 % de las partidas.
+
+La última fila, medida aparte con las 55.200 partidas de una persona, suma en el 15,7 % de ellas. Con meta 3, el pliegue de Equipo tarda 25 partidas y el amuleto, 33.
+
+### Preguntas para el dueño de producto
+
+1. **¿Qué se hace con "Nadie se queda atrás"?** (P-25 del PRD de v2). Tal como está definido no entra en el ritmo. Quedó con meta 1.
+2. **¿Se aceptan con meta 1 "De pie otra vez" y "Reanimador"?** No piden repetir, pero con meta 2 el pliegue de Agua tardaría el doble de lo pedido, y el de Nieve, la mitad más.
+3. **¿Se mide en la Beta cuánto caen las personas?** Con ese dato se pueden revisar los tres. Hoy el servidor no lo guarda: R-42 lo prevé entre las estadísticas que llegan después.
 
 ## Anexo: mazo fijo de v1
 

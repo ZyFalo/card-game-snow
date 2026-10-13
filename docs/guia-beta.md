@@ -39,7 +39,7 @@ Marca cada paso con lo que pasó. Si algo falla, pide una captura de pantalla y 
 | 2 | El bot juega el ninja libre y no aparece cobrando. |
 | 3 | La oferta del bot sale a las dos personas a la vez, y la partida empieza cuando aceptan las dos. |
 | 4 | El ninja de quien se desconecta queda gris y quieto, y el turno no espera por él. Quien vuelve retoma a su ninja desde el turno siguiente. Quien no vuelve ve, una sola vez, "La partida terminó sin ti", y no recibe monedas. |
-| 5 | Quien sale no recibe monedas de esa partida. Sus logros se mantienen. |
+| 5 | Quien sale no recibe monedas de esa partida. Lo que sumó a sus logros se mantiene: lo ve al pie de su ficha. |
 | 6 | La primera pestaña avisa que el juego se abrió en otra, y ofrece "Conectarme aquí". |
 | 7 | Las monedas de los resultados son las de la Libreta. Las estadísticas solo las ve su dueño. |
 | 8 | Todas las personas vuelven al inicio en línea con "La partida terminó". Conservan las monedas de las rondas completas, y la partida no cuenta como derrota. |
@@ -52,6 +52,7 @@ Marca cada paso con lo que pasó. Si algo falla, pide una captura de pantalla y 
 - **Las esperas.** Si los 30 s de la cola o la espera entre turnos se sienten largos.
 - **Lo que no entienden.** Sobre todo qué pasó cuando alguien se desconectó, y de dónde salen las monedas.
 - **Los retrasos.** Si lo que hace una persona tarda en verse en la pantalla de otra.
+- **Las caídas.** Cuántas veces cae un ninja en cada partida, si lo reviven y quién. De eso dependen tres logros, y el simulador no lo sabe: su bot casi no cae (P-25). Con ese dato se ajustan sus metas.
 
 ## Si algo falla
 
@@ -59,11 +60,12 @@ Marca cada paso con lo que pasó. Si algo falla, pide una captura de pantalla y 
 - **La base** (en Railway, el servicio de Postgres deja consultar sus tablas):
   - `select id, status, outcome, turns, started_at, ended_at from matches order by started_at desc limit 20;`
   - `select match_id, seat, rounds, exit, notice from match_players order by joined_at desc limit 60;`
-- **Volver atrás:** en Deployments, "Rollback" sobre el despliegue anterior. Las tablas nuevas no le estorban a la versión anterior.
+- **Volver atrás:** en Deployments, "Rollback" sobre el despliegue anterior. Vale entre versiones que tienen la misma tabla de logros. No vale volver a una anterior a los ajustes de la Beta (D-104): su migración cambió esa tabla, y la versión vieja fallaría al guardar un logro en plena partida.
 
 ## Qué decidir después
 
 1. **El reloj:** si se queda en 10 s o sube (D-90 dice que se revisa tras esta prueba).
 2. **El abandono:** si perder todas las monedas de la partida se siente justo (D-93, P-22).
 3. **La coordinación sin chat:** si las marcas bastan o hace falta algo más (D-91).
-4. **Lo que sigue:** Tormenta en línea (D-85), el combate en teléfono (D-73) y el mecanismo para avisar los cambios del aviso de privacidad (D-96).
+4. **Las metas de los logros:** tras unas semanas, medir el ritmo real del amuleto y ajustarlas. "De pie otra vez" y "Reanimador" piden hoy una sola vez, porque el bot del simulador casi no cae (P-25).
+5. **Lo que sigue:** Tormenta en línea (D-85), el combate en teléfono (D-73) y el mecanismo para avisar los cambios del aviso de privacidad (D-96).

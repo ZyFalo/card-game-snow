@@ -28,14 +28,14 @@ export function roundsCleared(s: MatchState): ClearedRound[] {
   return ([1, 2, 3] as const).filter((r) => r < (s.round as number));
 }
 
-/** ¿Están completos los 9 logros? Entonces las monedas se duplican (R-29). */
+/** ¿Están completos los cuatro pliegues del amuleto, con sus 12 logros? Entonces las monedas se duplican (R-29). */
 export function hasDoubleCoins(unlocked: readonly AchievementId[]): boolean {
   return BALANCE.economy.doubleCoinsWithAllAchievements && ACHIEVEMENT_IDS.every((id) => unlocked.includes(id));
 }
 
 /**
  * Monedas de una ronda superada (R-29): 60 / 120 / 120 y 120 por el bonus, el doble con
- * los 9 logros. Se acreditan al instante, en el momento de superar la ronda (D-31).
+ * el amuleto completo. Se acreditan al instante, en el momento de superar la ronda (D-31).
  */
 export function coinsForRound(round: ClearedRound, doubled: boolean): number {
   const eco = BALANCE.economy;

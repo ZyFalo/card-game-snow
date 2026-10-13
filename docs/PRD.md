@@ -5,8 +5,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.26 |
-| Última actualización | 12 de octubre de 2026 |
+| Versión | 0.10.27 |
+| Última actualización | 13 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
 | Contexto | Piloto de un proyecto personal, que su responsable avanza en sus ratos libres: recrear con IA el juego favorito de la infancia. Empezó como proyecto de clase (D-75) |
@@ -544,7 +544,7 @@ La franja de arriba es la línea de contexto: dice el estado del turno y, al mir
 
 Combo doble, Combo triple, Reanimador, De pie otra vez (ganar después de haber caído), Nadie se queda atrás (ganar tras caer los tres y ser revividos), Mano sanadora (curar 15 veces en una partida), Barrido perfecto (una carta alcanza a 3 enemigos; se llamaba "Tormenta perfecta" hasta D-98), Bonus conquistado y Sin un rasguño (llegar al bonus por vida completa).
 
-En línea se ganan por persona, y el amuleto de papel los agrupa en tres pliegues: R-55 y D-100 del PRD de v2.
+En línea se ganan por persona: R-55 del PRD de v2. Desde D-104 son 12, cada uno con su contador, en los cuatro pliegues del amuleto de papel: los de Fuego, Agua y Nieve se ganan con su ninja, y el de Equipo, con cualquiera. De esta lista salieron "Combo doble" y "Bonus conquistado", y entraron cinco nuevos.
 
 ### 9.7 Accesibilidad y opciones
 
@@ -1011,6 +1011,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | ID | Decisión | Estado | Fecha |
 |---|---|---|---|
 | D-83 a D-103 | El multijugador en línea (Beta): acceso, cola y salas, reloj, desconexión, abandono, reinicios, logros por persona, grillas y pantallas. Se registran en `docs/PRD-v2.md`; desde D-83, las decisiones nuevas viven allí y este documento solo las enlaza | ✅ | 2026-10-12 |
+| D-104 a D-107 | Los ajustes tras la primera prueba de la Beta: el amuleto de 4 pliegues, con 12 logros por ninja y con contadores; el avance siempre a la vista; "Mis cartas" por elemento, y el aviso de mazo agotado. Se registran en `docs/PRD-v2.md`. Las metas de los logros (D-107) se recalibran con los datos reales de la Beta | ✅ | 2026-10-13 |
 | D-01 | Mecánica fiel; nombre, personajes, arte, audio y textos originales; cero assets del original | ✅ | 2026-09-29 |
 | D-02 | Motor de reglas puro y determinista, separado del render | ✅ | 2026-09-29 |
 | D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | Reemplazada por D-35 a D-37 (`docs/PRD-v2.md`) | 2026-09-29 |
@@ -1100,6 +1101,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.27 | 2026-10-13 | Los ajustes tras la primera prueba de la Beta (D-104 a D-107), que se registran en `docs/PRD-v2.md` (versión 1.17). Aquí cambian solo los enlaces: el §9.6 (los logros pasan a ser 12, con contadores, en cuatro pliegues), la nota de R-29 (el doble de monedas pide el amuleto completo) y, en el apéndice A, las metas de los logros |
 | 0.10.26 | 2026-10-12 | El multijugador en línea (Beta). Sus decisiones, D-83 a D-103, y sus reglas se registran en `docs/PRD-v2.md` (versiones 1.15 y 1.16), que desde ahora es la fuente de las decisiones nuevas. Aquí cambian solo los enlaces: el §8 (el bot al revivir, D-101), el §9.6 (el logro "Barrido perfecto", D-98), el §11.7, los hitos M8 y M9, que se entregan juntos, y las notas de D-31 y de R-29 |
 | 0.10.25 | 2026-10-12 | Ronda de claridad del tablero, séptimo paso (D-82): las demostraciones de los gólems. La franja que nombra al gólem bajo el ratón suma "Ver cómo ataca", que abre la burbuja de las demostraciones con su ataque en bucle, y pierde sus números: los muestra la demostración, y los pone el motor. Cambia el §9.5 |
 | 0.10.24 | 2026-10-12 | Ronda de claridad del tablero, sexto paso (D-81): las demostraciones de las cartas. Un ▶ junto al título de la mano abre un tablero en miniatura donde la carta se juega en bucle, con o sin combo. La juega el propio motor y la anima la escena del juego. Con animaciones reducidas, dos imágenes fijas. El consejo de la primera carta suma su frase: "El ▶ junto al título muestra qué hace." Cambia el §9.5 |
@@ -1169,7 +1171,7 @@ Datos del catálogo que usan los servidores fan, reconstruido del juego original
 - **R-26 Reserva en batalla.** La reserva de cada ninja es toda la colección de su elemento, con repetidas (D-20). Al llenarse el medidor sale una carta al azar, sin reposición dentro de la partida (R-15 no cambia). Si la reserva se agota, el medidor sigue cargando sin dar cartas.
 - **R-27 Valores y rareza 📌.** Valores del 9 al 12, como las cartas de poder del original. Banco por elemento: 7 cartas de 9, 6 de 10, 4 de 11 y 3 de 12. Cada una de las 20 tiene la misma probabilidad de salir, así que por carta: 35 % / 30 % / 20 % / 15 %.
 - **R-28 Cajas.** Cajas de 1, 2 o 3 cartas (D-22). 📌 La caja es de un elemento a elección y cada carta se sortea por separado entre las 20 del banco, así que puede salir repetida. 📌 Precios: 100, 180 y 250 monedas.
-- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros. En línea rigen D-93 y R-55 del PRD de v2: las monedas se acreditan al terminar la partida, y los logros, cuando ocurren.
+- **R-29 Monedas.** 60 por superar la ronda 1, 120 por la ronda 2, 120 por la ronda 3 y 120 por ganar el bonus. Máximo 420 por partida. Cada pago se acredita en el perfil en el momento de superar su ronda (D-31), así que lo ganado no se pierde aunque después caigas, salgas o reinicies; la ronda en la que caes no paga. Si al acreditar ya tienes los 9 logros, el pago se duplica (hasta 840 por partida). Los logros de la partida se evalúan y guardan en el evento de fin de partida, antes de la celebración; si la abandonas antes, esa partida no da logros. En línea rigen D-93 y R-55 del PRD de v2: las monedas se acreditan al terminar la partida, y los logros, cuando ocurren. Desde D-104, también del PRD de v2, el doble pide el amuleto completo: sus cuatro pliegues, con 12 logros.
 - **R-30 Inicio.** Inventario inicial: 1 carta de 9 por elemento (la categoría más baja) (D-24). Al entrar por primera vez, el jugador elige además su **carta de camino** (D-25). 📌 Se elige entre tres cartas de 12, una por elemento, del banco (cuentan dentro de las 20). La elección es permanente y define el título ("Camino del Fuego"), el color y emblema del perfil y, en v2, el ninja que controla por defecto.
 - **R-31 Tormenta recomendada.** La pantalla de equipo recomienda tener al menos 4 cartas por elemento antes de jugar Tormenta. Solo es un aviso: no se bloquea. En línea la reemplaza R-51 del PRD de v2: Tormenta pide 5 cartas del elemento del ninja con que se entra (D-69).
 - **R-32 Persistencia.** Colección, monedas y camino se guardan en el navegador hasta que existan cuentas (v2). Borrar los datos del navegador reinicia el progreso.
@@ -1259,7 +1261,8 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 | `rewards` (v3) | Monedas 60/120/120 (+120); EXP 100/200/300 (+180) | Reimplementación | |
 | `boss.hp` (v3) | 800 / 500 / 300 según jugadores | Reimplementación | |
 | `mentor.cardEvery` (v3) | 3 turnos, rotando nieve → fuego → agua | Wiki y reimplementación | |
-| `economy.coinsPerRound` (v3) | 60 / 120 / 120, más 120 por ganar el bonus; ×2 con los 9 logros | Reimplementación (snowflake) | ✅ D-23 |
+| `economy.coinsPerRound` (v3) | 60 / 120 / 120, más 120 por ganar el bonus; ×2 con el amuleto completo (los 9 logros hasta D-104; desde entonces, los 12 de sus cuatro pliegues) | Reimplementación (snowflake) | ✅ D-23 |
+| `achievements.goals` (v2) | Las veces que hay que repetir la hazaña de cada logro: de 1 a 55, según el logro (R-55 del PRD de v2) | Simulación de 55.200 partidas de una persona, con equipos de colecciones mezcladas | 🧪 D-107: se recalibran con los datos reales de la Beta |
 | `economy.boxPrices` (v3) | 100 / 180 / 250 monedas por 1 / 2 / 3 cartas | Propuesta | 📌 P-15 |
 | `bank` (v3) | 20 cartas por elemento: 7 de 9, 6 de 10, 4 de 11 y 3 de 12 | Rango del original (9 a 12) + propuesta de rareza | 📌 P-14 |
 | `starter` (v3) | 1 carta de 9 por elemento + carta de camino (un 12) | Original: una carta de poder de 10 por elemento | ✅ D-24, 📌 P-16 |

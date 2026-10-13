@@ -10,8 +10,17 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HostMessage } from '../host/GameHost';
 import type { SocketLike } from '../net/socket';
+import { noAchievements } from './achievements';
 import { staleBehind } from './actions';
-import { firstPageOf, openNotebook, PAGE_COUNT, pageElement, turnPage } from './notebook';
+import {
+  firstPageOf,
+  openNotebook,
+  PAGES_PER_ELEMENT,
+  pageElement,
+  pageWithin,
+  showCardsOf,
+  turnPage,
+} from './notebook';
 import {
   acceptBot,
   askLeave,
@@ -71,7 +80,7 @@ const progress = (over: Partial<Progress> = {}): Progress => ({
   coins: 0,
   boxesOpened: 0,
   collection: { 'fire-01': 1, 'water-01': 1, 'snow-01': 1, 'water-18': 1 },
-  achievements: [],
+  achievements: noAchievements(),
   stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
   ...over,
 });
@@ -86,6 +95,8 @@ let sockets: FakeSocket[] = [];
 let timers: (() => void)[] = [];
 /** Lo que responde `GET /api/play/status`. */
 let playStatus: { status: number; body: unknown } = { status: 200, body: { match: null } };
+/** Lo que responde `GET /api/progress`: el progreso de la cuenta tal como lo tiene el servidor. */
+let served: Progress = progress();
 
 const last = () => sockets[sockets.length - 1] as FakeSocket;
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -105,6 +116,7 @@ beforeEach(() => {
   sockets = [];
   timers = [];
   playStatus = { status: 200, body: { match: null } };
+  served = progress();
   closeOnline();
   store.setState(initialState(), true);
   store.setState((s) => ({
@@ -126,7 +138,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (path: string) => {
     if (path === '/api/play/status')
       return new Response(JSON.stringify(playStatus.body), { status: playStatus.status });
-    return new Response(JSON.stringify(progress()), { status: 200 });
+    return new Response(JSON.stringify(served), { status: 200 });
   });
 });
 
@@ -367,6 +379,20 @@ describe('La partida y sus avisos (R-38, R-39 y R-54)', () => {
     expect(store.getState().screen).toBe('online');
   });
 
+  it('D-105: al volver de una partida que abandonó, vuelve a leer su progreso: el avance de sus logros cambió', async () => {
+    const socket = enter();
+    await settle();
+    start(socket);
+    // Durante la partida el servidor le sumó a "Aturdidor"; su ficha todavía muestra lo de antes.
+    served = progress({ achievements: { ...noAchievements(), stunner: { count: 3, done: false } } });
+    expect(store.getState().progress.data?.achievements.stunner).toEqual({ count: 0, done: false });
+    leaveMatch();
+    socket.say({ type: 'idle', reason: null, notice: null });
+    await settle();
+    expect(store.getState().screen).toBe('online');
+    expect(store.getState().progress.data?.achievements.stunner).toEqual({ count: 3, done: false });
+  });
+
   it('quien sale sin conexión sale igual, y al volver se le avisa al servidor que abandonó', async () => {
     const socket = enter();
     const state = start(socket, null);
@@ -393,8 +419,9 @@ describe('La partida y sus avisos (R-38, R-39 y R-54)', () => {
       type: 'match.end' as const,
       result: 'victory' as const,
       coins: { lines: [{ round: 1 as const, coins: 60 }], doubled: false, total: 60 },
-      earned: [],
-      achievements: [],
+      achievements: noAchievements(),
+      gained: {},
+      completed: [],
       balance: 60,
     };
     socket.say({ ...end, room: 'KQ7RTX' });
@@ -443,8 +470,9 @@ describe('Lo que llega atrasado no se anima (R-36)', () => {
     end: {
       result: 'victory',
       coins: { lines: [], doubled: false, total: 0 },
-      earned: [],
-      achievements: [],
+      achievements: noAchievements(),
+      gained: {},
+      completed: [],
       balance: 0,
       room: null,
     },
@@ -471,20 +499,33 @@ describe('Lo que llega atrasado no se anima (R-36)', () => {
   });
 });
 
-describe('La Libreta ninja (D-100)', () => {
-  it('la colección va en seis páginas, dos por elemento, y las flechas dan la vuelta', () => {
-    expect(PAGE_COUNT).toBe(6);
+describe('La Libreta ninja (D-100 y D-105)', () => {
+  it('D-105: la colección va de un elemento a la vez, en dos páginas, y las flechas no salen de ese elemento', () => {
+    expect(PAGES_PER_ELEMENT).toBe(2);
     expect([0, 1, 2, 3, 4, 5].map(pageElement)).toEqual(['fire', 'fire', 'water', 'water', 'snow', 'snow']);
+    expect([0, 1, 2, 3, 4, 5].map(pageWithin)).toEqual([0, 1, 0, 1, 0, 1]);
     expect(firstPageOf('snow')).toBe(4);
     openNotebook('cards', 'snow');
     expect(store.getState().notebook).toMatchObject({ tab: 'cards', page: 4 });
     turnPage(1);
+    expect(store.getState().notebook.page).toBe(5);
+    // Desde la segunda página, la siguiente es la primera del mismo elemento: da la vuelta sin cambiar de elemento.
     turnPage(1);
-    expect(store.getState().notebook.page).toBe(0);
-    expect(store.getState().progress.tab).toBe('fire');
+    expect(store.getState().notebook.page).toBe(4);
     turnPage(-1);
     expect(store.getState().notebook.page).toBe(5);
     expect(store.getState().progress.tab).toBe('snow');
+  });
+
+  it('D-105: la pestaña de un elemento lleva a su primera página, y sus cajas son las de ese elemento', () => {
+    openNotebook('cards', 'snow');
+    turnPage(1);
+    showCardsOf('water');
+    expect(store.getState().notebook).toMatchObject({ tab: 'cards', page: 2 });
+    expect(store.getState().progress.tab).toBe('water');
+    turnPage(-1);
+    expect(store.getState().notebook.page).toBe(3);
+    expect(store.getState().progress.tab).toBe('water');
   });
 
   it('vuelve a la pantalla desde la que se abrió, también si dentro se pasó a las cajas', () => {

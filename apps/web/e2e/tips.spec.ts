@@ -62,8 +62,22 @@ async function boxOf(el: Locator) {
   return { left: box.x, top: box.y, right: box.x + box.width, bottom: box.y + box.height };
 }
 
+/**
+ * La mano entra subiendo 18 px, medio segundo después que el resto de la franja, y la burbuja, 4 px. En un
+ * equipo lento, la prueba llegaba a medirlas a medio camino: 22 px más abajo de donde quedan. Se miden cuando
+ * ya terminaron de entrar.
+ */
+const settled = (page: Page) =>
+  page.locator('.hand').evaluate(async (hand) => {
+    const entering = hand
+      .getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Number.POSITIVE_INFINITY);
+    await Promise.all(entering.map((a) => a.finished.catch(() => undefined)));
+  });
+
 /** La burbuja, con su sombra de 4 px, no tapa el tablero, cabe en la pantalla y muestra su texto entero. */
 async function expectClearOfBoard(page: Page) {
+  await settled(page);
   const b = await boxOf(bubble(page));
   const apart = b.right + 4 <= FRAME.left || b.left >= FRAME.right || b.top >= FRAME.bottom;
   expect(apart, `la burbuja (${JSON.stringify(b)}) pisa el tablero`).toBe(true);
@@ -203,6 +217,32 @@ test('D-80: la primera carta y el combo posible salen en el mismo lugar, y marca
   await expect(bubble(page)).toHaveCount(0);
   expect(await marked(page)).toEqual([]);
   expect(await savedSettings(page)).toMatchObject({ learnedTips: ['firstCard', 'combo'] });
+});
+
+test('D-80 y D-106: con el aviso de mazo agotado en el lugar de las cartas, la burbuja sube encima de la mano y no lo tapa', async ({
+  page,
+}) => {
+  // A Brasa no le quedan cartas en el mazo ni en la mano: su mano dice que se acabaron.
+  await startBoard(page, { ...QUIET, ninjas: { ...QUIET.ninjas, fire: { at: [1, 1], deck: 0 } } });
+  const note = page.locator('.deck-out');
+  await expect(note).toBeVisible();
+  await expect(bubble(page)).toHaveCount(0);
+  // Brasa completa su plan: sale el consejo de cambiar de ninja, con el aviso todavía en la mano.
+  await click(page, 2, 1);
+  await expect(text(page)).toHaveText(SWITCH('Brasa'));
+  await expect(note).toBeVisible();
+  await expect(bubble(page)).toHaveClass(/at-above-hand/);
+  await expectClearOfBoard(page);
+  const b = await boxOf(bubble(page));
+  const hand = await boxOf(page.locator('.hand'));
+  const n = await boxOf(note);
+  // Encima de la mano, en el margen del tablero: no tapa el aviso, que se lee entero dentro de la mano.
+  expect(b.left).toBeGreaterThanOrEqual(FRAME.right);
+  expect(b.bottom).toBeLessThanOrEqual(hand.top);
+  expect(b.bottom).toBeLessThanOrEqual(n.top);
+  expect(n.left).toBeGreaterThanOrEqual(hand.left);
+  expect(n.right).toBeLessThanOrEqual(hand.right + 1);
+  expect(n.bottom).toBeLessThanOrEqual(720);
 });
 
 /** Deja a Brasa con esas cartas en la mano, en la partida en curso. */

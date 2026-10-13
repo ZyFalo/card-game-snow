@@ -72,6 +72,7 @@ export type IconName =
   | 'plug'
   | 'pencil'
   | 'chart'
+  | 'team'
   | 'box';
 
 export function Icon({ name }: { name: IconName }) {
@@ -166,6 +167,19 @@ export function Icon({ name }: { name: IconName }) {
           <circle cx="12" cy="12" r="9.5" fill="#F2B84B" stroke={INK} strokeWidth="2.2" />
           <circle cx="12" cy="12" r="6" fill="none" stroke="#B88A22" strokeWidth="1.4" />
           <rect x="10" y="10" width="4" height="4" rx="0.6" fill={INK} transform="rotate(45 12 12)" />
+        </svg>
+      );
+    case 'team':
+      // El equipo: tres figuras juntas. Va en el pliegue de equipo del amuleto (D-104).
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="6" cy="9" r="2.4" fill={INK} />
+          <circle cx="12" cy="7" r="2.7" fill={INK} />
+          <circle cx="18" cy="9" r="2.4" fill={INK} />
+          <path
+            d="M3 19c0-3 1.6-4.8 3.6-4.8M21 19c0-3-1.6-4.8-3.6-4.8M7.5 19.5c0-3.6 2-5.8 4.5-5.8s4.5 2.2 4.5 5.8"
+            {...common}
+          />
         </svg>
       );
     case 'cards':

@@ -1,8 +1,9 @@
 import { createMatch, type MatchState } from '@ventisca/core';
-import { type MatchSeat, PLAY_TURN_SECONDS, type TeamPlan } from '@ventisca/protocol';
+import { type MatchSeat, PLAY_TURN_SECONDS, PROTOCOL_VERSION, type TeamPlan } from '@ventisca/protocol';
 import { describe, expect, it } from 'vitest';
 import { NetworkHost, toPlan, toSeatPlan } from '../host/NetworkHost';
 import { HELP, ONLINE_TEXT, TIP_TEXT } from '../i18n/es';
+import { noAchievements } from './achievements';
 import { boardLayers } from './board';
 import { DEFAULT_SETTINGS } from './persist';
 import { type AppState, initialOnline, type OnlineMatch } from './store';
@@ -303,7 +304,7 @@ describe('La ayuda con las reglas en línea', () => {
 });
 
 describe('El host de red', () => {
-  const seq = { v: 1 as const, seq: 0 };
+  const seq = { v: PROTOCOL_VERSION, seq: 0 } as const;
 
   it('traduce lo que manda el servidor a los mensajes que la interfaz ya sabe mostrar', () => {
     const sent: unknown[] = [];
@@ -404,8 +405,10 @@ describe('El host de red', () => {
     const end = {
       result: 'victory' as const,
       coins: { lines: [{ round: 1 as const, coins: 60 }], doubled: false, total: 60 },
-      earned: [],
-      achievements: [],
+      // El avance de los logros llega tal cual lo dijo el servidor: lo que lleva, lo que sumó y lo que completó.
+      achievements: { ...noAchievements(), combo3: { count: 3, done: true }, healer: { count: 7, done: false } },
+      gained: { combo3: 1, healer: 4 },
+      completed: ['combo3' as const],
       balance: 60,
       room: null,
     };

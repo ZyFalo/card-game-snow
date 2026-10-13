@@ -193,8 +193,8 @@
   grid-column: span 4;
   display: flex;
   flex-direction: column;
-  gap: var(--space-item);
-  padding: var(--space-group);
+  gap: var(--gap-2);
+  padding: var(--space-item) var(--space-group);
   background: var(--el-soft);
 }
 
@@ -214,8 +214,8 @@
 
 .pick-card header img {
   flex: none;
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   background: var(--paper-hi);
   border: var(--line) solid var(--ink);
   border-radius: var(--radius-panel);
@@ -235,7 +235,7 @@
 
 .pick-stats {
   display: grid;
-  gap: var(--space-in);
+  gap: 4px;
   margin: 0;
 }
 
@@ -256,7 +256,7 @@
 
 .statbar {
   display: block;
-  height: 14px;
+  height: 12px;
   overflow: hidden;
   background: var(--paper-hi);
   border: var(--line) solid var(--ink);
@@ -274,7 +274,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-in);
-  padding-top: var(--space-item);
+  padding-top: var(--gap-2);
   border-top: 1.5px solid rgba(31, 36, 64, 0.2);
 }
 
@@ -292,12 +292,53 @@
 
 .pick-line p {
   margin: 0;
-  font: 500 var(--text-body) / var(--leading) var(--font-ui);
+  font: 500 var(--text-notice) / 1.4 var(--font-ui);
+}
+
+/* Al pie de la ficha (D-105): el pliegue del ninja elegido y el de equipo, con el avance de sus logros. */
+.pick-folds {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.pick-fold {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1.5px solid rgba(31, 36, 64, 0.2);
+}
+
+.pick-fold h2 {
+  margin: 0;
+  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+}
+
+.pick-fold .ach-list {
+  gap: 4px;
+}
+
+.pick-fold .ach-head b {
+  font-size: var(--text-small);
+}
+
+.pick-fold .ach-head {
+  line-height: 1.25;
+}
+
+.pick-fold .ach-bar {
+  height: 7px;
+  margin-top: 2px;
+}
+
+/* El enlace a la Libreta, arriba a la derecha de la ficha. */
+.pick-notebook {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .pick-foot {
-  margin-top: auto;
-  padding-top: var(--space-item);
+  padding-top: 10px;
   border-top: 1.5px solid rgba(31, 36, 64, 0.2);
 }
 
@@ -742,8 +783,16 @@
   }
 
   .pick-card .online-kicker,
+  .pick-card .pick-folds,
   .pick-card .pick-foot {
     grid-column: 1 / -1;
+  }
+
+  /* A lo ancho, los dos pliegues van lado a lado. */
+  .pick-card .pick-folds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--grid-gutter);
+    margin-top: 0;
   }
 
   .pick-card header {
@@ -831,6 +880,10 @@
   .pick-card {
     display: flex;
     align-items: stretch;
+  }
+
+  .pick-card .pick-folds {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .pick-card .card-line {
@@ -1467,58 +1520,21 @@
   height: 34px;
 }
 
-.res-amulet {
-  display: flex;
-  align-items: center;
+/* El avance de la partida (D-105): el pliegue del ninja con que se jugó y el de equipo. */
+.res-folds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-item);
 }
 
-.res-amulet h3 {
-  white-space: nowrap;
-}
-
-.ach-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-in);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ach {
+.res-fold {
   display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  color: #c9d3dd;
-  background: var(--paper-hi);
-  border: var(--line) solid var(--ink);
-  border-radius: 50%;
+  align-content: start;
+  gap: var(--space-in);
 }
 
-.ach svg {
-  width: 20px;
-  height: 20px;
-}
-
-.ach.got {
-  color: var(--el-ink);
-  background: var(--el);
-}
-
-.ach.fresh {
-  box-shadow: var(--ring);
-}
-
-.res-new {
-  margin: 0 0 0 var(--space-in);
-  font: 500 var(--text-notice) / 1.35 var(--font-ui);
-}
-
-.res-new b {
-  color: #9a6a0c;
+.res-fold.fold-team {
+  padding: calc(var(--gap-2) - 4px) calc(var(--space-item) - 4px);
 }
 
 .scroll-actions {
@@ -1566,10 +1582,13 @@
     padding: 44px calc(var(--space-item) + var(--roll)) var(--space-item);
   }
 
-  .res-rounds,
-  .res-amulet {
+  .res-rounds {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .res-folds {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .res-track {
@@ -1675,93 +1694,99 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-group);
+  gap: var(--space-item);
   min-height: 0;
 }
 
-.note-top {
+/* La franja de la cuenta: su camino, a la izquierda, y sus cajas y sus monedas, a la derecha. */
+.note-strip {
   display: flex;
   align-items: center;
-  gap: var(--space-group);
-  min-height: 112px;
+  justify-content: space-between;
+  gap: var(--space-item);
 }
 
 .note-camino {
   display: flex;
   align-items: center;
-  gap: var(--space-item);
+  gap: var(--space-in);
 }
 
 .note-camino img {
   flex: none;
-  width: 72px;
-  height: 64px;
-  padding: 2px;
+  width: 36px;
+  height: 32px;
+  padding: 1px;
   background: var(--el-soft);
   border: var(--line) solid var(--ink);
-  border-radius: var(--radius-control);
-}
-
-.note-camino h2 {
-  margin: 0;
-  font-size: var(--text-panel);
-  line-height: 1.1;
+  border-radius: var(--radius-check);
 }
 
 .note-camino p {
-  margin: 4px 0 0;
-  font: 700 var(--text-notice) / 1.3 var(--font-ui);
+  margin: 0;
+  font: 500 var(--text-notice) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.note-camino b {
   color: var(--el-lo);
 }
 
 .note-wallet {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-in);
+  align-items: center;
+  gap: var(--space-item);
   font: 500 var(--text-notice) / 1.3 var(--font-ui);
   color: var(--ink-2);
 }
 
-.amulet {
+/* El amuleto, lo que dice y, a su derecha, las estadísticas privadas. */
+.note-top {
   display: flex;
   align-items: center;
-  gap: var(--space-item);
-  margin: 0 0 0 auto;
+  gap: var(--space-group);
 }
 
-.amulet svg {
+.amulet {
   flex: none;
   width: 84px;
-  height: 112px;
+  height: 114px;
 }
 
-.amulet figcaption {
-  max-width: 200px;
-  font: 500 var(--text-small) / 1.35 var(--font-ui);
+.note-amulet {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-amulet h2 {
+  margin: 0;
+  font-size: var(--text-section);
+  line-height: 1.2;
+}
+
+.note-amulet p {
+  max-width: 60ch;
+  margin: 4px 0 0;
+  font: 500 var(--text-body) / var(--leading) var(--font-ui);
   color: var(--ink-2);
 }
 
-.amulet.complete figcaption {
+.note-amulet p.amulet-double {
+  display: inline-block;
+  margin: 6px 0 2px;
+  padding: 2px 12px;
   font-weight: 700;
-  color: #9a6a0c;
-}
-
-.note-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--grid-gutter);
-  flex: 1;
-  min-height: 0;
+  color: var(--ink);
+  background: var(--gold);
+  border: var(--line) solid var(--ink);
+  border-radius: 999px;
 }
 
 .note-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: var(--space-in);
-  padding: var(--space-item);
-  text-align: center;
+  padding: var(--gap-2) var(--space-item);
   background: #fffaf0;
   border: var(--line) solid var(--ink);
   border-radius: var(--radius-control);
@@ -1780,89 +1805,181 @@
   line-height: 1.1;
 }
 
-.note-el h3 {
-  color: var(--el-lo);
-}
-
 .note-card h3 svg {
-  width: 24px;
-  height: 24px;
+  flex: none;
+  width: 22px;
+  height: 22px;
 }
 
-.note-card > p {
-  margin: 0;
-  font: 700 var(--text-notice) / 1.3 var(--font-ui);
-}
-
-.note-el img {
-  flex: 0 1 auto;
-  height: 128px;
-  min-height: 0;
-  margin: var(--space-in) 0;
+.note-stats {
+  flex: none;
+  width: 208px;
+  gap: 2px;
 }
 
 .note-stats dl {
   display: grid;
   width: 100%;
-  margin: var(--space-in) 0 0;
+  margin: 2px 0 0;
 }
 
 .note-stats dl > div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: var(--gap-2) 0;
+  padding: 3px 0;
   border-top: 1.5px dashed #c9bfa8;
 }
 
 .note-stats dt {
-  font: 500 var(--text-body) / 1.3 var(--font-ui);
+  font: 500 var(--text-notice) / 1.3 var(--font-ui);
 }
 
 .note-stats dd {
   margin: 0;
-  font: var(--text-panel) / 1 var(--font-display);
+  font: var(--text-section) / 1 var(--font-display);
 }
 
-.note-fold {
+/* Los cuatro pliegues: uno por ninja y el de equipo, cada uno con el avance de sus tres logros. */
+.note-cards {
   display: grid;
-  gap: 4px;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  text-align: left;
-  list-style: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--grid-gutter);
+  flex: 1;
+  min-height: 0;
 }
 
-.note-fold li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-in);
-  font: 500 var(--text-small) / 1.35 var(--font-ui);
+/* El de equipo se gana con cualquier ninja: su color es la tinta, y su borde, doble. */
+.fold-team {
+  --el: var(--ink);
+  --el-lo: var(--ink);
+  --el-soft: #e6e8f0;
+  --el-ink: var(--paper-hi);
+}
+
+.note-fold.fold-team,
+.res-fold.fold-team {
+  border-style: double;
+  border-width: 6px;
+}
+
+.note-fold.fold-team {
+  padding: calc(var(--gap-2) - 4px) calc(var(--space-item) - 4px);
+}
+
+.note-fold h3 {
+  color: var(--el-lo);
+}
+
+.fold-count {
+  margin-left: auto;
+  font: 700 var(--text-notice) / 1 var(--font-ui);
   color: var(--ink-2);
 }
 
-.note-fold i {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  background: #fffaf0;
-  border: var(--line) solid var(--ink);
-  border-radius: 50%;
+.note-fold > .note-quiet {
+  margin-top: -4px;
 }
 
-.note-fold li.got {
+.fold-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-in);
+  margin: auto 0 0;
+  padding-top: var(--space-in);
+  font: 500 var(--text-small) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.fold-foot .link {
+  font-size: var(--text-notice);
+}
+
+/*
+ * Un logro con su contador y su barra (D-105). Se usa en la Libreta, con la explicación de qué cuenta; al
+ * pie de la ficha, y en los resultados, donde lo que sumó la partida va en dorado.
+ */
+.ach-list {
+  display: grid;
+  gap: var(--space-in);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ach-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-in);
+  font: 500 var(--text-small) / 1.3 var(--font-ui);
+}
+
+.ach-head b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-notice);
+  font-weight: 700;
+}
+
+.ach-head b svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin: -1px 0;
+}
+
+.ach-count {
+  flex: none;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ach-line.done .ach-count {
   font-weight: 700;
   color: var(--ink);
 }
 
-.note-fold li.got i {
+.ach-what {
+  margin: 0;
+  font: 500 var(--text-small) / 1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.ach-bar {
+  display: flex;
+  height: 10px;
+  margin-top: 3px;
+  overflow: hidden;
+  background: var(--paper-hi);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+}
+
+.ach-bar i {
+  flex: none;
+  height: 100%;
   background: var(--el);
 }
 
-.note-el .link {
-  margin-top: auto;
-  font-size: var(--text-notice);
+.ach-bar i.new {
+  background: var(--gold);
+}
+
+.ach-gain {
+  font-weight: 700;
+  color: #9a6a0c;
+}
+
+/* El logro que se completó en esta partida: con el aro dorado de lo recién ganado. */
+.ach-line.fresh {
+  margin: -4px -6px;
+  padding: 4px 6px;
+  background: #fff3d1;
+  border-radius: var(--radius-check);
+  box-shadow: var(--ring);
 }
 
 /* Mis cartas */
@@ -1880,20 +1997,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-item);
-}
-
-.note-bar h2 {
-  display: flex;
-  align-items: center;
-  gap: var(--space-in);
-  margin: 0;
-  font: 700 var(--text-section) / 1.2 var(--font-ui);
-  color: var(--el-lo);
-}
-
-.note-bar h2 svg {
-  width: 28px;
-  height: 28px;
 }
 
 .note-bar .tabs {
@@ -1923,8 +2026,16 @@
 
 .note-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-item);
+}
+
+/* Qué página se ve, a la izquierda del botón de las cajas. */
+.note-page {
+  margin: 0 auto 0 0;
+  font: 700 var(--text-body) / 1.3 var(--font-ui);
+  color: var(--el-lo);
 }
 
 /* Abrir cajas */
@@ -2002,14 +2113,13 @@
     padding: 48px calc(var(--space-item) + var(--roll)) var(--space-item);
   }
 
+  .note-strip,
   .note-top {
     flex-wrap: wrap;
-    align-items: flex-start;
   }
 
-  .amulet {
-    flex-basis: 100%;
-    margin: 0;
+  .note-stats {
+    width: 100%;
   }
 
   .note-cards {

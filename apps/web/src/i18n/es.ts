@@ -1,4 +1,11 @@
-import type { AchievementId, BonusCondition, Difficulty, ElementKind, EnemyKind } from '@ventisca/core';
+import type {
+  AchievementFold,
+  AchievementId,
+  BonusCondition,
+  Difficulty,
+  ElementKind,
+  EnemyKind,
+} from '@ventisca/core';
 
 /* Todos los textos de la interfaz viven aquí (P-11: listos para traducir). */
 
@@ -343,6 +350,18 @@ export const HUD = {
   handHint: 'Teclas 1 a 4 · clic derecho o Esc deshace',
   /** La mano de un ninja que todavía no tiene cartas. */
   handEmpty: 'Llena el medidor para ganar cartas',
+  /**
+   * La mano vacía de un ninja al que también se le acabó el mazo: el medidor ya no reparte nada. En línea
+   * las cartas son las de la colección de la persona; sin cuenta, las del mazo fijo.
+   */
+  deckOut: {
+    online: (element: string) => `Se acabaron tus cartas de ${element} en esta partida.`,
+    onlineHint: 'Abre cajas con tus monedas para tener más en las próximas.',
+    local: (name: string) => `Se acabaron las cartas de ${name} en esta partida.`,
+    localHint: 'El medidor ya no da cartas. Sigue con ataques, curas y revivir.',
+  },
+  /** El medidor de un ninja con el mazo en 0. */
+  meterOff: 'El medidor ya no da cartas.',
   card: (element: string, value: number) => `Carta de ${element} de valor ${value}`,
 } as const;
 
@@ -763,8 +782,9 @@ export const ONLINE_TEXT = {
   rewardMissing: (have: number, missing: number) => `Tienes ${have} · te faltan ${missing}.`,
   rewardReady: '¡Ya puedes abrirla!',
   rewardHave: (have: number) => `Tienes ${have} monedas.`,
-  amulet: (n: number, of: number) => `Amuleto · ${n}/${of}`,
-  fresh: 'Nuevo:',
+  /** El avance de los logros en esa partida (D-105): el del pliegue del ninja con que se jugó y el de equipo. */
+  foldGain: (element: string) => `Avance de tu pliegue de ${element}`,
+  teamGain: 'Avance de Equipo',
   openBoxes: 'Abrir cajas',
   yourProgress: 'Tu progreso',
   done: 'Listo',
@@ -803,38 +823,66 @@ export const NINJA_TIPS: Record<ElementKind, readonly [string, string, string]> 
   ],
 };
 
-/** Los 9 logros, con sus nombres oficiales (PRD §9.6) y cómo se gana cada uno en línea (R-55). */
-export const ACHIEVEMENT_TEXT: Record<AchievementId, { name: string; how: string }> = {
-  combo2: { name: 'Combo doble', how: 'Juega carta en el mismo turno que un compañero.' },
-  combo3: { name: 'Combo triple', how: 'Juega carta en un turno en que los tres ninjas juegan la suya.' },
-  perfectSweep: { name: 'Barrido perfecto', how: 'Alcanza a 3 gólems con una sola carta.' },
-  upAgain: { name: 'De pie otra vez', how: 'Gana una partida después de haber caído.' },
-  bonusWon: { name: 'Bonus conquistado', how: 'Gana la ronda bonus.' },
-  untouched: { name: 'Sin un rasguño', how: 'Llega a la ronda bonus con todo el equipo a vida completa.' },
-  reviver: { name: 'Reanimador', how: 'Revive a un compañero caído.' },
-  healer15: { name: 'Mano sanadora', how: 'Cura 15 veces en una partida.' },
-  noOneLeft: { name: 'Nadie se queda atrás', how: 'Gana una partida en la que los tres cayeron y volvieron.' },
+/** Los 12 logros (R-55 y D-104): su nombre y qué cuenta cada uno. Se le habla a quien juega. */
+export const ACHIEVEMENT_TEXT: Record<AchievementId, { name: string; counts: string }> = {
+  perfectSweep: { name: 'Barrido perfecto', counts: 'Cartas que alcanzan a 3 gólems' },
+  stunner: { name: 'Aturdidor', counts: 'Gólems aturdidos con tu carta' },
+  blaze: { name: 'Llamarada', counts: 'Gólems quemados con tu combo' },
+  breakwater: { name: 'Rompeolas', counts: 'Gólems que derribas tú' },
+  highTide: { name: 'Marea alta', counts: 'Compañeros con Potencia por tu combo' },
+  upAgain: { name: 'De pie otra vez', counts: 'Victorias después de haber caído' },
+  reviver: { name: 'Reanimador', counts: 'Compañeros revividos' },
+  healer: { name: 'Mano sanadora', counts: 'Curas a compañeros' },
+  snowShield: { name: 'Escudo de nieve', counts: 'Golpes que anula tu escudo' },
+  combo3: { name: 'Combo triple', counts: 'Turnos con las tres cartas' },
+  untouched: { name: 'Sin un rasguño', counts: 'Bonus con todos a vida completa' },
+  noOneLeft: { name: 'Nadie se queda atrás', counts: 'Victorias en que alguien cayó y los tres terminaron de pie' },
 };
 
-/** La Libreta ninja (D-100): el progreso y las cartas de la cuenta, con la tienda de cajas. */
+/** Los cuatro pliegues del amuleto (D-104): su nombre y con quién se gana cada uno. */
+export const FOLD_TEXT: Record<AchievementFold, { name: string; who: string }> = {
+  fire: { name: NINJA_TEXT.fire.element, who: `con ${NINJA_TEXT.fire.name}` },
+  water: { name: NINJA_TEXT.water.element, who: `con ${NINJA_TEXT.water.name}` },
+  snow: { name: NINJA_TEXT.snow.element, who: `con ${NINJA_TEXT.snow.name}` },
+  team: { name: 'Equipo', who: 'con cualquier ninja' },
+};
+
+/** La Libreta ninja (D-100 y D-105): el progreso y las cartas de la cuenta, con la tienda de cajas. */
 export const NOTEBOOK_TEXT = {
   title: 'Libreta ninja',
   open: 'Libreta ninja',
+  /** El enlace de la ficha de "Jugar en línea". */
+  link: 'Libreta',
   tabs: { progress: 'Mi progreso', cards: 'Mis cartas' },
   boxes: 'Abrir cajas',
+  boxesOf: (element: string) => `Abrir cajas de ${element}`,
   statsTitle: 'Clásica',
-  statsPrivate: 'Solo tú ves estas estadísticas',
+  statsPrivate: 'Solo tú las ves',
   stats: { played: 'Partidas', rounds: 'Rondas', wins: 'Victorias' },
-  cardsOf: (n: number, of: number) => `${n} de ${of} cartas`,
-  fold: (n: number, of: number) => `Pliegue ${n}/${of}`,
+  cardsOf: (n: number, of: number) => `${n}/${of} cartas`,
+  /** Cuántas cartas distintas tiene de un elemento, en su pestaña de "Mis cartas". */
+  ownedOf: (n: number, of: number) => `${n}/${of}`,
+  ownedLong: (element: string, n: number, of: number) => `${element}: ${n} de ${of} cartas`,
+  elements: 'Elementos',
+  /** Los logros completos de un pliegue, y lo que lleva contado un logro. */
+  fold: (n: number, of: number) => `${n}/${of}`,
+  foldLong: (fold: string, n: number, of: number) => `${fold}: ${n} de ${of} logros`,
+  count: (n: number, goal: number) => `${n}/${goal}`,
+  countLong: (name: string, n: number, goal: number) => `${name}: ${n} de ${goal}`,
+  /** En los resultados: lo que la partida le sumó a un logro. */
+  gain: (n: number) => `+${n}`,
+  noGain: 'sin avance',
+  /** En la ficha de "Jugar en línea": el pliegue del ninja elegido y el de equipo. */
+  yourFold: (element: string, n: number, of: number) => `Tu pliegue de ${element} · ${n}/${of}`,
+  teamFold: (n: number, of: number) => `Equipo · ${n}/${of}`,
   toCards: 'Mis cartas',
   toCardsOf: (element: string) => `Mis cartas de ${element}`,
-  amulet: (n: number, of: number) => `Amuleto: ${n} de ${of} pliegues`,
-  amuletTitle: 'Amuleto de papel',
+  amulet: (n: number, of: number) => `Amuleto · ${n} de ${of} pliegues`,
+  amuletTitle: 'Amuleto de cuatro pliegues',
+  amuletHint:
+    'Fuego, Agua y Nieve se ganan con su ninja; el centro, Equipo, con cualquiera. Con los cuatro, las monedas de cada partida valen el doble.',
   doubleActive: 'Monedas dobles activas',
-  doubleHint: 'Completa los 9 logros y las monedas de cada partida valen el doble.',
   earned: 'Logrado',
-  pending: 'Por lograr',
   page: (element: string, page: number, pages: number) => `${element} · página ${page}/${pages}`,
   previousPage: 'Página anterior',
   nextPage: 'Página siguiente',

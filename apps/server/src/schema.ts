@@ -195,8 +195,10 @@ export const matchPlayers = pgTable(
 );
 
 /**
- * Los logros de cada persona (R-55). Se guardan cuando ocurren, uno por fila. Con los 9, las monedas se
- * duplican (R-29): el servidor lo decide contando estas filas, nunca lo recibe del cliente.
+ * El avance de cada persona en cada logro (R-55): las veces que repitió su hazaña, entre todas sus partidas
+ * en línea, y desde cuándo lo tiene completo. El avance no pasa de la meta del logro, que está en
+ * `balance.json`. Con los 12 completos, las monedas se duplican (R-29): el servidor lo decide contando las
+ * filas completas, nunca lo recibe del cliente. Solo lo ve su dueño, y se borra con la cuenta.
  */
 export const achievements = pgTable(
   'achievements',
@@ -204,13 +206,17 @@ export const achievements = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** El id del logro en `packages/core` (por ejemplo, `combo2`). */
+    /** El id del logro en `packages/core` (por ejemplo, `reviver`). */
     achievementId: text('achievement_id').notNull(),
-    /** La partida en que lo ganó. */
-    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'set null' }),
-    unlockedAt: timestamp('unlocked_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Las veces que lleva contadas. */
+    progress: integer('progress').notNull().default(0),
+    /** Cuándo llegó a la meta. Vacío mientras le falta. */
+    unlockedAt: timestamp('unlocked_at', { withTimezone: true }),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.achievementId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.achievementId] }),
+    check('achievements_progress_check', sql`${t.progress} >= 0`),
+  ],
 );
 
 /**

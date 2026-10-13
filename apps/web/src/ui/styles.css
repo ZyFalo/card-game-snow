@@ -1321,6 +1321,16 @@ button {
   background: var(--gold);
 }
 
+/* Con el mazo en 0 el medidor ya no da cartas (D-106): se apaga, y el contador del mazo lo dice en rojo. */
+.meter.off {
+  opacity: 0.35;
+}
+
+.meter-row .deck-zero {
+  font-weight: 900;
+  color: #b0321f;
+}
+
 .np-foot {
   display: flex;
   align-items: center;
@@ -1437,6 +1447,48 @@ button {
   margin: 0 2px;
   font: 500 var(--text-body) / var(--leading) var(--font-ui);
   color: var(--ink-2);
+}
+
+/* Sin cartas en la mano ni en el mazo (D-106): un recuadro punteado, en el lugar de las cartas. */
+.deck-out {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  align-self: flex-start;
+  max-width: 440px;
+  padding: var(--gap-2) var(--gap-3);
+  background: var(--paper-hi);
+  border: var(--line) dashed var(--ink-3);
+  border-radius: var(--radius-control);
+}
+
+.deck-out-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--line) dashed var(--ink);
+  border-radius: 50%;
+}
+
+.deck-out-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.deck-out p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font: 500 var(--text-notice) / 1.35 var(--font-ui);
+  color: var(--ink-2);
+}
+
+.deck-out b {
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* ---------- Demostraciones (D-81) ---------- */

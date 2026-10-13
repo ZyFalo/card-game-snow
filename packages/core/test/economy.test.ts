@@ -73,16 +73,20 @@ describe('§18 Progresión: monedas, cajas y colección', () => {
     expect(doubled.lines.map((l) => l.round)).toEqual([1, 2, 3, 'bonus']);
   });
 
-  it('R-29 (D-31): cada ronda superada paga al instante lo suyo, el doble con los 9 logros', () => {
+  it('R-29 (D-31): cada ronda superada paga al instante lo suyo, el doble con el amuleto completo', () => {
     expect([1, 2, 3, 'bonus'].map((r) => coinsForRound(r as 1 | 2 | 3 | 'bonus', false))).toEqual([60, 120, 120, 120]);
     expect(coinsForRound(2, true)).toBe(240);
     // La suma de los pagos por ronda es lo que paga la partida entera.
     expect(coinsForMatch(ended({ status: 'victory', bonusOutcome: 'won' }), false).total).toBe(60 + 120 + 120 + 120);
   });
 
-  it('R-29: las monedas dobles exigen los 9 logros', () => {
+  it('R-29: las monedas dobles exigen los cuatro pliegues del amuleto completos, con sus 12 logros', () => {
     expect(hasDoubleCoins([...ACHIEVEMENT_IDS])).toBe(true);
-    expect(hasDoubleCoins(ACHIEVEMENT_IDS.slice(1))).toBe(false);
+    // Falta un logro de cualquiera de los pliegues, también del de equipo: no hay doble.
+    for (const missing of ACHIEVEMENT_IDS) {
+      expect(hasDoubleCoins(ACHIEVEMENT_IDS.filter((id) => id !== missing)), missing).toBe(false);
+    }
+    expect(hasDoubleCoins([])).toBe(false);
   });
 
   it('R-30: el inventario inicial es un 9 por elemento más la carta de camino', () => {

@@ -104,7 +104,11 @@ export function receive(message: ServerMessage): void {
       return;
     case 'idle': {
       // Estaba en una partida que para esta persona ya no existe: salió, terminó sin ella o se interrumpió.
-      if (online.match && !online.end) leaveBattle();
+      if (online.match && !online.end) {
+        leaveBattle();
+        // Lo que sumó a sus logros en esa partida ya está en su cuenta (R-55): la ficha lo lee del progreso.
+        void loadProgress();
+      }
       patch({
         place: 'home',
         queue: null,

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   createMatch,
-  earnedAchievements,
   isThreatened,
   type Plan,
   planTeam,
@@ -145,7 +144,6 @@ describe('Bot de ninjas (§8)', () => {
       const { state } = playWithBot(seed * 7919);
       expect(state.status).not.toBe('playing');
       if (state.status === 'victory') wins++;
-      expect(Array.isArray(earnedAchievements(state))).toBe(true);
     }
     expect(wins).toBeGreaterThan(15);
   });

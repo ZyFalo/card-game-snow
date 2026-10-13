@@ -139,10 +139,15 @@ export function giveCoins(email: string, matches = 1): void {
 }
 
 /**
- * Le da a una cuenta de la base de las e2e los 9 logros, o todos menos `missing`, en la tabla donde el
- * servidor los cuenta: así una prueba del doble de monedas (R-29) no tiene que ganarlos jugando.
+ * Deja el avance de los logros de una cuenta de la base de las e2e como la prueba lo necesita, en la tabla
+ * donde el servidor lo cuenta: así una prueba del doble de monedas (R-29) no tiene que completar el amuleto
+ * jugando. `progress` dice lo que lleva contado cada logro, por su id; con `all`, los que no se nombran
+ * quedan completos. Lo que llega a su meta queda completo.
  */
-export function giveAchievements(email: string, missing?: string): void {
-  const args = [`${SERVER}/test/support/e2e-achievements.ts`, email, ...(missing ? [missing] : [])];
+export function giveAchievements(
+  email: string,
+  progress: { all?: boolean } & Record<string, number | boolean | undefined> = { all: true },
+): void {
+  const args = [`${SERVER}/test/support/e2e-achievements.ts`, email, JSON.stringify(progress)];
   execFileSync(`${SERVER}/node_modules/.bin/tsx`, args, { stdio: 'pipe' });
 }

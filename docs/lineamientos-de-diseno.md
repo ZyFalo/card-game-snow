@@ -311,6 +311,8 @@ Revivir se completa al final del turno (R-09), así que el tablero muestra la re
 
 - Muestra solo las cartas que hay: un lugar sin carta no se dibuja.
 - Vacía, dice bajo su título cómo se ganan: "Llena el medidor para ganar cartas".
+- **Vacía y sin cartas en el mazo** (D-106 del PRD de v2), dice que se acabaron (`.deck-out`): un recuadro de trazos, en el lugar de las cartas, con el ícono de las cartas en un círculo punteado, una frase en 15 px y, debajo, otra en 14 px `--ink-2`. En línea habla de las cartas de la persona y de las cajas; sin cuenta, de las del ninja y de lo que todavía puede hacer.
+- **En el panel de un ninja con el mazo en 0,** "Mazo 0" va en rojo oscuro (`#b0321f`) y en negrita, y el medidor, apagado (al 35 %): ya no reparte nada, así que tampoco avisa que está lleno.
 - Guarda su alto aunque esté vacía, para que su título no salte al cambiar de ninja.
 
 ### Consejos en el momento
@@ -472,6 +474,19 @@ Las pantallas del juego en línea (D-100 del PRD de v2) siguen todo lo anterior.
 ### El pergamino
 
 Los resultados en línea y la Libreta ninja van sobre un pergamino: papel crema (`#f7f1e3`), rollos a los lados, que hacen de borde, y el título en una franja de tinta inclinada 2 grados. Sus cajas son de un papel más claro (`#fffaf0`), con borde de tinta y sin sombra.
+
+### El amuleto y el avance de los logros
+
+Llegaron con el amuleto de 4 pliegues (D-104 y D-105 del PRD de v2). Viven en `ui/Notebook.tsx` y `online.css`.
+
+- **El amuleto de papel (`.amulet`)** tiene cuatro pliegues: Fuego a la izquierda, Agua a la derecha, Nieve abajo y, en el centro y sobre los otros tres, el de Equipo. Cada uno se rellena con el color de su elemento al completarse, y el de Equipo, con tinta; mientras le falta, queda en papel, con el borde de trazos. Con los cuatro, el cordón y el nudo pasan de `--ink-3` a `--gold`.
+- **El pliegue de Equipo no es de ningún elemento:** su color es la tinta, su fondo suave es `#e6e8f0` y su tarjeta lleva un borde doble, para distinguirla de las tres de ninja. Su ícono son tres figuras juntas.
+- **Un logro (`.ach-line`)** va en tres renglones: su nombre en 700 14 px y, a la derecha, su contador ("7/30") en 13 px `--ink-2`; debajo, qué cuenta, en 13 px `--ink-2`; y su barra. La explicación va siempre a la vista: nunca en un texto que solo sale con el ratón.
+- **La barra (`.ach-bar`)** mide 10 px, con borde de tinta y las puntas redondas, y se llena con el color del pliegue. Completo, el logro lleva una marca de listo antes del nombre y el contador en negrita.
+- **En la ficha** van el pliegue del ninja elegido y el de Equipo, sin la explicación: nombre, contador y una barra de 7 px. La ficha queda justa de alto a 1280×720: lo que se le agregue tiene que caber en sus 652 px.
+- **En los resultados,** lo que sumó la partida va en dorado: "+3" antes del contador, en `#9a6a0c`, y el tramo nuevo de la barra en `--gold`, a continuación de lo que ya había. Lo que no sumó dice "sin avance". El logro que se completó en esa partida lleva el aro dorado de lo recién ganado.
+- **Una tarjeta de pliegue completa** toma el fondo suave de su elemento.
+- **"Mis cartas"** muestra un elemento a la vez: las pestañas de los elementos arriba, con cuántas de sus 20 cartas tiene la persona, y el saldo a su derecha; las flechas pasan entre las dos páginas de ese elemento, y al pie van qué página se ve, a la izquierda, y el botón de las cajas de ese elemento, a la derecha.
 
 ### Adaptables
 

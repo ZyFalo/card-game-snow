@@ -522,7 +522,9 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
   const spoken = match ? planLabel(plan, n, match, true) : '';
   const frac = Math.max(0, n.hp / n.maxHp);
   const filled = Math.floor(n.meter / 2);
-  const charged = n.meter >= 10;
+  // Con el mazo en 0 el medidor ya no reparte nada (R-15): se apaga, y deja de avisar que está lleno.
+  const deckOut = n.deck.length === 0;
+  const charged = n.meter >= 10 && !deckOut;
 
   // Rastro de vida perdida: se queda un instante y luego se encoge (al curar, salta).
   const [ghost, setGhost] = useState(frac);
@@ -610,14 +612,16 @@ function NinjaPanel({ n, order, marked }: { n: Ninja; order: number | undefined;
         <div className="meter-row">
           <div
             ref={meter}
-            className={`meter ${charged ? 'charged' : ''}`}
-            title={charged ? HUD.meterFull : HUD.meter(n.meter, BALANCE.meter.max)}
+            className={`meter ${charged ? 'charged' : ''} ${deckOut ? 'off' : ''}`}
+            title={deckOut ? HUD.meterOff : charged ? HUD.meterFull : HUD.meter(n.meter, BALANCE.meter.max)}
           >
             {METER_SEGMENTS.map((seg, i) => (
               <i key={seg} className={i < filled ? 'on' : ''} />
             ))}
           </div>
-          <span>{ES.deck(n.deck.length)}</span>
+          <span className={deckOut ? 'deck-zero' : ''} data-deck={n.deck.length}>
+            {ES.deck(n.deck.length)}
+          </span>
         </div>
         {/* Los estados van arriba, bajo el número de orden: el resumen del plan ocupa todo el pie. */}
         <span className="np-status">
@@ -715,6 +719,8 @@ function Hand() {
   const usable = phase === 'planning' && ninja.hp > 0 && active === shown;
   // La burbuja de los consejos va siempre aquí: en el espacio libre junto a las cartas, o encima si no lo hay.
   const count = ninja.hand.length;
+  // Sin cartas en la mano ni en el mazo, el lugar de las cartas dice que se acabaron (D-106).
+  const deckOut = count === 0 && ninja.deck.length === 0;
   return (
     <div
       className={`hand interactive el-${shown} ${tip ? 'has-tip' : ''}`}
@@ -737,9 +743,24 @@ function Hand() {
         </div>
         <span>{HUD.handHint}</span>
       </div>
-      {/* Solo las cartas que hay: un lugar sin carta no se dibuja. Sin ninguna, dice cómo se ganan. */}
+      {/*
+        Solo las cartas que hay: un lugar sin carta no se dibuja. Sin ninguna, dice cómo se ganan; y si
+        tampoco quedan en el mazo, que se acabaron: el medidor ya no va a dar más (D-106).
+      */}
       <div className="cards">
-        {ninja.hand.length === 0 ? <p className="hand-empty">{HUD.handEmpty}</p> : null}
+        {count > 0 ? null : !deckOut ? (
+          <p className="hand-empty">{HUD.handEmpty}</p>
+        ) : (
+          <div className="deck-out" role="status" data-deck-out={you ? 'online' : 'local'}>
+            <span className="deck-out-icon" aria-hidden="true">
+              <Icon name="cards" />
+            </span>
+            <p>
+              <b>{you ? HUD.deckOut.online(NINJA_TEXT[shown].element) : HUD.deckOut.local(NINJA_TEXT[shown].name)}</b>
+              <span>{you ? HUD.deckOut.onlineHint : HUD.deckOut.localHint}</span>
+            </p>
+          </div>
+        )}
         {ninja.hand.map((card, i) => {
           const t = NINJA_TEXT[card.element];
           // La carta de la que habla el consejo en pantalla: la primera, o todas las de la mano (D-80).
@@ -766,7 +787,7 @@ function Hand() {
           );
         })}
       </div>
-      {tip ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot(count)} /> : null}
+      {tip ? <TipBubble key={tip.id} tip={tip} slot={bubbleSlot(count, deckOut)} /> : null}
     </div>
   );
 }

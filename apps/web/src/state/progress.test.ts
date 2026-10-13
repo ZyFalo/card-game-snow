@@ -2,6 +2,7 @@ import type { Progress, User } from '@ventisca/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACCOUNT_ERRORS, PROGRESS_TEXT } from '../i18n/es';
 import { login, logout, pickCamino, showView } from './account';
+import { noAchievements } from './achievements';
 import { buyBox, chooseCamino, loadProgress } from './progress';
 import { initialState, store } from './store';
 
@@ -23,7 +24,7 @@ const progress = (over: Partial<Progress> = {}): Progress => ({
   coins: 500,
   boxesOpened: 0,
   collection: { 'fire-01': 1, 'water-01': 1, 'snow-01': 1, 'fire-18': 1 },
-  achievements: [],
+  achievements: noAchievements(),
   stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
   ...over,
 });

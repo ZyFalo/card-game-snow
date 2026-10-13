@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { chooseCamino, giveCoins, logIn, person, signUp } from './account-helpers';
+import { chooseCamino, giveAchievements, giveCoins, logIn, person, signUp } from './account-helpers';
 import { clippedElements, FULL_TRACE, smallText } from './helpers';
 
 /*
@@ -17,6 +17,11 @@ const buy = (page: Page, size: 1 | 2 | 3) =>
 const boxTab = (page: Page, element: string) => page.getByRole('tab', { name: new RegExp(`^${element}`) });
 /** La cuadrícula de 2 × 5 de "Mis cartas". */
 const grid = (page: Page) => page.locator('.note-grid');
+/** Qué página de "Mis cartas" se ve: el elemento y cuál de sus dos páginas. */
+const pageLine = (page: Page) => page.locator('.note-page');
+/** Un pliegue del amuleto, en "Mi progreso", y uno de sus logros. */
+const fold = (page: Page, id: string) => page.locator(`.note-fold[data-fold="${id}"]`);
+const achievement = (page: Page, id: string) => page.locator(`.note-fold [data-achievement="${id}"]`);
 
 /** Desde el perfil: abre la Libreta ninja en "Mi progreso". */
 async function openNotebook(page: Page) {
@@ -67,14 +72,11 @@ test('R-30: al verificar la cuenta se elige el camino, que queda en el perfil co
     await expect(summary.locator('.coins')).toHaveText('0 monedas');
     // El mazo inicial, en la Libreta: un 9 de cada elemento y el 12 del camino.
     await openNotebook(page);
-    await expect(page.locator('.note-el > p').filter({ hasText: 'de 20 cartas' })).toHaveText([
-      '1 de 20 cartas',
-      '2 de 20 cartas',
-      '1 de 20 cartas',
-    ]);
-    await expect(page.locator('.note-wallet')).toHaveText(/^0 monedas\s*Cajas: 0 abiertas$/);
+    await expect(page.locator('.fold-foot span')).toHaveText(['1/20 cartas', '2/20 cartas', '1/20 cartas']);
+    await expect(page.locator('.note-wallet')).toHaveText(/^Cajas: 0 abiertas\s*0 monedas$/);
+    await expect(page.locator('.note-camino')).toHaveText('Camino del Agua · Marea');
     // Sin partidas jugadas todavía, y son privadas.
-    await expect(page.getByText('Solo tú ves estas estadísticas')).toBeVisible();
+    await expect(page.getByText('Solo tú las ves')).toBeVisible();
     await expect(page.locator('.note-stats dd')).toHaveText(['0', '0', '0']);
     await closeNotebook(page);
   };
@@ -103,7 +105,104 @@ test('R-30: quien entra sin haber elegido su camino llega a elegirlo', async ({ 
   await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
 });
 
-test('R-25: "Mis cartas" muestra las 20 cartas de cada elemento en páginas de 2 × 5, y las que faltan como siluetas', async ({
+test('D-104 y D-105: "Mi progreso" muestra el amuleto de 4 pliegues y el avance de cada logro, tal como lo guarda el servidor', async ({
+  page,
+}) => {
+  const who = await signUp(page, person(), 'Nieve');
+  await openNotebook(page);
+  // Una cuenta nueva: los cuatro pliegues sin empezar, cada uno con sus tres logros y con quién se gana.
+  await expect(page.getByRole('heading', { name: 'Amuleto · 0 de 4 pliegues' })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Fuego, Agua y Nieve se ganan con su ninja; el centro, Equipo, con cualquiera. Con los cuatro, las monedas de cada partida valen el doble.',
+    ),
+  ).toBeVisible();
+  await expect(page.locator('.note-fold h3')).toHaveText([
+    /^Fuego\s*0\/3/,
+    /^Agua\s*0\/3/,
+    /^Nieve\s*0\/3/,
+    /^Equipo\s*0\/3/,
+  ]);
+  await expect(page.locator('.note-fold > .note-quiet')).toHaveText([
+    'con Brasa',
+    'con Marea',
+    'con Escarcha',
+    'con cualquier ninja',
+  ]);
+  await expect(fold(page, 'fire').locator('.ach-head b')).toHaveText(['Barrido perfecto', 'Aturdidor', 'Llamarada']);
+  await expect(fold(page, 'water').locator('.ach-head b')).toHaveText(['Rompeolas', 'Marea alta', 'De pie otra vez']);
+  await expect(fold(page, 'snow').locator('.ach-head b')).toHaveText([
+    'Reanimador',
+    'Mano sanadora',
+    'Escudo de nieve',
+  ]);
+  await expect(fold(page, 'team').locator('.ach-head b')).toHaveText([
+    'Combo triple',
+    'Sin un rasguño',
+    'Nadie se queda atrás',
+  ]);
+  // La explicación de cada logro está siempre a la vista, no solo al pasar el ratón.
+  await expect(fold(page, 'snow').locator('.ach-what')).toHaveText([
+    'Compañeros revividos',
+    'Curas a compañeros',
+    'Golpes que anula tu escudo',
+  ]);
+  await expect(fold(page, 'team').locator('.ach-what')).toHaveText([
+    'Turnos con las tres cartas',
+    'Bonus con todos a vida completa',
+    'Victorias en que alguien cayó y los tres terminaron de pie',
+  ]);
+  await expect(page.locator('.ach-what')).toHaveCount(12);
+  for (const what of await page.locator('.ach-what').all()) await expect(what).toBeVisible();
+  await expect(page.locator('.note-fold [data-count="0"]')).toHaveCount(12);
+  await expect(page.locator('.amulet polygon[data-full="true"]')).toHaveCount(0);
+  await closeNotebook(page);
+
+  // Con avance: cada contador dice lo que lleva y su barra se llena en esa proporción.
+  giveAchievements(who.email, { stunner: 7, healer: 9, combo3: 2, perfectSweep: 999, upAgain: 999 });
+  await openNotebook(page);
+  await expect(achievement(page, 'stunner')).toHaveAttribute('data-count', '7');
+  await expect(achievement(page, 'stunner').locator('.ach-count')).toHaveText(/^7\/\d+$/);
+  await expect(achievement(page, 'healer').getByRole('progressbar')).toHaveAttribute('aria-valuenow', '9');
+  const bar = await achievement(page, 'stunner')
+    .getByRole('progressbar')
+    .evaluate((el) => {
+      const fill = el.firstElementChild as HTMLElement;
+      return {
+        fill: fill.getBoundingClientRect().width / el.getBoundingClientRect().width,
+        of: Number(el.getAttribute('aria-valuemax')),
+      };
+    });
+  expect(bar.fill).toBeGreaterThan(0);
+  expect(Math.abs(bar.fill - 7 / bar.of)).toBeLessThan(0.03);
+  // Los que ya llegaron a su meta se ven completos, pero un logro no completa un pliegue.
+  await expect(achievement(page, 'perfectSweep')).toHaveAttribute('data-done', 'true');
+  await expect(achievement(page, 'upAgain')).toHaveAttribute('data-done', 'true');
+  await expect(fold(page, 'fire').locator('h3')).toHaveText(/^Fuego\s*1\/3/);
+  await expect(page.getByRole('heading', { name: 'Amuleto · 0 de 4 pliegues' })).toBeVisible();
+  await closeNotebook(page);
+
+  // Un pliegue completo se colorea, también en el amuleto; los otros siguen punteados.
+  giveAchievements(who.email, { perfectSweep: 999, stunner: 999, blaze: 999, combo3: 999, untouched: 999 });
+  await openNotebook(page);
+  await expect(page.getByRole('heading', { name: 'Amuleto · 1 de 4 pliegues' })).toBeVisible();
+  await expect(fold(page, 'fire')).toHaveClass(/full/);
+  await expect(fold(page, 'team')).not.toHaveClass(/full/);
+  await expect(page.locator('.amulet polygon[data-full="true"]')).toHaveAttribute('data-fold', 'fire');
+  await expect(page.getByText('Monedas dobles activas')).toHaveCount(0);
+  await closeNotebook(page);
+
+  // Con los cuatro, el amuleto está completo y dice que las monedas dobles están activas.
+  giveAchievements(who.email);
+  await openNotebook(page);
+  await expect(page.getByRole('heading', { name: 'Amuleto · 4 de 4 pliegues' })).toBeVisible();
+  await expect(page.getByText('Monedas dobles activas')).toBeVisible();
+  await expect(page.locator('.amulet')).toHaveClass(/complete/);
+  await expect(page.locator('.amulet polygon[data-full="true"]')).toHaveCount(4);
+  await expect(page.locator('.note-fold.full')).toHaveCount(4);
+});
+
+test('R-25 y D-105: "Mis cartas" muestra las cartas de un elemento a la vez, en dos páginas de 2 × 5, y las que faltan como siluetas', async ({
   page,
 }) => {
   await signUp(page, person(), 'Fuego');
@@ -111,31 +210,50 @@ test('R-25: "Mis cartas" muestra las 20 cartas de cada elemento en páginas de 2
   const cards = grid(page).getByRole('img');
   const missing = grid(page).getByRole('img', { name: /que aún no tienes$/ });
   const next = page.getByRole('button', { name: 'Página siguiente' });
+  const previous = page.getByRole('button', { name: 'Página anterior' });
+  // Una pestaña por elemento, con cuántas de sus 20 cartas tiene.
+  await expect(page.getByRole('tab')).toHaveText([
+    'Mi progreso',
+    'Mis cartas',
+    /Fuego\s*2\/20/,
+    /Agua\s*1\/20/,
+    /Nieve\s*1\/20/,
+  ]);
+  await expect(boxTab(page, 'Fuego')).toHaveAttribute('aria-selected', 'true');
   // Fuego, sus dos páginas: el 9 del mazo inicial en la primera y el 12 del camino en la segunda.
-  await expect(page.getByRole('heading', { name: 'Fuego · página 1/6' })).toBeVisible();
+  await expect(pageLine(page)).toHaveText('Fuego · página 1/2');
   await expect(cards).toHaveCount(10);
   await expect(missing).toHaveCount(9);
   await expect(page.getByRole('img', { name: 'Chispa: carta de Fuego de 9' })).toBeVisible();
   await next.click();
-  await expect(page.getByRole('heading', { name: 'Fuego · página 2/6' })).toBeVisible();
+  await expect(pageLine(page)).toHaveText('Fuego · página 2/2');
   await expect(cards).toHaveCount(10);
   await expect(missing).toHaveCount(9);
   await expect(page.getByRole('img', { name: 'Fénix plegado: carta de Fuego de 12' })).toBeVisible();
-  // Agua: solo el 9 del mazo inicial.
+  // Las flechas dan la vuelta dentro del mismo elemento: no pasan al siguiente.
   await next.click();
-  await expect(page.getByRole('heading', { name: 'Agua · página 3/6' })).toBeVisible();
+  await expect(pageLine(page)).toHaveText('Fuego · página 1/2');
+  await previous.click();
+  await expect(pageLine(page)).toHaveText('Fuego · página 2/2');
+  await expect(boxTab(page, 'Fuego')).toHaveAttribute('aria-selected', 'true');
+  // El botón abre las cajas de ese mismo elemento.
+  await expect(page.getByRole('button', { name: /^Abrir cajas/ })).toHaveText('Abrir cajas de Fuego');
+
+  // Agua, desde su pestaña: empieza en su primera página, con solo el 9 del mazo inicial.
+  await boxTab(page, 'Agua').click();
+  await expect(pageLine(page)).toHaveText('Agua · página 1/2');
+  await expect(boxTab(page, 'Agua')).toHaveAttribute('aria-selected', 'true');
   await expect(missing).toHaveCount(9);
   await expect(page.getByRole('img', { name: 'Gota: carta de Agua de 9' })).toBeVisible();
   await next.click();
+  await expect(pageLine(page)).toHaveText('Agua · página 2/2');
   await expect(missing).toHaveCount(10);
-  // Las flechas dan la vuelta: de la primera página, hacia atrás, a la última.
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Página anterior' }).click();
-  await expect(page.getByRole('heading', { name: 'Fuego · página 1/6' })).toBeVisible();
-  await page.getByRole('button', { name: 'Página anterior' }).click();
-  await expect(page.getByRole('heading', { name: 'Nieve · página 6/6' })).toBeVisible();
 
-  // "Abrir cajas" lleva a las cajas del elemento que se estaba viendo.
-  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  // "Abrir cajas de Nieve" lleva a las cajas de Nieve, que es el elemento que se estaba viendo.
+  await boxTab(page, 'Nieve').click();
+  await expect(pageLine(page)).toHaveText('Nieve · página 1/2');
+  await page.getByRole('button', { name: 'Abrir cajas de Nieve' }).click();
+  await expect(page.getByRole('heading', { name: 'Caja de Nieve' })).toBeVisible();
   await expect(boxTab(page, 'Nieve')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab')).toHaveText([
     'Mi progreso',
@@ -150,7 +268,13 @@ test('R-25: "Mis cartas" muestra las 20 cartas de cada elemento en páginas de 2
   await expect(page.getByRole('heading', { name: 'Caja de Agua' })).toBeVisible();
   // Y de vuelta a las cartas de ese elemento.
   await page.getByRole('button', { name: 'Volver a Mis cartas' }).click();
-  await expect(page.getByRole('heading', { name: 'Agua · página 3/6' })).toBeVisible();
+  await expect(pageLine(page)).toHaveText('Agua · página 1/2');
+  await expect(page.getByRole('button', { name: /^Abrir cajas/ })).toHaveText('Abrir cajas de Agua');
+
+  // Desde "Mi progreso", el enlace de cada pliegue lleva a las cartas de su elemento.
+  await page.getByRole('tab', { name: 'Mi progreso' }).click();
+  await page.getByRole('button', { name: 'Mis cartas de Nieve' }).click();
+  await expect(pageLine(page)).toHaveText('Nieve · página 1/2');
 });
 
 test('R-28: sin monedas no se puede comprar, y la tienda dice que se ganan en las partidas en línea', async ({
@@ -207,8 +331,8 @@ test('R-28: comprar una caja descuenta las monedas, revela las cartas y las suma
   // Las cartas de la caja están en "Mis cartas", en alguna de las dos páginas de Fuego.
   await page.getByRole('button', { name: 'Volver a Mis cartas' }).click();
   const owned: string[] = [];
-  for (const title of ['Fuego · página 1/6', 'Fuego · página 2/6']) {
-    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  for (const title of ['Fuego · página 1/2', 'Fuego · página 2/2']) {
+    await expect(pageLine(page)).toHaveText(title);
     owned.push(
       ...(await grid(page)
         .getByRole('img')
@@ -226,7 +350,7 @@ test('R-28: comprar una caja descuenta las monedas, revela las cartas y las suma
   await page.getByRole('button', { name: 'Mi cuenta' }).click();
   await expect(summary.locator('.coins')).toHaveText('170 monedas');
   await openNotebook(page);
-  await expect(page.locator('.note-wallet')).toHaveText(/^170 monedas\s*Cajas: 1 abierta$/);
+  await expect(page.locator('.note-wallet')).toHaveText(/^Cajas: 1 abierta\s*170 monedas$/);
   expect(errors).toEqual([]);
 });
 
@@ -427,21 +551,11 @@ test('lineamientos de diseño, sección 8: las pantallas del progreso no cortan 
     }));
   });
   await check('perfil con la colección completa');
-  // Sin pasar por el botón, que traería de nuevo el progreso del servidor. Con los 9 logros, el amuleto
-  // queda completo y dice "Monedas dobles activas".
+  // Sin pasar por el botón, que traería de nuevo el progreso del servidor. Con los 12 logros completos y
+  // contadores de tres cifras, el amuleto queda completo y dice "Monedas dobles activas".
   await page.evaluate(() => {
-    type Store = { setState(update: (s: { progress: { data: object } }) => object): void };
-    const achievements = [
-      'combo2',
-      'combo3',
-      'perfectSweep',
-      'upAgain',
-      'bonusWon',
-      'untouched',
-      'reviver',
-      'healer15',
-      'noOneLeft',
-    ];
+    type Data = { achievements: Record<string, object> };
+    type Store = { setState(update: (s: { progress: { data: Data } }) => object): void };
     (window as unknown as { __ventisca: Store }).__ventisca.setState((s) => ({
       screen: 'notebook',
       notebook: { tab: 'progress', page: 0, from: 'account' },
@@ -449,23 +563,28 @@ test('lineamientos de diseño, sección 8: las pantallas del progreso no cortan 
         ...s.progress,
         data: {
           ...s.progress.data,
-          achievements,
+          achievements: Object.fromEntries(
+            Object.keys(s.progress.data.achievements).map((id) => [id, { count: 999, done: true }]),
+          ),
           stats: { classic: { matches: 9999, rounds: 99999, wins: 9999 }, storm: { matches: 0, rounds: 0, wins: 0 } },
         },
       },
     }));
   });
   await expect(page.getByText('Monedas dobles activas')).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Amuleto: 3 de 3 pliegues' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Amuleto de cuatro pliegues. Amuleto · 4 de 4 pliegues' })).toBeVisible();
   await check('libreta completa: mi progreso');
   await page.getByRole('tab', { name: 'Mis cartas' }).click();
-  for (let n = 1; n <= 6; n++) {
-    await expect(page.getByRole('heading', { name: new RegExp(`página ${n}/6$`) })).toBeVisible();
-    await expect(grid(page).getByRole('img', { name: /que aún no tienes$/ })).toHaveCount(0);
-    await check(`colección completa: página ${n}`);
-    await page.getByRole('button', { name: 'Página siguiente' }).click();
+  for (const element of ['Fuego', 'Agua', 'Nieve']) {
+    await boxTab(page, element).click();
+    for (const n of [1, 2]) {
+      await expect(pageLine(page)).toHaveText(`${element} · página ${n}/2`);
+      await expect(grid(page).getByRole('img', { name: /que aún no tienes$/ })).toHaveCount(0);
+      await check(`colección completa: ${element}, página ${n}`);
+      await page.getByRole('button', { name: 'Página siguiente' }).click();
+    }
   }
-  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  await page.getByRole('button', { name: /^Abrir cajas/ }).click();
   await check('cajas con la colección completa');
   expect(problems).toEqual({});
 });

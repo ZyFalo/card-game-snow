@@ -5,9 +5,14 @@ import type { ElementKind, Enemy, EnemyKind, MatchState } from '@ventisca/core';
  * quien donde la prueba lo necesita. Los usan las pruebas del servidor y el servidor de las pruebas e2e.
  */
 
-/** Dónde va cada quien en un tablero preparado. Lo que no se dice, queda como en la partida recién creada. */
+/**
+ * Dónde va cada quien en un tablero preparado. Lo que no se dice, queda como en la partida recién creada.
+ * `deck`: cuántas cartas le quedan a ese ninja en el mazo, de las que trajo.
+ */
 export interface Board {
-  ninjas?: Partial<Record<ElementKind, { at?: [number, number]; hp?: number; hand?: number[]; everKo?: boolean }>>;
+  ninjas?: Partial<
+    Record<ElementKind, { at?: [number, number]; hp?: number; hand?: number[]; everKo?: boolean; deck?: number }>
+  >;
   golems?: { kind: EnemyKind; at: [number, number]; hp?: number }[];
   round?: MatchState['round'];
   bonus?: MatchState['bonusCondition'];
@@ -29,6 +34,7 @@ export function board(spec: Board = {}): (state: MatchState) => MatchState {
       n.hp = s.hp ?? n.maxHp;
       n.everKo = s.everKo ?? n.hp <= 0;
       n.hand = (s.hand ?? []).map((value, i) => ({ id: `${n.id}-m${i + 1}`, element: n.id, value }));
+      if (s.deck !== undefined) n.deck = n.deck.slice(0, s.deck);
     }
     const golems = spec.golems ?? [{ kind: 'colossus' as const, at: [8, 2] as [number, number] }];
     state.enemies = golems.map(

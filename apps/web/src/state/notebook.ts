@@ -8,14 +8,19 @@ import { type NotebookState, store } from './store';
  * línea y desde "Abrir cajas", y al cerrarse vuelve a la pantalla desde la que se abrió.
  */
 
-/** Las páginas de la colección: dos por elemento, de 2 × 5 cartas. */
+/**
+ * Las páginas de la colección: dos por elemento, de 2 × 5 cartas. "Mis cartas" muestra un elemento a la vez
+ * (D-105): las pestañas cambian de elemento, y las flechas pasan entre las dos páginas del que se ve.
+ */
 export const PAGE_SIZE = 10;
 export const PAGES_PER_ELEMENT = 2;
-export const PAGE_COUNT = ELEMENTS.length * PAGES_PER_ELEMENT;
 
 /** El elemento cuyas cartas muestra esa página. */
 export const pageElement = (page: number): ElementKind =>
   ELEMENTS[Math.floor(page / PAGES_PER_ELEMENT) % ELEMENTS.length] as ElementKind;
+
+/** Cuál de las páginas de su elemento es esa: la primera es la 0. */
+export const pageWithin = (page: number): number => page % PAGES_PER_ELEMENT;
 
 /** La primera página de ese elemento. */
 export const firstPageOf = (element: ElementKind): number => ELEMENTS.indexOf(element) * PAGES_PER_ELEMENT;
@@ -52,9 +57,9 @@ export function showCardsOf(element: ElementKind, tab: 'cards' | 'boxes' = 'card
   patch({ tab, page: firstPageOf(element) });
 }
 
-/** Las flechas de "Mis cartas": la página anterior o la siguiente, dando la vuelta. */
+/** Las flechas de "Mis cartas": la otra página del mismo elemento, dando la vuelta. */
 export function turnPage(dir: 1 | -1): void {
-  const page = (store.getState().notebook.page + dir + PAGE_COUNT) % PAGE_COUNT;
-  setCollectionTab(pageElement(page));
-  patch({ page });
+  const { page } = store.getState().notebook;
+  const within = (pageWithin(page) + dir + PAGES_PER_ELEMENT) % PAGES_PER_ELEMENT;
+  patch({ page: firstPageOf(pageElement(page)) + within });
 }

@@ -1,7 +1,7 @@
 import {
-  type AchievementId,
-  basicHealsBy,
+  type AchievementCounts,
   type ClearedRound,
+  countFeats,
   createMatch,
   type DeckCard,
   type Difficulty,
@@ -11,7 +11,6 @@ import {
   getNinja,
   type MatchState,
   type Plan,
-  personalAchievements,
   resolveTurn,
   suggestPlan,
 } from '@ventisca/core';
@@ -68,8 +67,8 @@ export interface TurnRewards {
   rounds: ClearedRound[];
   /** Quienes estaban conectados al resolverlo: son quienes las cobran (D-48). */
   present: string[];
-  /** Los logros que ganó cada persona conectada. */
-  earned: { userId: string; achievements: AchievementId[] }[];
+  /** Lo que el turno suma a los logros de cada persona conectada. Quien no suma nada no aparece. */
+  feats: { userId: string; counts: AchievementCounts }[];
 }
 
 /** Lo que una partida necesita de afuera. */
@@ -81,7 +80,7 @@ export interface MatchHost {
   /** Le manda un mensaje a esa persona, si está conectada. */
   send(userId: string, message: ServerPayload): void;
   /**
-   * Un turno dejó rondas superadas o logros: se guardan antes de contarlo. Devuelve `false` si la partida
+   * Un turno dejó rondas superadas o avance en los logros: se guardan antes de contarlo. Devuelve `false` si la partida
    * ya no está viva en la base, porque otro proceso del servidor la dio por interrumpida (R-54).
    */
   rewards(match: Match, turn: TurnRewards): Promise<boolean>;
@@ -149,8 +148,6 @@ export class Match {
   private cancel: (() => void) | null = null;
   /** ¿Algún compañero del bot planea carta? El bot se suma al combo cuando eso cambia. */
   private teamPlaysCard = false;
-  /** Las curaciones básicas de cada ninja en la partida, para "Mano sanadora" (R-55). */
-  private readonly heals: Record<ElementKind, number> = { fire: 0, water: 0, snow: 0 };
 
   constructor(
     setup: MatchSetup,
@@ -354,25 +351,21 @@ export class Match {
   /** Resuelve el turno con lo que cada ninja tiene planeado, y lo manda a mirar. */
   private async resolve(): Promise<void> {
     if (this.phase !== 'planning') return;
-    const before = this.state;
-    const result = resolveTurn(before, [...this.plans.values()]);
+    const result = resolveTurn(this.state, [...this.plans.values()]);
     this.state = result.state;
     this.plans.clear();
     this.ready.clear();
     // Primero se guarda lo que el turno deja ganado; después se cuenta. Así no se pierde si el servidor cae.
-    const record = { before, after: result.state, events: result.events };
+    const record = { after: result.state, events: result.events };
     const rewards: TurnRewards = {
       rounds: result.events.flatMap((e) => (e.t === 'roundEnd' ? [e.round] : [])),
       present: this.here.map((s) => s.player.userId),
-      earned: this.here
-        .map((s) => ({
-          userId: s.player.userId,
-          achievements: personalAchievements(record, s.element, this.heals[s.element]),
-        }))
-        .filter((e) => e.achievements.length > 0),
+      // Solo suma quien está conectado, y cada quien con su ninja (R-55). El bot no suma.
+      feats: this.here
+        .map((s) => ({ userId: s.player.userId, counts: countFeats(record, s.element) }))
+        .filter((f) => Object.keys(f.counts).length > 0),
     };
-    for (const el of ELEMENTS) this.heals[el] += basicHealsBy(result.events, el);
-    if ((rewards.rounds.length > 0 || rewards.earned.length > 0) && !(await this.host.rewards(this, rewards))) return;
+    if ((rewards.rounds.length > 0 || rewards.feats.length > 0) && !(await this.host.rewards(this, rewards))) return;
     this.toHere((seat) => ({
       type: 'turn.result',
       turn: result.state.turn,

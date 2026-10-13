@@ -1011,7 +1011,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 | ID | Decisión | Estado | Fecha |
 |---|---|---|---|
 | D-83 a D-103 | El multijugador en línea (Beta): acceso, cola y salas, reloj, desconexión, abandono, reinicios, logros por persona, grillas y pantallas. Se registran en `docs/PRD-v2.md`; desde D-83, las decisiones nuevas viven allí y este documento solo las enlaza | ✅ | 2026-10-12 |
-| D-104 a D-107 | Los ajustes tras la primera prueba de la Beta: el amuleto de 4 pliegues, con 12 logros por ninja y con contadores; el avance siempre a la vista; "Mis cartas" por elemento, y el aviso de mazo agotado. Se registran en `docs/PRD-v2.md`. D-107, las metas de los logros, queda por revisar | ✅ | 2026-10-13 |
+| D-104 a D-107 | Los ajustes tras la primera prueba de la Beta: el amuleto de 4 pliegues, con 12 logros por ninja y con contadores; el avance siempre a la vista; "Mis cartas" por elemento, y el aviso de mazo agotado. Se registran en `docs/PRD-v2.md`. Las metas de los logros (D-107) se recalibran con los datos reales de la Beta | ✅ | 2026-10-13 |
 | D-01 | Mecánica fiel; nombre, personajes, arte, audio y textos originales; cero assets del original | ✅ | 2026-09-29 |
 | D-02 | Motor de reglas puro y determinista, separado del render | ✅ | 2026-09-29 |
 | D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | Reemplazada por D-35 a D-37 (`docs/PRD-v2.md`) | 2026-09-29 |
@@ -1262,7 +1262,7 @@ Con el inicio de R-30, el jugador gana el 61 % de las partidas; cuando pierde, c
 | `boss.hp` (v3) | 800 / 500 / 300 según jugadores | Reimplementación | |
 | `mentor.cardEvery` (v3) | 3 turnos, rotando nieve → fuego → agua | Wiki y reimplementación | |
 | `economy.coinsPerRound` (v3) | 60 / 120 / 120, más 120 por ganar el bonus; ×2 con el amuleto completo (los 9 logros hasta D-104; desde entonces, los 12 de sus cuatro pliegues) | Reimplementación (snowflake) | ✅ D-23 |
-| `achievements.goals` (v2) | Las veces que hay que repetir la hazaña de cada logro: de 1 a 55, según el logro (R-55 del PRD de v2) | Simulación de 55.200 partidas de una persona, con equipos de colecciones mezcladas | 🧪 D-107: ver el reporte de balance |
+| `achievements.goals` (v2) | Las veces que hay que repetir la hazaña de cada logro: de 1 a 55, según el logro (R-55 del PRD de v2) | Simulación de 55.200 partidas de una persona, con equipos de colecciones mezcladas | 🧪 D-107: se recalibran con los datos reales de la Beta |
 | `economy.boxPrices` (v3) | 100 / 180 / 250 monedas por 1 / 2 / 3 cartas | Propuesta | 📌 P-15 |
 | `bank` (v3) | 20 cartas por elemento: 7 de 9, 6 de 10, 4 de 11 y 3 de 12 | Rango del original (9 a 12) + propuesta de rareza | 📌 P-14 |
 | `starter` (v3) | 1 carta de 9 por elemento + carta de camino (un 12) | Original: una carta de poder de 10 por elemento | ✅ D-24, 📌 P-16 |

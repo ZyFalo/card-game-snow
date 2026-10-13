@@ -4,7 +4,7 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
 
 > **La Beta está publicada** desde el 13 de octubre de 2026 (PR #29): toda cuenta verificada puede jugar en línea. Cada despliegue reinicia el servidor y corta las partidas en curso, así que se fusiona cuando nadie esté jugando (D-95).
 >
-> **Los ajustes de la Beta reinician los logros** (D-104): al desplegarlos, la migración `0005_avance_de_logros` vacía la tabla de logros, porque los contadores nuevos no se pueden reconstruir. Las monedas no se tocan. Queda una decisión abierta, P-25: "Nadie se queda atrás" casi nunca ocurre en el simulador, y con él el amuleto no se completa en el ritmo pedido.
+> **Los ajustes de la Beta reinician los logros** (D-104): al desplegarlos, la migración `0005_avance_de_logros` vacía la tabla de logros, porque los contadores nuevos no se pueden reconstruir. Las monedas no se tocan. Las metas de los logros salieron del simulador, cuyo bot casi no cae: se recalibran con los datos reales de la Beta (P-25).
 
 ## Qué hay
 
@@ -179,21 +179,21 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
 El M7, P-20, la ronda de claridad del tablero, la Beta del modo en línea y los ajustes de su primera prueba están hechos. Va en este orden:
 
 1. **Publicar los ajustes de la Beta.**
-   1. Revisar su PR: la descripción trae las decisiones tomadas en el camino, los textos y las capturas junto a las maquetas.
-   2. Decidir P-25 antes o después de fusionar: qué se hace con "Nadie se queda atrás".
-   3. Fusionarlo cuando nadie esté jugando (D-95), con merge commit y sin squash. No hay variables nuevas que cargar en Railway.
-   4. Esperar el despliegue y correr `pnpm check:prod`.
-   5. Mirar en los registros de Railway que el arranque diga "Migraciones al día": la migración `0005_avance_de_logros` reinicia los logros y cambia su tabla.
-   6. Quien tenga el juego abierto desde antes verá el aviso de que hay una versión nueva al entrar a "Jugar en línea": el protocolo pasó a la versión 2.
+   1. Su PR (#30) está revisado y aprobado, con un cambio ya aplicado: qué cuenta "Nadie se queda atrás" (P-25).
+   2. Fusionarlo cuando nadie esté jugando (D-95), con merge commit y sin squash. No hay variables nuevas que cargar en Railway.
+   3. Esperar el despliegue y correr `pnpm check:prod`.
+   4. Mirar en los registros de Railway que el arranque diga "Migraciones al día": la migración `0005_avance_de_logros` reinicia los logros y cambia su tabla.
+   5. Quien tenga el juego abierto desde antes verá el aviso de que hay una versión nueva al entrar a "Jugar en línea": el protocolo pasó a la versión 2.
+   6. Si algo falla tras el despliegue, se corrige con un PR nuevo: esa migración no admite volver atrás con "Rollback" (ver "Despliegue").
 2. **Seguir la Beta con personas,** con `docs/guia-beta.md`. Quedan por decidir, con lo que se vea:
    - si el reloj se queda en 10 s (D-90), si el abandono se siente justo (D-93, P-22) y si las marcas del tablero bastan para coordinarse sin chat (D-91);
-   - cuánto caen las personas: de eso dependen las metas de "De pie otra vez", "Reanimador" y "Nadie se queda atrás" (P-25).
+   - el ritmo real del amuleto: tras unas semanas de Beta se mide y se ajustan las metas. Las de "De pie otra vez" y "Reanimador" quedaron en 1 porque el bot del simulador casi no cae (P-25).
 3. **Después de la Beta,** sin orden decidido:
    - el mecanismo para avisar los cambios del aviso de privacidad (D-96): hasta que exista, el aviso queda congelado;
    - Tormenta en línea (D-85), con su mínimo de 5 cartas por elemento (R-51) en las salas y en la cola;
    - el resto de las estadísticas de R-42 (D-86);
    - el teléfono: la investigación de D-73 y el combate en línea, que hoy es para computador (D-97);
-   - la revisión de D-107, que se tomó al implementar.
+   - las defensas contra el abuso del juego en línea (P-26), que se deciden antes de publicar rangos visibles, eventos con insignias o cualquier pago.
 
 ### Rondas cerradas
 
@@ -216,7 +216,8 @@ Para que no se pierdan. Los que tienen hito están también en el PRD de v2.
 - **Mínimo para Tormenta** (R-51), en las salas y en la cola: llega con Tormenta en línea (D-85).
 - **Investigación del teléfono** (D-73): no se hizo antes de la Beta. Hace falta para decidir el combate en teléfono.
 - **La pantalla de carga en línea no se adapta** a ventanas angostas: lleva al combate, que es para computador (D-73).
-- **D-107** está "por revisar": cómo se cuenta cada logro y sus metas. Con ella va **P-25**, abierta: en el simulador el bot casi no cae, así que los tres logros que dependen de caer quedaron con meta 1, y "Nadie se queda atrás" no entra en el ritmo con ninguna meta (`docs/balance-report.md`, "Logros: metas y ritmo").
+- **Medir el ritmo real del amuleto tras unas semanas de Beta y ajustar las metas** (D-107 y P-25). Las metas salieron del simulador, cuyo bot casi no cae: "De pie otra vez" y "Reanimador" quedaron en una sola vez, y "Nadie se queda atrás" cambió de regla para entrar en el ritmo (`docs/balance-report.md`, "Logros: metas y ritmo"). El servidor todavía no guarda cuánto cae cada persona: es de las estadísticas de R-42 que faltan.
+- **Defensas contra el abuso del juego en línea** (P-26, abierta): varias cuentas de una misma persona, programas que juegan solos y abandonos a propósito. Queda por revisar si existe un límite de conexiones por IP y un tope de intentos de unirse a salas.
 - **La ficha de "Jugar en línea" quedó justa de alto:** con los dos pliegues al pie, ocupa los 652 px que tiene a 1280×720. Si se le agrega algo más, hay que quitarle otra cosa o darle otra forma.
 - **Dos pruebas que fallan a veces, sin relación con lo que se esté cambiando:**
   - la e2e de `tips.spec.ts` que mide la burbuja de "cambiar de ninja" junto a la mano falló una vez en la CI por 2 px, al parecer en plena animación de entrada;

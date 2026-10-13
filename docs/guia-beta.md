@@ -52,7 +52,7 @@ Marca cada paso con lo que pasó. Si algo falla, pide una captura de pantalla y 
 - **Las esperas.** Si los 30 s de la cola o la espera entre turnos se sienten largos.
 - **Lo que no entienden.** Sobre todo qué pasó cuando alguien se desconectó, y de dónde salen las monedas.
 - **Los retrasos.** Si lo que hace una persona tarda en verse en la pantalla de otra.
-- **Las caídas.** Cuántas veces cae un ninja en cada partida, si lo reviven y quién. De eso dependen tres logros, y el simulador no lo sabe: su bot casi no cae (P-25).
+- **Las caídas.** Cuántas veces cae un ninja en cada partida, si lo reviven y quién. De eso dependen tres logros, y el simulador no lo sabe: su bot casi no cae (P-25). Con ese dato se ajustan sus metas.
 
 ## Si algo falla
 
@@ -67,5 +67,5 @@ Marca cada paso con lo que pasó. Si algo falla, pide una captura de pantalla y 
 1. **El reloj:** si se queda en 10 s o sube (D-90 dice que se revisa tras esta prueba).
 2. **El abandono:** si perder todas las monedas de la partida se siente justo (D-93, P-22).
 3. **La coordinación sin chat:** si las marcas bastan o hace falta algo más (D-91).
-4. **Los logros que dependen de caer:** qué se hace con "Nadie se queda atrás", y si "De pie otra vez" y "Reanimador" se quedan en una sola vez (P-25).
+4. **Las metas de los logros:** tras unas semanas, medir el ritmo real del amuleto y ajustarlas. "De pie otra vez" y "Reanimador" piden hoy una sola vez, porque el bot del simulador casi no cae (P-25).
 5. **Lo que sigue:** Tormenta en línea (D-85), el combate en teléfono (D-73) y el mecanismo para avisar los cambios del aviso de privacidad (D-96).

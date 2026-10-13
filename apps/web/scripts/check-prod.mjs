@@ -1,13 +1,15 @@
 // Comprueba un despliegue en producción. Uso: pnpm check:prod [url]; por defecto, https://ventisca.wpena.dev.
 // Revisa el DNS sin el proxy de Cloudflare (D-58), el certificado (válido y con margen), las cabeceras, la
-// redirección de HTTP a HTTPS, la salud, el commit desplegado (el último de main), el 404 y un turno jugado
-// en Chromium sin pedir nada a otros dominios.
+// redirección de HTTP a HTTPS, la salud, el commit desplegado (el último de main), el 404, que la conexión
+// del juego en línea responda y se cuide (pide sesión, y solo se abre desde el propio juego) y un turno
+// jugado en Chromium sin pedir nada a otros dominios.
 // Sale con código 1 si algo falla. Necesita Chromium de Playwright
 // (pnpm --filter @ventisca/web exec playwright install chromium).
 import { execFileSync } from 'node:child_process';
 import { resolveCname } from 'node:dns/promises';
 import { connect } from 'node:tls';
 import { chromium } from '@playwright/test';
+import { handshake } from './handshake.mjs';
 import { retry } from './retry.mjs';
 
 const base = new URL(process.argv[2] ?? process.env.DEPLOY_URL ?? 'https://ventisca.wpena.dev');
@@ -126,6 +128,28 @@ await check('Una ruta inexistente da 404 con su código', async () => {
   const body = await res.json().catch(() => null);
   if (res.status !== 404 || body?.error?.code !== 'not_found') fail(`${res.status} ${JSON.stringify(body)}`);
   return `404 ${JSON.stringify(body)}`;
+});
+
+// El juego en línea (M8). Sin una cuenta no se puede abrir la conexión, pero sí ver que el servidor la
+// atiende y cómo la cuida: primero mira de dónde viene (D-65), y después pide la sesión.
+const said = (answer) => `${answer.status} ${JSON.stringify(answer.body)}`;
+const refusedWith = (answer, status, code) => answer.status === status && answer.body?.error?.code === code;
+
+await check('El juego en línea responde, y pide una sesión', async () => {
+  const res = await fetch(new URL('/api/play/status', base));
+  const status = { status: res.status, body: await res.json().catch(() => null) };
+  if (!refusedWith(status, 401, 'unauthorized')) fail(`al preguntar por la partida en curso: ${said(status)}`);
+  const own = await handshake(new URL('/api/play', base), { origin: base.origin });
+  if (!refusedWith(own, 401, 'unauthorized')) fail(`al pedir la conexión desde el juego, sin sesión: ${said(own)}`);
+  return '401 sin sesión, al preguntar por la partida en curso y al pedir la conexión';
+});
+
+await check('La conexión del juego solo se abre desde el propio juego (D-65)', async () => {
+  const other = await handshake(new URL('/api/play', base), { origin: 'https://example.com' });
+  if (!refusedWith(other, 403, 'bad_origin')) fail(`desde otro origen: ${said(other)}`);
+  const none = await handshake(new URL('/api/play', base));
+  if (!refusedWith(none, 403, 'bad_origin')) fail(`sin decir de dónde viene: ${said(none)}`);
+  return '403 desde otro origen, y también sin decir de dónde viene';
 });
 
 await check('Un turno jugado en Chromium, sin errores ni peticiones a otros dominios', async () => {

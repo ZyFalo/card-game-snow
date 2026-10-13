@@ -10,12 +10,24 @@ import { expect, type Page } from '@playwright/test';
  * Turnstile se reemplaza por uno falso, así las pruebas no dependen de Cloudflare.
  */
 
-const OUTBOX = fileURLToPath(new URL('../.e2e-outbox', import.meta.url));
+export const OUTBOX = fileURLToPath(new URL('../.e2e-outbox', import.meta.url));
 
 export interface Mail {
   to: string;
   subject: string;
   text: string;
+}
+
+/**
+ * Un correo de la carpeta, o `null` si todavía no se puede leer. El servidor lo escribe desde otro proceso,
+ * y por un instante el archivo existe vacío: quien busca su correo lo salta, y lo lee en el intento siguiente.
+ */
+function readMail(file: string): Mail | null {
+  try {
+    return JSON.parse(readFileSync(`${OUTBOX}/${file}`, 'utf8')) as Mail;
+  } catch {
+    return null;
+  }
 }
 
 /** El último correo a `to` cuyo asunto contenga `subject`; espera a que llegue. */
@@ -32,8 +44,8 @@ export async function lastMail(to: string, subject: RegExp): Promise<Mail> {
           }
         })();
         found = files
-          .map((f) => JSON.parse(readFileSync(`${OUTBOX}/${f}`, 'utf8')) as Mail)
-          .filter((m) => m.to === to && subject.test(m.subject))
+          .map(readMail)
+          .filter((m): m is Mail => m !== null && m.to === to && subject.test(m.subject))
           .at(-1);
         return found !== undefined;
       },
@@ -117,11 +129,20 @@ export async function logIn(page: Page, email: string, password: string) {
 const SERVER = fileURLToPath(new URL('../../server', import.meta.url));
 
 /**
- * Le paga `matches` partidas completas (420 monedas cada una) a una cuenta de la base de las e2e. Hasta
- * que existan las partidas en línea (M8), no hay forma de ganarlas desde la interfaz.
+ * Le paga `matches` partidas completas (420 monedas cada una) a una cuenta de la base de las e2e: así las
+ * pruebas de la tienda no tienen que jugar partidas enteras para tener monedas.
  */
 export function giveCoins(email: string, matches = 1): void {
   execFileSync(`${SERVER}/node_modules/.bin/tsx`, [`${SERVER}/test/support/e2e-coins.ts`, email, String(matches)], {
     stdio: 'pipe',
   });
+}
+
+/**
+ * Le da a una cuenta de la base de las e2e los 9 logros, o todos menos `missing`, en la tabla donde el
+ * servidor los cuenta: así una prueba del doble de monedas (R-29) no tiene que ganarlos jugando.
+ */
+export function giveAchievements(email: string, missing?: string): void {
+  const args = [`${SERVER}/test/support/e2e-achievements.ts`, email, ...(missing ? [missing] : [])];
+  execFileSync(`${SERVER}/node_modules/.bin/tsx`, args, { stdio: 'pipe' });
 }

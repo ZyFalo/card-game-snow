@@ -16,6 +16,9 @@ describe('LocalHost: GameHost asíncrono', () => {
     return got;
   }
 
+  /** El estado que trae un mensaje: los del sandbox siempre traen uno. */
+  const stateOf = (m: HostMessage | undefined): MatchState | undefined => (m && 'state' in m ? m.state : undefined);
+
   it('start devuelve una promesa y el estado inicial llega como mensaje matchStart, después de la llamada', async () => {
     const host = new LocalHost();
     const got = listen(host);
@@ -45,17 +48,18 @@ describe('LocalHost: GameHost asíncrono', () => {
     const got = listen(host);
     await host.start(opts);
     const turnResults = () => got.filter((m) => m.type === 'turnResult');
+    const hashOf = (m: HostMessage) => (m.type === 'turnResult' ? m.hash : undefined);
     const rng = rngFrom(9);
-    let state: MatchState = got[0]?.state ?? createMatch(opts).state;
+    let state: MatchState = stateOf(got[0]) ?? createMatch(opts).state;
     while (state.status === 'playing' && state.turn < 200) {
       await host.submit(planTeam(state, { skill: 1, rng }));
-      state = turnResults().at(-1)?.state ?? state;
+      state = stateOf(turnResults().at(-1)) ?? state;
     }
     expect(state.status).not.toBe('playing');
     const replay = host.replay();
     expect(replay).not.toBeNull();
     // El primer hash de la repetición es el del estado inicial; los demás, uno por turno.
-    if (replay) expect(runReplay(replay).hashes.slice(1)).toEqual(turnResults().map((m) => m.hash));
+    if (replay) expect(runReplay(replay).hashes.slice(1)).toEqual(turnResults().map(hashOf));
   });
 
   it('load: el turno siguiente se resuelve sobre el tablero cargado', async () => {
@@ -73,7 +77,7 @@ describe('LocalHost: GameHost asíncrono', () => {
     await host.submit(plans);
     expect(got[1]).toEqual({ type: 'turnResult', ...resolveTurn(board, plans) });
     // Brasa se levanta al final de ese turno, sobre el tablero cargado.
-    expect(got[1]?.state.ninjas.find((n) => n.id === 'fire')?.hp).toBe(1);
+    expect(stateOf(got[1])?.ninjas.find((n) => n.id === 'fire')?.hp).toBe(1);
   });
 
   it('submit sin partida se rechaza', async () => {

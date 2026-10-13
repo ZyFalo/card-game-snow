@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { bigint, check, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
 /*
  * Esquema de Postgres (Drizzle, D-52). Cada tabla llega con la función que la usa. Tras cambiarlo,
@@ -115,11 +115,131 @@ export const collection = pgTable(
 
 export const LEDGER_ROUNDS = ['1', '2', '3', 'bonus'] as const;
 
+/* ---------- Partidas en línea (PRD de v2, R-33 a R-55) ---------- */
+
+/**
+ * Cómo está una partida. `playing` es la única que sigue viva; de ahí sale una sola vez, y quien la saca
+ * hace las cuentas: `finished` (terminó, con victoria o derrota), `abandoned` (se fueron todas las
+ * personas, R-38) o `interrupted` (el servidor se reinició, R-54).
+ */
+export const MATCH_STATUSES = ['playing', 'finished', 'abandoned', 'interrupted'] as const;
+export const MATCH_DIFFICULTIES = ['classic', 'storm'] as const;
+
+/**
+ * Una partida en línea. Mientras se juega vive en la memoria del servidor: aquí queda quién jugó, cómo
+ * terminó y, en `match_players`, las rondas que cada persona tiene por cobrar. El estado de cada turno no
+ * se guarda (D-94).
+ */
+export const matches = pgTable(
+  'matches',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** El código de la sala desde la que se jugó; sin él, la partida salió de la cola pública. */
+    roomCode: text('room_code'),
+    difficulty: text('difficulty', { enum: MATCH_DIFFICULTIES }).notNull(),
+    /** La semilla del azar de la partida (R-23): entero sin signo de 32 bits. */
+    seed: bigint('seed', { mode: 'number' }).notNull(),
+    status: text('status', { enum: MATCH_STATUSES }).notNull().default('playing'),
+    /** Al terminar: si el equipo ganó, y qué pasó con la ronda bonus. */
+    outcome: text('outcome', { enum: ['victory', 'defeat'] }),
+    bonusOutcome: text('bonus_outcome', { enum: ['missed', 'won', 'lost'] }),
+    /** Turnos resueltos. */
+    turns: integer('turns').notNull().default(0),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('matches_status_check', sql`${t.status} in ('playing', 'finished', 'abandoned', 'interrupted')`),
+    check('matches_difficulty_check', sql`${t.difficulty} in ('classic', 'storm')`),
+    // Para encontrar al arrancar las que dejó vivas un reinicio (R-54).
+    index('matches_status_idx').on(t.status),
+  ],
+);
+
+/** Cómo salió una persona de una partida: la terminó, la abandonó (R-39) o el servidor se reinició (R-54). */
+export const MATCH_EXITS = ['finished', 'abandoned', 'interrupted'] as const;
+/** El aviso que la persona verá una sola vez sobre "Jugar en línea". */
+export const MATCH_NOTICES = ['left_behind', 'restart'] as const;
+
+/**
+ * Quién jugó qué ninja. El bot no tiene cuenta, y el lugar de una cuenta borrada queda anónimo, igual
+ * que el suyo (D-56): en los dos casos `user_id` va vacío.
+ */
+export const matchPlayers = pgTable(
+  'match_players',
+  {
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    /** El ninja: hay un asiento por elemento (R-33). */
+    seat: text('seat', { enum: CAMINO_ELEMENTS }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    /**
+     * Las rondas que la persona tiene por cobrar: las que el equipo superó con ella conectada (D-48). Se
+     * acreditan al terminar la partida o si el servidor se reinicia, y se pierden si abandona (D-93).
+     */
+    rounds: text('rounds').array().notNull().default(sql`'{}'::text[]`),
+    /** Vacío mientras la persona sigue en la partida. */
+    exit: text('exit', { enum: MATCH_EXITS }),
+    notice: text('notice', { enum: MATCH_NOTICES }),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+    leftAt: timestamp('left_at', { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.matchId, t.seat] }),
+    check('match_players_seat_check', sql`${t.seat} in ('fire', 'water', 'snow')`),
+    check('match_players_exit_check', sql`${t.exit} in ('finished', 'abandoned', 'interrupted')`),
+    check('match_players_notice_check', sql`${t.notice} in ('left_behind', 'restart')`),
+    index('match_players_user_id_idx').on(t.userId),
+  ],
+);
+
+/**
+ * Los logros de cada persona (R-55). Se guardan cuando ocurren, uno por fila. Con los 9, las monedas se
+ * duplican (R-29): el servidor lo decide contando estas filas, nunca lo recibe del cliente.
+ */
+export const achievements = pgTable(
+  'achievements',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** El id del logro en `packages/core` (por ejemplo, `combo2`). */
+    achievementId: text('achievement_id').notNull(),
+    /** La partida en que lo ganó. */
+    matchId: uuid('match_id').references(() => matches.id, { onDelete: 'set null' }),
+    unlockedAt: timestamp('unlocked_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.achievementId] })],
+);
+
+/**
+ * Estadísticas privadas de cada persona, por dificultad (R-42). En la Beta, las básicas (D-86): partidas
+ * jugadas, rondas superadas y victorias. Solo las ve su dueño.
+ */
+export const playerStats = pgTable(
+  'player_stats',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    difficulty: text('difficulty', { enum: MATCH_DIFFICULTIES }).notNull(),
+    matches: integer('matches').notNull().default(0),
+    rounds: integer('rounds').notNull().default(0),
+    wins: integer('wins').notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.difficulty] }),
+    check('player_stats_difficulty_check', sql`${t.difficulty} in ('classic', 'storm')`),
+    check('player_stats_counts_check', sql`${t.matches} >= 0 and ${t.rounds} >= 0 and ${t.wins} >= 0`),
+  ],
+);
+
 /**
  * Libro de monedas: un renglón por cada movimiento del saldo, que es siempre la suma del libro.
- * - Un cobro de ronda (R-29, D-31) es positivo y lleva la partida y la ronda. Su restricción única
- *   hace que una ronda no se pague dos veces, aunque el cobro llegue repetido tras una reconexión o
- *   un reinicio. `match_id` apuntará a `matches` cuando existan las partidas en línea (M8).
+ * - Un cobro de ronda (R-29) es positivo y lleva la partida y la ronda. Su restricción única hace que
+ *   una ronda no se pague dos veces, aunque el cobro llegue repetido tras un reintento o un reinicio.
+ *   Las monedas de una partida se acreditan cuando termina (D-93).
  * - Una compra de caja (R-28, D-66) es negativa y lleva el identificador que generó el cliente y las
  *   cartas que salieron. Su restricción única hace que un reintento con el mismo identificador no
  *   cobre de nuevo: se devuelve el resultado guardado aquí.
@@ -132,7 +252,7 @@ export const coinLedger = pgTable(
       .notNull()
       .references(() => profiles.userId, { onDelete: 'cascade' }),
     amount: integer('amount').notNull(),
-    matchId: uuid('match_id'),
+    matchId: uuid('match_id').references(() => matches.id),
     round: text('round', { enum: LEDGER_ROUNDS }),
     purchaseId: uuid('purchase_id'),
     /** Las cartas que salieron de la caja, en orden. */

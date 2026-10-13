@@ -9,6 +9,8 @@ export const PALETTE = {
   grieta: '#8FB8D8',
   gold: '#F2B84B',
   danger: '#D14545',
+  /** Lo que ya está hecho: la marca de listo. El mismo de `--ok` en la interfaz. */
+  ok: '#2F9C60',
 } as const;
 
 export interface ElementColors {

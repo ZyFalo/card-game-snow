@@ -95,6 +95,8 @@ export async function buyBox(element: ElementKind, size: number): Promise<void> 
     if (!purchaseLost(res.error)) {
       // Un rechazo: `change` ya dejó su mensaje, y la compra siguiente es otra compra.
       patch({ pending: null });
+      // Si no alcanzaban las monedas, el saldo en pantalla estaba viejo: se vuelve a leer (D-68).
+      if (res.error.code === 'not_enough_coins') void loadProgress();
       return;
     }
     // Se dice que reintentar es seguro y se vuelve a leer el progreso, para mostrar el saldo real: si

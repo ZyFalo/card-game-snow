@@ -18,6 +18,9 @@
   --ice: #8fb8d8;
   --gold: #f2b84b;
   --danger: #d14545;
+  /* Lo que ya está hecho: la marca de listo en una partida en línea. */
+  --ok: #2f9c60;
+  --ok-lo: #23784a;
   --page: #c9d6e1;
   --font-display: "Dela Gothic One", "Zen Kaku Gothic New", system-ui, sans-serif;
   --font-ui: "Zen Kaku Gothic New", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -49,8 +52,24 @@
   --gap-2: 12px;
   --gap-3: 16px;
   --gap-4: 24px;
+  --gap-5: 32px;
   --edge-x: 56px;
   --edge-top: 34px;
+  /*
+   * Grilla y composición (docs/lineamientos-de-diseno.md, sección 12): 12 columnas a 1280×720, con el
+   * ritmo vertical en pasos de 8 px. Los mismos números están en ui/grid.ts; una prueba los compara.
+   */
+  --grid-cols: 12;
+  --grid-gutter: 16px;
+  --grid-margin: 56px;
+  --grid-step: 8px;
+  /* Respiro: dentro de un elemento, entre los elementos de un grupo, entre grupos y entre zonas. */
+  --space-in: var(--gap-1);
+  --space-item: var(--gap-3);
+  --space-group: var(--gap-4);
+  --space-zone: var(--gap-5);
+  /* Una línea de lectura no pasa de 75 caracteres. */
+  --read-max: 75ch;
   --focus: 3px solid var(--water);
   --focus-offset: 3px;
   box-sizing: border-box;
@@ -645,6 +664,10 @@ button {
 .title-actions {
   display: flex;
   gap: 16px;
+}
+
+.title-actions + .title-actions {
+  margin-top: 16px;
 }
 
 .title-actions .btn {
@@ -2941,48 +2964,6 @@ button {
   color: var(--ink-2);
 }
 
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gap-2);
-  margin: 0;
-}
-
-.summary-stats div {
-  padding: var(--gap-1) var(--gap-2);
-  background: var(--paper-hi);
-  border: var(--line) solid var(--ink);
-  border-radius: var(--radius-control);
-}
-
-.summary-stats dt {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-1);
-  font: 700 var(--text-small) / 1.2 var(--font-ui);
-  color: var(--ink-2);
-}
-
-.summary-stats dt svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-}
-
-.summary-stats dd {
-  margin: 4px 0 0;
-}
-
-.summary-stats dd b {
-  display: block;
-  font: var(--text-section) / 1.2 var(--font-display);
-}
-
-.summary-stats dd span {
-  font: 500 var(--text-small) / 1.2 var(--font-ui);
-  color: var(--ink-2);
-}
-
 .summary-loading {
   margin: 0;
   padding-top: var(--gap-4);
@@ -2999,32 +2980,6 @@ button {
 /* El ninja del camino de la persona, solo y más grande que en el trío. */
 .ninja-trio.ninja-solo img {
   width: 170px;
-}
-
-/* Colección y tienda: las cartas bajan hasta el borde; la tienda y las acciones, a la derecha. */
-.collection-screen {
-  grid-template-columns: minmax(0, 1fr) 394px;
-}
-
-/* El encabezado ocupa las dos columnas y ancla el saldo, arriba a la derecha. */
-.collection-screen .screen-head {
-  position: relative;
-  inset: auto;
-  grid-column: 1 / -1;
-}
-
-.wallet {
-  position: absolute;
-  top: var(--gap-1);
-  right: 0;
-}
-
-.collection-cards {
-  grid-row: 2 / 4;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--gap-3);
-  min-height: 0;
 }
 
 /* Pestañas de elemento: la elegida toma el color de su elemento. */
@@ -3074,43 +3029,6 @@ button {
   font-size: var(--text-small);
 }
 
-/* Las 20 cartas del elemento. El margen deja sitio a la sombra de la última fila y columna. */
-.coll-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: var(--gap-1);
-  min-height: 0;
-  padding: 0 4px 4px 0;
-}
-
-.shop {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: start;
-  display: grid;
-  gap: var(--gap-2);
-  max-height: 100%;
-  padding: var(--gap-3) var(--gap-4);
-  overflow-y: auto;
-}
-
-.shop h2 {
-  margin: 0;
-  font-size: var(--text-panel);
-  line-height: 1.1;
-}
-
-.shop p {
-  margin: 0;
-  font: 500 var(--text-notice) / var(--leading) var(--font-ui);
-}
-
-.shop p.shop-note {
-  font-size: var(--text-small);
-  color: var(--ink-2);
-}
-
 .shop-boxes {
   display: grid;
   gap: var(--gap-2);
@@ -3119,11 +3037,6 @@ button {
 .shop-box {
   justify-content: space-between;
   width: 100%;
-}
-
-.collection-screen .screen-actions {
-  grid-column: 2;
-  grid-row: 3;
 }
 
 /* Una caja recién abierta: las cartas se voltean una por una. */
@@ -3165,18 +3078,11 @@ button {
   justify-content: center;
 }
 
-.camino-body,
-.collection-cards {
+.camino-body {
   animation: riseIn 0.45s 0.2s backwards;
 }
 
-.shop {
-  animation: riseIn 0.6s 0.28s backwards;
-}
-
 .reduced .camino-body,
-.reduced .collection-cards,
-.reduced .shop,
 .reduced .reveal-slot {
   animation: none;
 }

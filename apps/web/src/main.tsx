@@ -5,6 +5,7 @@ import { discardLocalProgress } from './state/persist';
 import { store } from './state/store';
 import './ui/fonts.css';
 import './ui/styles.css';
+import './ui/online.css';
 
 // Acceso al estado para depurar y para las pruebas e2e (solo en desarrollo). Con `__ventiscaLoad`, una
 // prueba deja la partida en curso en un tablero preparado.

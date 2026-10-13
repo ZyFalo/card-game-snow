@@ -40,10 +40,14 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       # Las e2e levantan el servidor de verdad (cuentas, PR 7), con su propia base en el Postgres del servicio.
+      # Van en dos corridas. La del reinicio del servidor corta a todo el que esté conectado, así que corre
+      # sola, al final. Y pedida junto con las demás traería de vuelta la prueba lenta: Playwright corre
+      # entero, sin los filtros de la línea de comandos, el proyecto del que otro depende.
       - name: Prueba de humo e2e
         run: |
           pnpm --filter @ventisca/web exec playwright install --with-deps chromium
-          PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --grep-invert @lento
+          PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --project juego --grep-invert @lento
+          PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --project reinicio --no-deps
       # Si una e2e falla, Playwright deja su traza y una captura: se suben para verlas después.
       - name: Evidencia de las e2e que fallaron
         if: failure()

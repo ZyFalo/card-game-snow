@@ -1,10 +1,24 @@
+import { rmSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { codeOf, lastMail, logIn, person, signUp, stubTurnstile } from './account-helpers';
+import { codeOf, lastMail, logIn, OUTBOX, person, signUp, stubTurnstile } from './account-helpers';
 import { clippedElements, FULL_TRACE, startMatch, type TestWindow } from './helpers';
 
 /* Cuentas en el cliente, contra el servidor de verdad (PRD de v2, R-43 a R-50). */
 
 test.use(FULL_TRACE);
+
+test('un correo que el servidor todavía está escribiendo no tumba la lectura de los códigos', async ({ page }) => {
+  // Otra prueba, en otro proceso, puede estar creando su cuenta en ese instante: su correo aparece primero
+  // vacío en la carpeta, y se completa enseguida. Quien busca el suyo lo salta y sigue.
+  const partial = `${OUTBOX}/0000-a-medio-escribir.json`;
+  writeFileSync(partial, '');
+  try {
+    const who = await signUp(page);
+    expect(codeOf(await lastMail(who.email, /Tu código para Ventisca/))).toMatch(/^\d{6}$/);
+  } finally {
+    rmSync(partial, { force: true });
+  }
+});
 
 test('R-44: registro, verificación con el código del correo, y la sesión sigue al recargar', async ({ page }) => {
   const errors: string[] = [];
@@ -28,7 +42,7 @@ test('R-44: registro, verificación con el código del correo, y la sesión sigu
   for (const url of apiUrls) {
     const { pathname, search } = new URL(url);
     expect(search).toBe('');
-    expect(pathname).toMatch(/^\/api\/(config|progress(\/[a-z]+)?|auth\/[a-z/]+)$/);
+    expect(pathname).toMatch(/^\/api\/(config|progress(\/[a-z]+)?|auth\/[a-z/]+|play\/status)$/);
   }
 });
 
@@ -125,7 +139,7 @@ test('el aviso de privacidad se lee desde la portada y desde el registro', async
   await expect(page.getByRole('heading', { name: 'Aviso de privacidad de Ventisca' })).toBeVisible();
   // D-75: Ventisca es el piloto de un proyecto personal. El aviso nombra al responsable del tratamiento
   // de los datos y dice que hoy el juego es gratuito.
-  await expect(page.getByText('Vigente desde el 6 de octubre de 2026')).toBeVisible();
+  await expect(page.getByText('Vigente desde el 13 de octubre de 2026')).toBeVisible();
   await expect(
     page.getByText(
       'Ventisca es el piloto de un proyecto personal que William Andrés Peña Vargas avanza en sus ratos libres. Él es el responsable del tratamiento de tus datos personales. Hoy el juego es gratuito: no vende nada ni muestra publicidad. Para cualquier tema de este aviso, escribe a ventisca@wpena.dev.',
@@ -163,9 +177,7 @@ test('los resultados del sandbox invitan a crear una cuenta', async ({ page }) =
     st.setState({ screen: 'results', phase: 'ended', results: { state: st.getState().match } });
   });
   // Guardar el progreso ya existe y va en presente; jugar en línea todavía no, y va en futuro.
-  await expect(
-    page.getByText('¿Te gustó? Crea una cuenta: guarda tu progreso y pronto podrás jugar en línea.'),
-  ).toBeVisible();
+  await expect(page.getByText('¿Te gustó? Crea una cuenta: guarda tu progreso y juega en línea.')).toBeVisible();
   // Lineamientos: un solo primario por vista ("Jugar otra vez"), y el botón de la invitación en una línea.
   await expect(page.locator('.results-screen .btn-primary')).toHaveText(['Jugar otra vez']);
   const invite = page.getByRole('button', { name: 'Crear una cuenta' });
@@ -234,18 +246,17 @@ test('lineamientos de diseño, sección 8: ninguna pantalla de cuenta corta text
   expect(clipped).toEqual({});
 });
 
-test('el beneficio que todavía no existe dice "Próximamente", y el perfil no los muestra', async ({ page }) => {
-  // El progreso y la colección ya existen; el juego en línea llega con el M8.
-  const benefits = [
-    /^Tu progreso queda guardado$/,
-    /^Juega en línea con amigos\s+Próximamente$/,
-    /^Tu colección de cartas$/,
-  ];
+test('los beneficios de una cuenta ya existen todos: ninguno dice "Próximamente", y el perfil no los muestra', async ({
+  page,
+}) => {
+  // El progreso, la colección y el juego en línea (Beta) ya existen: van en presente y sin marca.
+  const benefits = [/^Tu progreso queda guardado$/, /^Juega en línea con amigos$/, /^Tu colección de cartas$/];
   await page.goto('/');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
-  // La introducción de "Entrar" dice lo mismo: el progreso en presente y el juego en línea en futuro.
-  await expect(page.getByText('Con tu cuenta guardas tu progreso. Pronto podrás jugar en línea.')).toBeVisible();
+  await expect(page.getByText('Próximamente')).toHaveCount(0);
+  // La introducción de "Entrar" dice lo mismo, en presente.
+  await expect(page.getByText('Con tu cuenta guardas tu progreso y juegas en línea.')).toBeVisible();
   await page.getByRole('button', { name: 'Crear una cuenta' }).click();
   await expect(page.getByRole('listitem')).toHaveText(benefits);
   // En el perfil no van: esa columna es el resumen del progreso.

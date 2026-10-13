@@ -152,7 +152,7 @@ function fist(cx: number, cy: number, r: number, c: ElementColors): string {
   );
 }
 
-function bodyParts(el: ElementKind): Record<NinjaPart, string> {
+export function bodyParts(el: ElementKind): Record<NinjaPart, string> {
   const c = ELEMENT_COLORS[el];
   const s = SHAPES[el];
   const { top, left, bottom, right } = s.torso;
@@ -305,6 +305,9 @@ const composed = (el: ElementKind): string => {
   const parts = bodyParts(el);
   return DRAW_ORDER[el].map((k) => parts[k]).join('');
 };
+
+/** El dibujo del ninja de pie, sin el documento SVG que lo envuelve: para las siluetas de `poses.ts`. */
+export const ninjaBody = composed;
 
 /** Ninja de pie (figura completa: retratos y menús). */
 export function ninjaStandSvg(el: ElementKind, scale = 2): string {

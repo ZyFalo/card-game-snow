@@ -29,6 +29,13 @@
       "when": 1790881882841,
       "tag": "0003_libro_con_compras",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791855725691,
+      "tag": "0004_partidas_en_linea",
+      "breakpoints": true
     }
   ]
 }

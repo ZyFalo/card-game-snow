@@ -1,11 +1,22 @@
 import type { BonusCondition, ElementKind, EnemyKind, MatchState, Plan, Round, Vec } from '@ventisca/core';
-import type { Progress, User } from '@ventisca/protocol';
+import type { MatchNotice, MatchSeat, PlayError, Progress, ServerPayload, User } from '@ventisca/protocol';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
+import type { OnlineEnd } from '../host/GameHost';
 import { TIPS } from '../i18n/es';
+import type { LinkStatus } from '../net/socket';
 import { loadSettings, type Settings } from './persist';
 
-export type Screen = 'title' | 'team' | 'loading' | 'battle' | 'results' | 'account' | 'credits';
+export type Screen =
+  | 'title'
+  | 'team'
+  | 'loading'
+  | 'battle'
+  | 'results'
+  | 'account'
+  | 'credits'
+  | 'online'
+  | 'notebook';
 
 /** Vistas de la pantalla de cuenta (modo en línea). */
 export type AccountView =
@@ -17,8 +28,7 @@ export type AccountView =
   | 'revert'
   | 'profile'
   | 'privacy'
-  | 'camino'
-  | 'collection';
+  | 'camino';
 
 /** El campo al que apunta un error, para mostrarlo debajo de él (lineamientos, sección 4). */
 export type AccountField = 'email' | 'displayName' | 'password' | 'repeat' | 'code' | 'current';
@@ -132,6 +142,84 @@ export interface Results {
  */
 export type OpenDemo = { kind: 'card'; ninja: ElementKind; combo: boolean } | { kind: 'golem'; enemy: EnemyKind };
 
+/** La partida en línea de esta persona: su ninja, quién lleva cada uno y cómo va el turno (R-35 a R-39). */
+export interface OnlineMatch {
+  you: ElementKind;
+  seats: MatchSeat[];
+  /** El código de la sala desde la que se juega, o `null` si salió de la cola. */
+  room: string | null;
+  /** El turno que se planea, o `null` entre un turno y otro. */
+  turn: number | null;
+  /** Los ninjas que ya están listos en el turno que se planea: confirmaron, o no tienen nada que confirmar. */
+  ready: ElementKind[];
+  /** Esta persona lleva a su ninja en este turno: está en pie, y no acaba de volver (R-38). */
+  plays: boolean;
+  /** Ya terminó de ver el turno anterior, y espera a que termine su equipo (R-36). */
+  waiting: boolean;
+}
+
+export type QueueView = Extract<ServerPayload, { type: 'queue.state' }>;
+export type RoomView = Extract<ServerPayload, { type: 'room.state' }>;
+
+/** El juego en línea: la conexión, dónde está la persona y su partida. */
+export interface OnlineState {
+  /** `off`: sin conexión porque no se pidió. */
+  link: LinkStatus | 'off';
+  /** Dónde está según el servidor, fuera de una partida. `null`: todavía no lo dijo. */
+  place: 'home' | 'queue' | 'room' | null;
+  /** Lo que se ve en el inicio en línea: la ficha del ninja, o crear una sala o unirse a una. */
+  view: 'pick' | 'rooms';
+  /** El ninja elegido en la ficha: con él se entra a la cola o a una sala. */
+  element: ElementKind;
+  queue: QueueView | null;
+  /** Cuándo llegó el último estado de la cola (`performance.now`), para seguir contando el tiempo de búsqueda. */
+  queueAt: number;
+  room: RoomView | null;
+  /** Hay una petición en camino: entrar a la cola, crear una sala o unirse a una. */
+  busy: boolean;
+  /** Por qué no se pudo hacer lo último que se pidió. */
+  error: PlayError | 'code_empty' | null;
+  /** El aviso pendiente de la última partida: se muestra una sola vez, sobre "Jugar en línea". */
+  notice: MatchNotice | null;
+  /** La sala en que estaba se cerró. */
+  roomClosed: boolean;
+  match: OnlineMatch | null;
+  /** El resultado de la partida que terminó, mientras se ve. */
+  end: OnlineEnd | null;
+  /** El aviso "¿Salir de la partida?" está abierto. */
+  leaving: boolean;
+  /** Acaba de volver a su partida: la franja "Volviste" se ve un momento. */
+  back: boolean;
+}
+
+/**
+ * La Libreta ninja (D-100): el progreso y las cartas de la cuenta. `page` recorre la colección en páginas
+ * de 2 × 5, dos por elemento; `from` es la pantalla a la que vuelve al cerrarse.
+ */
+export interface NotebookState {
+  tab: 'progress' | 'cards' | 'boxes';
+  page: number;
+  from: Screen;
+}
+
+export const initialOnline = (): OnlineState => ({
+  link: 'off',
+  place: null,
+  view: 'pick',
+  element: 'fire',
+  queue: null,
+  queueAt: 0,
+  room: null,
+  busy: false,
+  error: null,
+  notice: null,
+  roomClosed: false,
+  match: null,
+  end: null,
+  leaving: false,
+  back: false,
+});
+
 export interface AppState {
   screen: Screen;
   settings: Settings;
@@ -171,6 +259,8 @@ export interface AppState {
   webglMissing: boolean;
   account: AccountState;
   progress: ProgressState;
+  online: OnlineState;
+  notebook: NotebookState;
 }
 
 export const initialState = (): AppState => ({
@@ -215,6 +305,8 @@ export const initialState = (): AppState => ({
     info: null,
   },
   progress: initialProgress(),
+  online: initialOnline(),
+  notebook: { tab: 'progress', page: 0, from: 'title' },
 });
 
 export const store = createStore<AppState>()(() => initialState());

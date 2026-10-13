@@ -9,7 +9,7 @@ import { SESSION_COOKIE } from '../src/accounts/session';
 import { fingerprint } from '../src/accounts/tokens';
 import { buildApp } from '../src/app';
 import { creditRound } from '../src/progress/store';
-import { coinLedger, collection, profiles, sessions, users } from '../src/schema';
+import { coinLedger, collection, matches, profiles, sessions, users } from '../src/schema';
 import { adminUrl, useTempDatabase } from './support/database';
 
 /*
@@ -87,15 +87,29 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
   const buy = (cookie: string, element: string, size: number, purchaseId: string = randomUUID()) =>
     post('/api/progress/boxes', { element, size, purchaseId }, cookie);
 
+  /** Una partida ya jugada: el libro de monedas apunta a ella en cada cobro. */
+  async function newMatch(): Promise<string> {
+    const [match] = await db()
+      .insert(matches)
+      .values({ difficulty: 'classic', seed: 1, status: 'finished' })
+      .returning();
+    return (match as { id: string }).id;
+  }
+
   /** Una cuenta con su camino elegido y, si se pide, monedas cobradas por rondas de una partida. */
   async function player(element = 'fire', rounds: (1 | 2 | 3 | 'bonus')[] = []) {
     const who = await signUp();
     await choose(who.cookie, element);
-    const matchId = randomUUID();
+    const matchId = await newMatch();
     for (const round of rounds) await creditRound(db(), { userId: who.userId, matchId, round, doubled: false }, NOW);
     return who;
   }
   const totalCards = (p: Progress) => Object.values(p.collection).reduce((a, b) => a + b, 0);
+  /** Quien todavía no jugó en línea no tiene logros ni estadísticas. */
+  const NOTHING_YET = {
+    achievements: [],
+    stats: { classic: { matches: 0, rounds: 0, wins: 0 }, storm: { matches: 0, rounds: 0, wins: 0 } },
+  };
 
   /**
    * Abre todas las conexiones del pool antes de una prueba de concurrencia. Sin esto, la primera
@@ -113,7 +127,13 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('D-34: una cuenta nueva todavía no tiene camino, monedas ni cartas', async () => {
       const { cookie } = await signUp();
-      expect(await progress(cookie)).toEqual({ camino: null, coins: 0, boxesOpened: 0, collection: {} });
+      expect(await progress(cookie)).toEqual({
+        camino: null,
+        coins: 0,
+        boxesOpened: 0,
+        collection: {},
+        ...NOTHING_YET,
+      });
     });
 
     it('R-44: sin verificar el correo no hay progreso, aunque exista una sesión', async () => {
@@ -155,6 +175,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
           [STARTER_CARDS.snow]: 1,
           [CAMINO_CARDS.snow]: 1,
         },
+        ...NOTHING_YET,
       };
       expect(progressSchema.parse(res.json())).toEqual(expected);
       expect(await progress(cookie)).toEqual(expected);
@@ -211,7 +232,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('R-29: cada ronda paga lo suyo: 60, 120 y 120, y 120 por el bonus', async () => {
       const { cookie, userId } = await player();
-      const matchId = randomUUID();
+      const matchId = await newMatch();
       expect(await pay(userId, matchId, 1)).toEqual({ credited: true, amount: 60 });
       expect(await pay(userId, matchId, 2)).toEqual({ credited: true, amount: 120 });
       expect(await pay(userId, matchId, 3)).toEqual({ credited: true, amount: 120 });
@@ -222,7 +243,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('D-31: una ronda no se cobra dos veces, aunque el cobro llegue repetido', async () => {
       const { cookie, userId } = await player();
-      const matchId = randomUUID();
+      const matchId = await newMatch();
       expect(await pay(userId, matchId, 1)).toEqual({ credited: true, amount: 60 });
       expect(await pay(userId, matchId, 1)).toEqual({ credited: false, amount: 0 });
       expect((await progress(cookie)).coins).toBe(60);
@@ -231,7 +252,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('D-31: veinte cobros simultáneos de la misma ronda pagan una sola vez', async () => {
       const { cookie, userId } = await player();
-      const matchId = randomUUID();
+      const matchId = await newMatch();
       await warmPool();
       const results = await Promise.all(Array.from({ length: 20 }, () => pay(userId, matchId, 2)));
       expect(results.filter((r) => r.credited)).toHaveLength(1);
@@ -240,21 +261,21 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('D-31: la misma ronda de otra partida sí se cobra', async () => {
       const { cookie, userId } = await player();
-      await pay(userId, randomUUID(), 1);
-      await pay(userId, randomUUID(), 1);
+      await pay(userId, await newMatch(), 1);
+      await pay(userId, await newMatch(), 1);
       expect((await progress(cookie)).coins).toBe(120);
     });
 
     it('R-29: con los 9 logros, la ronda paga el doble', async () => {
       const { cookie, userId } = await player();
-      expect(await pay(userId, randomUUID(), 1, true)).toEqual({ credited: true, amount: 120 });
+      expect(await pay(userId, await newMatch(), 1, true)).toEqual({ credited: true, amount: 120 });
       expect((await progress(cookie)).coins).toBe(120);
     });
 
     it('D-31: el cobro de una persona no toca el saldo de otra', async () => {
       const a = await player();
       const b = await player();
-      const matchId = randomUUID();
+      const matchId = await newMatch();
       await pay(a.userId, matchId, 1);
       expect((await progress(a.cookie)).coins).toBe(60);
       expect((await progress(b.cookie)).coins).toBe(0);
@@ -264,7 +285,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('sin carta de camino no hay perfil donde cobrar', async () => {
       const { userId } = await signUp();
-      await expect(pay(userId, randomUUID(), 1)).rejects.toThrow();
+      await expect(pay(userId, await newMatch(), 1)).rejects.toThrow();
       expect(await db().select().from(coinLedger).where(eq(coinLedger.userId, userId))).toHaveLength(0);
     });
   });
@@ -306,7 +327,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
 
     it('R-28: las cajas de 1, 2 y 3 cartas cuestan 100, 180 y 250 monedas', async () => {
       const who = await player('snow', [1, 2, 3, 'bonus']);
-      await creditRound(db(), { userId: who.userId, matchId: randomUUID(), round: 2, doubled: false }, NOW);
+      await creditRound(db(), { userId: who.userId, matchId: await newMatch(), round: 2, doubled: false }, NOW);
       await buy(who.cookie, 'snow', 1); // 540 monedas
       expect((await progress(who.cookie)).coins).toBe(440);
       await buy(who.cookie, 'snow', 2);
@@ -470,7 +491,7 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
       const purchaseId = randomUUID();
       expect(errorOf(await buy(cookie, 'fire', 1, purchaseId))).toBe('not_enough_coins');
       expect(await purchases(userId)).toHaveLength(0);
-      await creditRound(db(), { userId, matchId: randomUUID(), round: 2, doubled: false }, NOW); // 180 monedas
+      await creditRound(db(), { userId, matchId: await newMatch(), round: 2, doubled: false }, NOW); // 180 monedas
       expect((await buy(cookie, 'fire', 1, purchaseId)).statusCode).toBe(200);
       expect((await progress(cookie)).coins).toBe(80);
     });
@@ -493,9 +514,9 @@ describe.skipIf(!adminUrl)('Progreso en la cuenta (DATABASE_URL_TEST)', () => {
           .values({ userId, amount: 60, ...row });
       // Un cobro de ronda no lleva identificador de compra, y es positivo.
       await expect(
-        insert({ matchId: randomUUID(), round: '1', purchaseId: randomUUID(), cards: [] }),
+        insert({ matchId: await newMatch(), round: '1', purchaseId: randomUUID(), cards: [] }),
       ).rejects.toThrow();
-      await expect(insert({ matchId: randomUUID(), round: '1', amount: -60 })).rejects.toThrow();
+      await expect(insert({ matchId: await newMatch(), round: '1', amount: -60 })).rejects.toThrow();
       // Una compra lleva sus cartas, y es negativa.
       await expect(insert({ purchaseId: randomUUID(), cards: ['fire-01'], amount: 100 })).rejects.toThrow();
       await expect(insert({ purchaseId: randomUUID(), amount: -100 })).rejects.toThrow();

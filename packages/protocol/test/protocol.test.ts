@@ -27,10 +27,21 @@ describe('Protocolo: API HTTP', () => {
 });
 
 describe('Protocolo: progreso en la cuenta', () => {
-  const progress = { camino: 'snow', coins: 240, boxesOpened: 1, collection: { 'snow-18': 1, 'fire-01': 2 } };
+  const none = { matches: 0, rounds: 0, wins: 0 };
+  const empty = { achievements: [], stats: { classic: none, storm: none } };
+  const progress = {
+    camino: 'snow',
+    coins: 240,
+    boxesOpened: 1,
+    collection: { 'snow-18': 1, 'fire-01': 2 },
+    achievements: ['combo2', 'reviver'],
+    stats: { classic: { matches: 24, rounds: 61, wins: 19 }, storm: none },
+  };
 
   it('una cuenta sin camino tiene un progreso vacío, y es válido', () => {
-    expect(progressSchema.safeParse({ camino: null, coins: 0, boxesOpened: 0, collection: {} }).success).toBe(true);
+    expect(progressSchema.safeParse({ camino: null, coins: 0, boxesOpened: 0, collection: {}, ...empty }).success).toBe(
+      true,
+    );
     expect(progressSchema.parse(progress)).toEqual(progress);
   });
 
@@ -39,6 +50,14 @@ describe('Protocolo: progreso en la cuenta', () => {
     expect(progressSchema.safeParse({ ...progress, coins: 1.5 }).success).toBe(false);
     expect(progressSchema.safeParse({ ...progress, collection: { 'fire-01': 0 } }).success).toBe(false);
     expect(progressSchema.safeParse({ ...progress, camino: 'tierra' }).success).toBe(false);
+  });
+
+  it('R-55 y R-42: los logros son los del juego, y las estadísticas, contadores sin negativos', () => {
+    expect(progressSchema.safeParse({ ...progress, achievements: ['logro_inventado'] }).success).toBe(false);
+    expect(progressSchema.safeParse({ ...progress, achievements: undefined }).success).toBe(false);
+    const stats = { classic: { matches: -1, rounds: 0, wins: 0 }, storm: none };
+    expect(progressSchema.safeParse({ ...progress, stats }).success).toBe(false);
+    expect(progressSchema.safeParse({ ...progress, stats: { classic: none } }).success).toBe(false);
   });
 
   const purchaseId = '0b9f4c2e-6f0a-4c56-9d3e-2a7c1e5b8d41';

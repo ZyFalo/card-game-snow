@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
+import { CONTROL_PORT } from './e2e/control';
 
 /*
  * Pruebas en Chromium, contra el cliente de Vite y el servidor de verdad (con Postgres). En equipos sin
@@ -18,6 +19,8 @@ try {
 }
 export const E2E_OUTBOX = fileURLToPath(new URL('./.e2e-outbox', import.meta.url));
 const API_PORT = 3100;
+/** La prueba que reinicia el servidor: corre sola, al final, porque el reinicio corta todo lo demás. */
+const RESTART = /restart\.spec\.ts$/;
 
 export default defineConfig({
   testDir: 'e2e',
@@ -25,6 +28,15 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   fullyParallel: false,
   reporter: [['list']],
+  // Dos proyectos, en orden: primero el juego y, cuando termina, la prueba del reinicio.
+  // - Solo la del reinicio, sin repetir antes las demás: `playwright test --project reinicio --no-deps`.
+  // - Con un filtro (`--grep`, `--grep-invert`), pide el proyecto: `playwright test --project juego --grep …`.
+  //   Si el filtro deja en pie la del reinicio, Playwright corre entero el proyecto del que depende, sin el
+  //   filtro. Por eso la CI corre los dos proyectos por separado.
+  projects: [
+    { name: 'juego', testIgnore: RESTART },
+    { name: 'reinicio', testMatch: RESTART, dependencies: ['juego'] },
+  ],
   use: {
     baseURL: 'http://127.0.0.1:5174',
     viewport: { width: 1280, height: 720 },
@@ -72,6 +84,8 @@ export default defineConfig({
         // La clave del sitio de prueba de Cloudflare; las pruebas reemplazan su script por uno falso.
         TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
         LOG_LEVEL: 'warn',
+        // El control de las pruebas: el tablero de una sala y el reinicio (e2e/control.ts).
+        E2E_CONTROL_PORT: String(CONTROL_PORT),
       },
     },
   ],

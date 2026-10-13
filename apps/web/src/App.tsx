@@ -17,13 +17,18 @@ import {
   undo,
 } from './state/actions';
 import { sceneReady } from './state/bridge';
+import { askLeave, resumeIfPlaying } from './state/online';
 import { canUndo } from './state/steps';
 import { type Screen, store, useApp } from './state/store';
 import { momentTip } from './state/tips';
 import { AccountScreen } from './ui/Account';
 import { BattleHud } from './ui/BattleHud';
 import { CardFlights } from './ui/CardFlights';
+import { BREAKPOINTS } from './ui/grid';
 import { HelpModal, PauseMenu } from './ui/Menus';
+import { NotebookScreen } from './ui/Notebook';
+import { OnlineDialogs, OnlineScreen } from './ui/Online';
+import { OnlineLoading, OnlineResults } from './ui/OnlineMatch';
 import { Overlays } from './ui/Overlays';
 import { CreditsScreen, LoadingScreen, NoWebGLScreen, ResultsScreen, TeamScreen, TitleScreen } from './ui/Screens';
 import { ScreenWipe } from './ui/Transitions';
@@ -69,6 +74,23 @@ function useStageFrame(ref: React.RefObject<HTMLDivElement | null>): Frame {
   return frame;
 }
 
+/** Desde este ancho de ventana las pantallas van en el escenario de 1280×720, sobre la grilla de 12 columnas. */
+const WIDE = BREAKPOINTS[0]?.min ?? 1024;
+
+/**
+ * ¿Es angosta la ventana? En ese caso las pantallas adaptables (las del juego en línea fuera del combate, y
+ * la Libreta) no van en el escenario a escala, sino a lo ancho de la ventana, con 8 o 4 columnas.
+ */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.innerWidth < WIDE);
+  useEffect(() => {
+    const update = () => setNarrow(window.innerWidth < WIDE);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return narrow;
+}
+
 /**
  * El tablero solo se renderiza cuando se ve (carga y combate). En los menús, que lo
  * tapan por completo, el bucle de Phaser duerme: menos CPU, GPU y batería.
@@ -78,7 +100,9 @@ function useRenderLoopByScreen(): void {
     const sync = (screen: Screen) => {
       const game = phaserRef.game;
       if (!game) return;
-      if (screen === 'battle' || screen === 'loading') game.loop.wake();
+      // Los resultados en línea van sobre la batalla, que se sigue viendo detrás del pergamino.
+      const overBattle = screen === 'results' && store.getState().online.end !== null;
+      if (screen === 'battle' || screen === 'loading' || overBattle) game.loop.wake();
       else game.loop.sleep();
     };
     let cancelled = false;
@@ -116,6 +140,15 @@ function useKeyboard(): void {
         return;
       }
       if (st.screen !== 'battle' || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+      // Con "¿Salir de la partida?" a la vista, Esc lo cierra ("Seguir jugando") y las teclas del juego esperan.
+      if (st.online.leaving) {
+        if (k === 'escape' && fresh) {
+          ev.preventDefault();
+          askLeave(false);
+        }
+        if (k === ' ' || k === 'tab') ev.preventDefault();
+        return;
+      }
       // Con una demostración abierta (D-81), Esc la cierra y las demás teclas del juego esperan: lo que
       // harían quedaría detrás de la burbuja.
       if (st.demo && !st.paused) {
@@ -136,6 +169,7 @@ function useKeyboard(): void {
       }
       if (k === 'p') {
         ev.preventDefault();
+        // En línea no hay pausa (R-36).
         togglePause();
         return;
       }
@@ -162,9 +196,10 @@ function useKeyboard(): void {
         void confirmTurn();
       } else if (k === 'escape' || k === 'backspace') {
         ev.preventDefault();
-        // Sin un paso que deshacer, Esc abre la pausa.
+        // Sin un paso que deshacer, Esc abre la pausa. En línea no hay pausa: pregunta si salir (R-39).
         if (canUndo(st)) undo();
-        else togglePause(true);
+        else if (st.local) togglePause(true);
+        else if (k === 'escape') askLeave(true);
       } else if (k === 's') {
         suggest();
       } else if (k >= '1' && k <= '4') {
@@ -199,12 +234,16 @@ export function App() {
   const helpOpen = useApp((s) => s.helpOpen);
   const reduced = useApp((s) => s.settings.reducedMotion);
   const webglMissing = useApp((s) => s.webglMissing);
+  const online = useApp((s) => !s.local && s.online.match !== null);
+  const onlineEnd = useApp((s) => s.online.end !== null);
+  const narrow = useNarrow();
   useKeyboard();
   useRenderLoopByScreen();
 
-  // ¿Hay servidor y sesión? Sin servidor (build de un solo archivo) se juega sin cuenta.
+  // ¿Hay servidor y sesión? Sin servidor (build de un solo archivo) se juega sin cuenta. Con sesión, quien
+  // se había desconectado de una partida en línea vuelve derecho a ella (R-38).
   useEffect(() => {
-    void initAccount();
+    void initAccount().then(resumeIfPlaying);
   }, []);
 
   useEffect(() => {
@@ -239,16 +278,37 @@ export function App() {
           <Overlays />
           {screen === 'title' ? <TitleScreen /> : null}
           {screen === 'team' ? <TeamScreen /> : null}
-          {screen === 'loading' ? <LoadingScreen /> : null}
-          {screen === 'results' ? <ResultsScreen /> : null}
+          {screen === 'loading' ? online ? <OnlineLoading /> : <LoadingScreen /> : null}
+          {screen === 'results' && !onlineEnd ? <ResultsScreen /> : null}
+          {screen === 'results' && onlineEnd && !narrow ? (
+            <div className="online-root">
+              <OnlineResults />
+            </div>
+          ) : null}
           {screen === 'account' ? <AccountScreen /> : null}
           {screen === 'credits' ? <CreditsScreen /> : null}
+          {screen === 'online' && !narrow ? <OnlineScreen /> : null}
+          {screen === 'notebook' && !narrow ? <NotebookScreen /> : null}
+          {/* En el combate, los avisos de la conexión van sobre el tablero. */}
+          {online && screen !== 'online' && screen !== 'results' ? <OnlineDialogs /> : null}
           <ScreenWipe />
           {webglMissing ? <NoWebGLScreen /> : null}
           {paused && screen === 'battle' ? <PauseMenu /> : null}
           {helpOpen ? <HelpModal /> : null}
         </div>
       </div>
+      {/* La capa adaptable: en ventanas angostas, las pantallas en línea fuera del combate van a lo ancho. */}
+      {narrow && (screen === 'online' || screen === 'notebook' || (screen === 'results' && onlineEnd)) ? (
+        <div className={`fluid ${reduced ? 'reduced' : ''}`} data-fluid={screen}>
+          {screen === 'online' ? <OnlineScreen /> : null}
+          {screen === 'notebook' ? <NotebookScreen /> : null}
+          {screen === 'results' ? (
+            <div className="online-root">
+              <OnlineResults />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

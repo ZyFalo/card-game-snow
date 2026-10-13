@@ -1,4 +1,4 @@
-import type { MatchState } from '@ventisca/core';
+import type { ElementKind, MatchState } from '@ventisca/core';
 import * as Phaser from 'phaser';
 import type { BoardLayers } from '../state/board';
 import { type Demo, demoLayers } from '../state/demos';
@@ -114,6 +114,11 @@ export class DemoScene extends BattleScene {
   /** Lo planeado antes de jugar y, todo el bucle, las casillas que golpea un gólem (`state/demos.ts`). */
   protected override planning(): BoardLayers | null {
     return demoLayers(this.demo, this.beat === 'before');
+  }
+
+  /** En una demostración nadie está dormido: no mira la partida. */
+  protected override sleepers(): ElementKind[] {
+    return [];
   }
 
   /** Con la mano vacía, la demostración no muestra números. */

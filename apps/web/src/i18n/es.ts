@@ -1,4 +1,4 @@
-import type { BonusCondition, Difficulty, ElementKind, EnemyKind } from '@ventisca/core';
+import type { AchievementId, BonusCondition, Difficulty, ElementKind, EnemyKind } from '@ventisca/core';
 
 /* Todos los textos de la interfaz viven aquí (P-11: listos para traducir). */
 
@@ -364,7 +364,7 @@ export const OVERLAY_TEXT = {
 /* ---------- Pantallas ---------- */
 
 export const SCREEN_TEXT = {
-  kicker: 'Tácticas por turnos · 1 jugador',
+  kicker: 'Tácticas por turnos · de 1 a 3 jugadores',
   /** Pie de la portada (D-75). */
   pilot: 'Piloto de un proyecto personal',
   cardLabel: 'Carta:',
@@ -426,6 +426,20 @@ export const HELP = {
     'Un ninja caído no actúa, pero puede ser revivido desde una casilla vecina (también en diagonal).',
     'Revivir ocupa la acción. El caído se levanta al final del turno, con 1 de vida, después de que actúen los gólems. Si quien lo revive cae antes, la reanimación se interrumpe.',
   ],
+  /**
+   * Lo que cambia en una partida en línea (R-33 a R-40 y R-54). `seconds` es el reloj del servidor
+   * (`PLAY_TURN_SECONDS`, D-90).
+   */
+  onlineTitle: 'En línea',
+  online: (seconds: number) => [
+    'De 2 a 3 personas, cada una con un ninja: si falta una, el bot lleva al tercero. Ves solo tu mano, y los planes de tus compañeros aparecen en el tablero mientras los arman. No hay chat: así se coordina el equipo.',
+    `El reloj da ${seconds} s por turno a todo el equipo, y no hay pausa. El turno se resuelve antes si todos confirman, y confirmar es definitivo. Si el reloj llega a cero, se juega lo que cada quien tenga planeado.`,
+    'Si alguien se desconecta, su ninja queda quieto hasta que vuelva: no se mueve ni actúa, y los gólems lo pueden atacar. Quien vuelve lo retoma desde el turno siguiente.',
+    'Salir con la ✕ es abandonar: pierdes las monedas de esa partida, y tu ninja queda quieto hasta el final. También abandona quien se desconecta y no vuelve antes del final. Los logros que ya ganaste se mantienen.',
+    'Las monedas de cada ronda superada entran a tu cuenta al terminar la partida. Una ronda la cobra quien estaba conectado cuando el equipo la superó. El bot no cobra.',
+    'Si el servidor se reinicia, la partida termina. Conservas lo ganado en las rondas completas, y no cuenta como derrota.',
+    'En línea no hay «Sugerir jugada» ni las ayudas para ver el daño y el alcance de los gólems.',
+  ],
   keysTitle: 'Controles',
   keys: [
     ['Clic', 'Seleccionar ninja, casilla u objetivo'],
@@ -467,7 +481,7 @@ export const ACCOUNT_TEXT = {
   passwordHint: 'De 8 a 128 caracteres, con una mayúscula, un número y un símbolo.',
   code: 'Código de 6 dígitos',
   loginTitle: 'Entrar',
-  loginIntro: 'Con tu cuenta guardas tu progreso. Pronto podrás jugar en línea.',
+  loginIntro: 'Con tu cuenta guardas tu progreso y juegas en línea.',
   loginSubmit: 'Entrar',
   toRegister: 'Crear una cuenta',
   toRecover: '¿Olvidaste tu contraseña?',
@@ -480,8 +494,6 @@ export const ACCOUNT_TEXT = {
     online: 'Juega en línea con amigos',
     collection: 'Tu colección de cartas',
   },
-  /** Marca de un beneficio que todavía no existe. */
-  soon: 'Próximamente',
   registerSubmit: 'Crear cuenta',
   acceptPrivacy: 'Leí y acepto el',
   captchaWaiting: 'Comprobando que no eres un programa…',
@@ -511,7 +523,7 @@ export const ACCOUNT_TEXT = {
   revertSubmit: 'Deshacer el cambio',
   revertDone: 'Listo: tu cuenta volvió a su correo anterior. Entra con tu contraseña nueva.',
   profileTitle: (name: string) => `Hola, ${name}`,
-  profileIntro: 'Aquí ves tu progreso y administras tu cuenta. El juego en línea llega en las próximas versiones.',
+  profileIntro: 'Aquí administras tu cuenta. Tu progreso y tus cartas están en la Libreta ninja.',
   changePassword: 'Cambiar la contraseña',
   savePassword: 'Guardar la contraseña',
   accountRow: 'Tu cuenta',
@@ -530,7 +542,7 @@ export const ACCOUNT_TEXT = {
   deleteDone: 'Tu cuenta se borró.',
   send: 'Enviar',
   cancel: 'Cancelar',
-  invite: '¿Te gustó? Crea una cuenta: guarda tu progreso y pronto podrás jugar en línea.',
+  invite: '¿Te gustó? Crea una cuenta: guarda tu progreso y juega en línea.',
   inviteButton: 'Crear una cuenta',
   passwordsDiffer: 'Las dos contraseñas no coinciden.',
 } as const;
@@ -549,7 +561,7 @@ export const PROGRESS_TEXT = {
   /* Elegir el camino (R-30) */
   caminoTitle: 'Elige tu camino',
   caminoIntro:
-    'Es tu primera carta de poder y define tu camino ninja: tu título, tu color y el ninja que llevarás en línea. La elección es permanente.',
+    'Es tu primera carta de poder y define tu camino ninja: tu título, tu color y el ninja que se te ofrece primero en línea. La elección es permanente.',
   caminoNote: 'Además recibes una carta de 9 de cada elemento para empezar.',
   caminoPick: 'Elige una carta',
   caminoChoose: (title: string) => `Elegir el ${title}`,
@@ -562,14 +574,13 @@ export const PROGRESS_TEXT = {
   noCaminoTitle: 'Todavía no eliges tu camino',
   noCaminoBody: 'Tu primera carta de poder define tu camino ninja. Con ella recibes tu mazo inicial.',
   toCamino: 'Elegir mi camino',
-  toCollection: 'Colección y tienda',
   distinct: (n: number, of: number) => `${n} de ${of}`,
   boxes: 'Cajas',
   boxesOpened: (n: number) => (n === 1 ? 'abierta' : 'abiertas'),
   /* Colección y tienda (R-25 a R-28) */
   collection: 'Colección y tienda',
   collectionIntro:
-    'Tus cartas serán tu reserva en las partidas en línea: todas, con repetidas, saldrán al azar al llenarse el medidor.',
+    'Tus cartas son tu reserva en las partidas en línea: todas, con repetidas, salen al azar al llenarse el medidor.',
   tabs: 'Elemento',
   cardOwned: (name: string, element: string, value: number, qty: number) =>
     `${name}: carta de ${element} de ${value}${qty > 1 ? `, tienes ${qty}` : ''}`,
@@ -588,9 +599,9 @@ export const PROGRESS_TEXT = {
   /** La respuesta de una compra se perdió: reintentar es seguro (D-66). */
   purchaseUnknown: 'No llegó la respuesta. Compra de nuevo esa caja: no se cobra dos veces.',
   odds: (list: string) => `Probabilidad por carta: ${list}.`,
-  repeatedNote: 'Puede salir repetida. Las repetidas también sirven: cada copia irá a tu reserva.',
+  repeatedNote: 'Puede salir repetida. Las repetidas también sirven: cada copia va a tu reserva.',
   earnHint: (rounds: string, bonus: number) =>
-    `Ganarás monedas en las partidas en línea, por cada ronda superada: ${rounds}, más ${bonus} si ganas el bonus.`,
+    `Ganas monedas en las partidas en línea, por cada ronda superada: ${rounds}, más ${bonus} si ganas el bonus.`,
   coinsWord: (n: number) => (n === 1 ? 'moneda' : 'monedas'),
   /* Una caja recién abierta */
   revealTitle: (element: string) => `Tu caja de ${element}`,
@@ -599,10 +610,236 @@ export const PROGRESS_TEXT = {
   keepGoing: 'Seguir',
   revealNote: (fresh: number) =>
     fresh === 0
-      ? 'Todas eran repetidas. Igual sirven: cada copia irá a tu reserva y será más probable robarla.'
+      ? 'Todas eran repetidas. Igual sirven: cada copia va a tu reserva y hace más probable robarla.'
       : fresh === 1
         ? 'Una carta nueva para tu colección.'
         : `${fresh} cartas nuevas para tu colección.`,
+} as const;
+
+/* ---------- Juego en línea (PRD de v2, D-83 a D-103) ---------- */
+
+/** Una lista con "y": "Agua", "Agua y Nieve", "Fuego, Agua y Nieve". */
+export const listOf = (items: readonly string[]): string =>
+  items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
+
+const cardCount = (n: number) => (n === 1 ? '1 carta' : `${n} cartas`);
+
+export const ONLINE_TEXT = {
+  play: 'Jugar en línea',
+  /** D-83: el juego en línea está en Beta. */
+  beta: 'Beta',
+  kicker: 'En línea',
+  you: 'Tú',
+  bot: 'Bot',
+  /* La conexión */
+  connecting: 'Conectando…',
+  reconnecting: 'Reconectando…',
+  /* La ficha: elegir ninja (D-87) */
+  pickLabel: 'Elige tu ninja',
+  cardsOf: (n: number, element: string) => `${cardCount(n)} de ${element}`,
+  stats: { move: 'Paso', range: 'Alcance', attack: 'Daño' },
+  statOf: (label: string, value: number, max: number) => `${label}: ${value} de ${max}`,
+  demoCard: (name: string) => `Ver qué hace la carta de ${name}`,
+  demoCombo: (name: string) => `Ver qué hace la carta de ${name} en combo`,
+  yourPath: 'Tu camino',
+  previous: 'Ninja anterior',
+  next: 'Ninja siguiente',
+  roomWithCode: 'Sala con código',
+  /* Buscando equipo (R-52) */
+  searching: 'Buscando equipo',
+  cancelSearch: 'Cancelar la búsqueda',
+  wanted: (elements: readonly string[]) => `Se busca: ${listOf(elements)}`,
+  searchLine: (difficulty: string, elements: readonly string[], time: string) =>
+    `${difficulty} · Se busca: ${listOf(elements)} · ${time}`,
+  /** La cola ya tiene a las tres personas: la partida está por empezar. */
+  teamFound: (difficulty: string) => `${difficulty} · Equipo completo`,
+  botOffer: (ninja: string) => `¿Juegan con el bot como ${ninja}? No gana monedas.`,
+  botAccept: 'Jugar con el bot',
+  botAccepted: (name: string | null) => (name ? `Aceptaste · esperando a ${name}` : 'Aceptaste'),
+  /* Salas con código (R-53) */
+  roomsIntro: 'Juega en Clásica con tus amigos. Cada persona elige un ninja distinto.',
+  createTitle: 'Crear una sala',
+  createBody: 'Te damos un código para compartir con tus amigos.',
+  create: 'Crear sala',
+  joinTitle: 'Unirse a una sala',
+  joinBody: 'Escribe el código que te compartieron.',
+  codePlaceholder: 'CÓDIGO',
+  codeLabel: 'Código de la sala',
+  join: 'Unirse',
+  joinEmpty: 'Escribe el código de la sala.',
+  yourRoom: 'Tu sala',
+  roomOf: (name: string) => `Sala de ${name}`,
+  codeCaption: (difficulty: string) => `${difficulty} · Código`,
+  copy: 'Copiar',
+  copied: 'Copiado',
+  host: 'Creó la sala',
+  offline: 'Sin conexión',
+  free: (element: string) => `${element} · Libre`,
+  /** `camino`: el ninja que traía es el de su camino. */
+  seatTaken: (ninja: string, camino: boolean) =>
+    camino
+      ? `${ninja}, tu ninja del camino, ya está ocupado. Elige un ninja libre para esta partida.`
+      : `${ninja} ya está ocupado. Elige un ninja libre para esta partida.`,
+  waitingHost: (name: string) => `Esperando a que ${name} empiece la partida.`,
+  leaveRoom: 'Salir de la sala',
+  needAnother: 'Para empezar hace falta otra persona.',
+  choosing: (names: readonly string[]) =>
+    names.length === 1 ? `${names[0]} está eligiendo su ninja.` : `${listOf(names)} están eligiendo su ninja.`,
+  botWillPlay: (ninja: string) => `El bot jugará como ${ninja} y no gana monedas.`,
+  fullTeam: 'Equipo completo.',
+  startWithBot: 'Empezar con el bot',
+  startMatch: 'Empezar partida',
+  roomClosed: 'La sala se cerró porque salió quien la creó.',
+  /* El combate en línea (R-35 a R-39) */
+  confirm: 'Confirmar',
+  ready: 'Listo',
+  secondsLeft: (n: number) => (n === 1 ? 'Queda 1 segundo' : `Quedan ${n} segundos`),
+  leaveMatch: 'Salir de la partida',
+  seat: { planning: 'Planeando', ready: 'Listo', away: 'Desconectado', left: 'Salió' },
+  /** El panel de un ninja: de quién es. */
+  seatOf: (ninja: string, who: string) => `${ninja} · ${who}`,
+  team: (hint: string) => `Actúa el equipo: ${ORDER_NAMES}, en ese orden. ${hint}`,
+  waitingTeam: 'Esperando a que tu equipo termine de ver el turno.',
+  readyWaiting: (names: readonly string[]) =>
+    `Listo. Esperando a ${listOf(names)}: el turno se resuelve al confirmar todos o al llegar a cero.`,
+  readyAll: 'Listo.',
+  /** `names` ya trae "tú" si esta persona juega carta. */
+  combo: (names: readonly string[]) => `Combo: ${listOf(names)} juegan carta este turno.`,
+  comboYou: 'tú',
+  comboBot: 'el bot',
+  planDone: 'Tu plan está listo. Confirma con Espacio.',
+  fallen: (ninja: string) => `${ninja} cayó. Un compañero puede revivirlo desde una casilla vecina.`,
+  returning: (ninja: string) => `Retomas a ${ninja} desde el próximo turno.`,
+  wentAway: (name: string, ninja: string) => `${name} se desconectó. ${ninja} queda quieto hasta que vuelva.`,
+  cameBack: (name: string, ninja: string) => `${name} volvió. Retoma a ${ninja} desde el próximo turno.`,
+  wentOut: (name: string, ninja: string) => `${name} salió de la partida. ${ninja} queda quieto.`,
+  planInvalid: 'Ese plan ya no vale. Elige de nuevo.',
+  /* Los avisos (D-100; R-38, R-39 y R-54) */
+  leaveTitle: '¿Salir de la partida?',
+  leaveBody: 'Pierdes las monedas de esta partida. Tu ninja quedará quieto y tu equipo seguirá sin ti.',
+  leaveConfirm: 'Salir',
+  leaveCancel: 'Seguir jugando',
+  lostTitle: 'Se perdió la conexión.',
+  lostBody: 'Reconectando… Mientras tanto, tu ninja queda quieto.',
+  backTitle: 'Volviste.',
+  backBody: 'Retomas a tu ninja desde el próximo turno.',
+  notices: {
+    left_behind: {
+      title: 'La partida terminó sin ti',
+      body: 'Como no volviste antes del final, cuenta como abandono y no recibes las monedas de esa partida. Tus logros se mantienen.',
+    },
+    restart: {
+      title: 'La partida terminó',
+      body: 'El servidor se reinició y la partida terminó. Conservas lo ganado en las rondas completas. No cuenta como derrota.',
+    },
+  },
+  understood: 'Entendido',
+  replacedTitle: 'Abriste el juego en otra pestaña',
+  replacedBody: 'Una cuenta juega en línea desde una sola pestaña a la vez. Sigue en la otra, o conéctate aquí.',
+  replacedHere: 'Conectarme aquí',
+  outdatedTitle: 'Hay una versión nueva',
+  outdatedBody: 'Recarga la página para seguir jugando en línea.',
+  reload: 'Recargar',
+  signedOutTitle: 'Tu sesión terminó',
+  signedOutBody: 'Entra de nuevo para jugar en línea.',
+  toMenu: 'Menú principal',
+  /* La carga (D-100) */
+  ninjaTip: 'Consejo ninja',
+  /* Los resultados (D-100; R-40) */
+  won: '¡Ganaron!',
+  lost: 'Los gólems resistieron',
+  rounds: 'Rondas',
+  bonus: 'Bonus',
+  roundReached: (round: number) => `Ronda ${round}: superada`,
+  roundMissed: (round: number) => `Ronda ${round}: sin superar`,
+  bonusState: { locked: 'Bonus: sin alcanzar', lost: 'Bonus: sin ganar', won: 'Bonus: ganado' },
+  coins: 'Monedas',
+  roundsPaid: (n: number) => (n === 1 ? '1 ronda cobrada' : `${n} rondas cobradas`),
+  doubled: '×2',
+  doubledTitle: 'Amuleto completo: monedas dobles',
+  nextReward: 'Próxima recompensa',
+  rewardBox: (element: string, size: number, price: number) =>
+    `Una caja de ${element} de ${cardCount(size)} · ${price} monedas`,
+  rewardMissing: (have: number, missing: number) => `Tienes ${have} · te faltan ${missing}.`,
+  rewardReady: '¡Ya puedes abrirla!',
+  rewardHave: (have: number) => `Tienes ${have} monedas.`,
+  amulet: (n: number, of: number) => `Amuleto · ${n}/${of}`,
+  fresh: 'Nuevo:',
+  openBoxes: 'Abrir cajas',
+  yourProgress: 'Tu progreso',
+  done: 'Listo',
+} as const;
+
+/** Por qué no se pudo hacer algo en línea (el servidor solo manda el código). */
+export const PLAY_ERRORS = {
+  room_not_found: 'No existe una sala con ese código.',
+  room_full: 'La sala está llena.',
+  room_started: 'La partida ya empezó.',
+  seat_taken: 'Ese ninja ya lo eligió otra persona.',
+  camino_required: 'Primero elige tu camino.',
+  generic: 'No se pudo. Inténtalo de nuevo.',
+} as const;
+
+/**
+ * El "Consejo ninja" de la pantalla de carga (D-100): tres por ninja, que se turnan entre partidas. Hablan
+ * del ninja elegido, y su nombre va resaltado antes del consejo. El primero de cada uno es el que aprobó
+ * el dueño de producto.
+ */
+export const NINJA_TIPS: Record<ElementKind, readonly [string, string, string]> = {
+  fire: [
+    'Tu carta aturde: un gólem aturdido pierde su próximo turno. Úsala sobre el que más daño hace.',
+    'Atacas a 2 casillas. Mantén esa distancia de Témpano: solo golpea a quien tiene al lado.',
+    'En combo, tu carta además quema a los gólems durante varios turnos. Juégala cuando un compañero también planee la suya.',
+  ],
+  water: [
+    'Eres quien más aguanta y más pega de cerca. Ponte delante y protege a Escarcha.',
+    'Tu carta hace el doble de su valor. Guárdala para cuando haya varios gólems juntos.',
+    'En combo, tu carta da Potencia a todo el equipo: el siguiente golpe o cura de cada uno hace más.',
+  ],
+  snow: [
+    'Mantén la distancia y aprovecha tu gran alcance. Cura a quien lo necesite antes de que caiga.',
+    'Tu carta cura a los ninjas del área y revive a los caídos. Colócala donde alcance a tus compañeros.',
+    'En combo, tu carta da Escudo a todo el equipo: anula el siguiente golpe que reciba cada uno.',
+  ],
+};
+
+/** Los 9 logros, con sus nombres oficiales (PRD §9.6) y cómo se gana cada uno en línea (R-55). */
+export const ACHIEVEMENT_TEXT: Record<AchievementId, { name: string; how: string }> = {
+  combo2: { name: 'Combo doble', how: 'Juega carta en el mismo turno que un compañero.' },
+  combo3: { name: 'Combo triple', how: 'Juega carta en un turno en que los tres ninjas juegan la suya.' },
+  perfectSweep: { name: 'Barrido perfecto', how: 'Alcanza a 3 gólems con una sola carta.' },
+  upAgain: { name: 'De pie otra vez', how: 'Gana una partida después de haber caído.' },
+  bonusWon: { name: 'Bonus conquistado', how: 'Gana la ronda bonus.' },
+  untouched: { name: 'Sin un rasguño', how: 'Llega a la ronda bonus con todo el equipo a vida completa.' },
+  reviver: { name: 'Reanimador', how: 'Revive a un compañero caído.' },
+  healer15: { name: 'Mano sanadora', how: 'Cura 15 veces en una partida.' },
+  noOneLeft: { name: 'Nadie se queda atrás', how: 'Gana una partida en la que los tres cayeron y volvieron.' },
+};
+
+/** La Libreta ninja (D-100): el progreso y las cartas de la cuenta, con la tienda de cajas. */
+export const NOTEBOOK_TEXT = {
+  title: 'Libreta ninja',
+  open: 'Libreta ninja',
+  tabs: { progress: 'Mi progreso', cards: 'Mis cartas' },
+  boxes: 'Abrir cajas',
+  statsTitle: 'Clásica',
+  statsPrivate: 'Solo tú ves estas estadísticas',
+  stats: { played: 'Partidas', rounds: 'Rondas', wins: 'Victorias' },
+  cardsOf: (n: number, of: number) => `${n} de ${of} cartas`,
+  fold: (n: number, of: number) => `Pliegue ${n}/${of}`,
+  toCards: 'Mis cartas',
+  toCardsOf: (element: string) => `Mis cartas de ${element}`,
+  amulet: (n: number, of: number) => `Amuleto: ${n} de ${of} pliegues`,
+  amuletTitle: 'Amuleto de papel',
+  doubleActive: 'Monedas dobles activas',
+  doubleHint: 'Completa los 9 logros y las monedas de cada partida valen el doble.',
+  earned: 'Logrado',
+  pending: 'Por lograr',
+  page: (element: string, page: number, pages: number) => `${element} · página ${page}/${pages}`,
+  previousPage: 'Página anterior',
+  nextPage: 'Página siguiente',
+  copies: (n: number) => `×${n}`,
+  backToCards: 'Volver a Mis cartas',
 } as const;
 
 /** Mensajes para cada error de la API (el servidor solo manda códigos). */
@@ -652,11 +889,16 @@ export const ACCOUNT_ERRORS = {
  * São Paulo) y la del plazo de los códigos (R-50) aprobadas en la revisión del PR #11. El contacto pasa a
  * ventisca@wpena.dev (D-62). Su primer párrafo cambió con D-75: Ventisca dejó de ser un proyecto de clase y
  * es el piloto de un proyecto personal. Ese párrafo nombra de forma explícita al responsable del tratamiento
- * de los datos. La fecha de vigencia es la de la fusión de ese cambio.
+ * de los datos.
+ *
+ * Con el juego en línea (D-96) se revisó contra lo que hace el multijugador y se precisaron tres cosas: quién
+ * ve el nombre visible, qué se guarda de cada partida y qué ve el equipo mientras se juega. Desde entonces
+ * queda congelado hasta que exista el mecanismo para avisar sus cambios. La fecha de vigencia es la de la
+ * fusión del último cambio.
  */
 export const PRIVACY_NOTICE = {
   title: 'Aviso de privacidad de Ventisca',
-  since: 'Vigente desde el 6 de octubre de 2026',
+  since: 'Vigente desde el 13 de octubre de 2026',
   sections: [
     {
       title: '',
@@ -675,14 +917,15 @@ export const PRIVACY_NOTICE = {
       items: [
         'Tu correo, para verificar tu cuenta, recuperarla y avisarte de cambios en ella o en este aviso.',
         'Una huella de tu contraseña (Argon2id), que no permite recuperarla. Tu contraseña nunca se guarda.',
-        'Tu nombre visible, que ven las personas con quienes juegas.',
+        'Tu nombre visible, que ven las personas con quienes juegas o buscas equipo.',
         'Tu progreso: carta de camino, monedas, cajas abiertas, colección y logros.',
         'Tus estadísticas de combate. Solo las ves tú.',
-        'Las partidas en línea que jugaste: con qué ninja, cuándo entraste y cuándo saliste.',
+        'Las partidas en línea que jugaste: con qué ninja, cuándo entraste y cuándo saliste, las rondas que superaste y cómo terminó cada una para ti (si la terminaste, la abandonaste o la interrumpió un reinicio del servidor).',
         'Una cookie necesaria para mantener tu sesión abierta.',
       ],
       body: [
         'Para frenar abusos, como intentos repetidos de entrar a una cuenta, el servidor recuerda tu IP durante 15 minutos, solo en memoria. No la guardamos en la base de datos.',
+        'Mientras juegas en línea, tu equipo ve lo que planeas con tu ninja y si sigues conectado. Eso no se guarda.',
         'No pedimos tu edad, tu nombre real ni tu ubicación. No hay pagos ni chat.',
       ],
     },

@@ -10,6 +10,7 @@ import {
   ES,
   MAP_NAMES,
   NINJA_TEXT,
+  ONLINE_TEXT,
   PACES,
   type Pace,
   SCREEN_TEXT,
@@ -17,11 +18,14 @@ import {
 } from '../i18n/es';
 import { openAccount } from '../state/account';
 import { goto, setHelp, startMatch, updateSettings } from '../state/actions';
+import { openOnline } from '../state/online';
 import { useApp } from '../state/store';
 import { Icon, NinjaTrio, ScreenActions, ScreenHead, Segmented, Toggle, useCountUp } from './common';
+import { BetaChip } from './Online';
 
 export function TitleScreen() {
   const account = useApp((s) => s.account);
+  const online = account.status === 'ready';
   return (
     <div className="screen title-screen">
       <img className="bg" src={art.background('cumbre')} alt="" />
@@ -30,10 +34,26 @@ export function TitleScreen() {
         <div className="title-kicker">{SCREEN_TEXT.kicker}</div>
         <h1 className="title-word display">{ES.title}</h1>
         <p className="title-tagline">{ES.tagline}</p>
+        {/* Sin servidor (el juego de un solo archivo) no hay cuentas ni juego en línea: queda una sola fila. */}
         <div className="title-actions">
+          {online ? (
+            <button
+              type="button"
+              // El primario es lo que la persona puede hacer ya: con sesión, jugar en línea.
+              className={`btn btn-lg ${account.user ? 'btn-primary' : ''}`}
+              data-action="online"
+              onClick={() => {
+                audio.unlock();
+                audio.play('confirm');
+                openOnline();
+              }}
+            >
+              {ONLINE_TEXT.play} <BetaChip />
+            </button>
+          ) : null}
           <button
             type="button"
-            className="btn btn-primary btn-lg"
+            className={`btn btn-lg ${online && account.user ? '' : 'btn-primary'}`}
             onClick={() => {
               audio.unlock();
               audio.play('confirm');
@@ -42,7 +62,9 @@ export function TitleScreen() {
           >
             <Icon name="play" /> {ACCOUNT_TEXT.playSandbox}
           </button>
-          {account.status === 'ready' ? (
+        </div>
+        <div className="title-actions">
+          {online ? (
             <button type="button" className="btn btn-lg" onClick={() => openAccount()}>
               {account.user ? ACCOUNT_TEXT.myAccount : ACCOUNT_TEXT.enter}
             </button>

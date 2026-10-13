@@ -4,19 +4,44 @@ import { clippedElements, FULL_TRACE, smallText } from './helpers';
 
 /*
  * El progreso de la cuenta en el cliente, contra el servidor de verdad (PRD §18 y PRD de v2, D-34): la
- * carta de camino, la colección y la tienda. Las monedas las da un apoyo de pruebas, porque hasta el M8
- * no hay partidas en línea donde ganarlas.
+ * carta de camino y la Libreta ninja (D-100), con la colección y la tienda de cajas. Las monedas las da un
+ * apoyo de pruebas: ganarlas jugando en línea lo cubren las e2e del juego en línea.
  */
 
 test.use(FULL_TRACE);
 
-const wallet = (page: Page) => page.locator('.wallet');
+const wallet = (page: Page) => page.locator('.note-bar .coins');
 const buy = (page: Page, size: 1 | 2 | 3) =>
   page.getByRole('button', { name: new RegExp(`^Comprar una caja de ${size} cartas? de`) });
+/** La pestaña de un elemento, en "Abrir cajas". */
+const boxTab = (page: Page, element: string) => page.getByRole('tab', { name: new RegExp(`^${element}`) });
+/** La cuadrícula de 2 × 5 de "Mis cartas". */
+const grid = (page: Page) => page.locator('.note-grid');
 
-async function openCollection(page: Page) {
-  await page.getByRole('button', { name: 'Colección y tienda' }).click();
-  await expect(page.getByRole('heading', { name: 'Colección y tienda' })).toBeVisible();
+/** Desde el perfil: abre la Libreta ninja en "Mi progreso". */
+async function openNotebook(page: Page) {
+  await page.getByRole('button', { name: 'Libreta ninja' }).click();
+  await expect(page.getByRole('heading', { name: 'Mi progreso' })).toBeVisible();
+}
+
+/** Desde el perfil: la Libreta, en "Mis cartas". */
+async function openCards(page: Page) {
+  await openNotebook(page);
+  await page.getByRole('tab', { name: 'Mis cartas' }).click();
+  await expect(page.getByRole('heading', { name: 'Mis cartas' })).toBeVisible();
+}
+
+/** Desde el perfil: la Libreta, en "Abrir cajas", que es la tienda. */
+async function openBoxes(page: Page) {
+  await openCards(page);
+  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  await expect(page.getByRole('heading', { name: 'Abrir cajas' })).toBeVisible();
+}
+
+/** Cierra la Libreta con su ✕ y vuelve al perfil. */
+async function closeNotebook(page: Page) {
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /^Hola, / })).toBeVisible();
 }
 
 test('R-30: al verificar la cuenta se elige el camino, que queda en el perfil con el mazo inicial', async ({
@@ -39,14 +64,19 @@ test('R-30: al verificar la cuenta se elige el camino, que queda en el perfil co
   const summary = page.getByRole('region', { name: 'Tu progreso' });
   const check = async () => {
     await expect(summary.getByRole('heading', { name: 'Camino del Agua' })).toBeVisible();
-    // El mazo inicial: un 9 de cada elemento y el 12 del camino.
-    await expect(summary.locator('dl > div')).toHaveText([
-      /^Fuego\s*1 de 20\s*1 carta$/,
-      /^Agua\s*2 de 20\s*2 cartas$/,
-      /^Nieve\s*1 de 20\s*1 carta$/,
-      /^Cajas\s*0\s*abiertas$/,
-    ]);
     await expect(summary.locator('.coins')).toHaveText('0 monedas');
+    // El mazo inicial, en la Libreta: un 9 de cada elemento y el 12 del camino.
+    await openNotebook(page);
+    await expect(page.locator('.note-el > p').filter({ hasText: 'de 20 cartas' })).toHaveText([
+      '1 de 20 cartas',
+      '2 de 20 cartas',
+      '1 de 20 cartas',
+    ]);
+    await expect(page.locator('.note-wallet')).toHaveText(/^0 monedas\s*Cajas: 0 abiertas$/);
+    // Sin partidas jugadas todavía, y son privadas.
+    await expect(page.getByText('Solo tú ves estas estadísticas')).toBeVisible();
+    await expect(page.locator('.note-stats dd')).toHaveText(['0', '0', '0']);
+    await closeNotebook(page);
   };
   await check();
   // Vive en la cuenta: sigue ahí al recargar.
@@ -73,40 +103,70 @@ test('R-30: quien entra sin haber elegido su camino llega a elegirlo', async ({ 
   await expect(page.getByRole('heading', { name: `Hola, ${who.displayName}` })).toBeVisible();
 });
 
-test('R-25: la colección muestra las 20 cartas de cada elemento, y las que faltan como siluetas', async ({ page }) => {
-  await signUp(page, person(), 'Fuego');
-  await openCollection(page);
-  const cards = page.getByRole('tabpanel').getByRole('img');
-  const missing = page.getByRole('tabpanel').getByRole('img', { name: /que aún no tienes$/ });
-  await expect(page.getByRole('tab', { name: /Fuego/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tab')).toHaveText([/Fuego\s*2 de 20/, /Agua\s*1 de 20/, /Nieve\s*1 de 20/]);
-  await expect(cards).toHaveCount(20);
-  await expect(missing).toHaveCount(18);
-  await expect(page.getByRole('img', { name: 'Chispa: carta de Fuego de 9' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Fénix plegado: carta de Fuego de 12' })).toBeVisible();
-  await expect(page.getByText('Tienes 2 cartas de Fuego · promedio 10,5 · 2 de 20 distintas')).toBeVisible();
-
-  await page.getByRole('tab', { name: /Agua/ }).click();
-  await expect(page.getByRole('tabpanel', { name: /Agua/ })).toBeVisible();
-  await expect(cards).toHaveCount(20);
-  await expect(missing).toHaveCount(19);
-  await expect(page.getByRole('img', { name: 'Gota: carta de Agua de 9' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Caja de Agua' })).toBeVisible();
-});
-
-test('R-28: sin monedas no se puede comprar, y la tienda dice que llegarán con las partidas en línea', async ({
+test('R-25: "Mis cartas" muestra las 20 cartas de cada elemento en páginas de 2 × 5, y las que faltan como siluetas', async ({
   page,
 }) => {
   await signUp(page, person(), 'Fuego');
-  await openCollection(page);
+  await openCards(page);
+  const cards = grid(page).getByRole('img');
+  const missing = grid(page).getByRole('img', { name: /que aún no tienes$/ });
+  const next = page.getByRole('button', { name: 'Página siguiente' });
+  // Fuego, sus dos páginas: el 9 del mazo inicial en la primera y el 12 del camino en la segunda.
+  await expect(page.getByRole('heading', { name: 'Fuego · página 1/6' })).toBeVisible();
+  await expect(cards).toHaveCount(10);
+  await expect(missing).toHaveCount(9);
+  await expect(page.getByRole('img', { name: 'Chispa: carta de Fuego de 9' })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole('heading', { name: 'Fuego · página 2/6' })).toBeVisible();
+  await expect(cards).toHaveCount(10);
+  await expect(missing).toHaveCount(9);
+  await expect(page.getByRole('img', { name: 'Fénix plegado: carta de Fuego de 12' })).toBeVisible();
+  // Agua: solo el 9 del mazo inicial.
+  await next.click();
+  await expect(page.getByRole('heading', { name: 'Agua · página 3/6' })).toBeVisible();
+  await expect(missing).toHaveCount(9);
+  await expect(page.getByRole('img', { name: 'Gota: carta de Agua de 9' })).toBeVisible();
+  await next.click();
+  await expect(missing).toHaveCount(10);
+  // Las flechas dan la vuelta: de la primera página, hacia atrás, a la última.
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Página anterior' }).click();
+  await expect(page.getByRole('heading', { name: 'Fuego · página 1/6' })).toBeVisible();
+  await page.getByRole('button', { name: 'Página anterior' }).click();
+  await expect(page.getByRole('heading', { name: 'Nieve · página 6/6' })).toBeVisible();
+
+  // "Abrir cajas" lleva a las cajas del elemento que se estaba viendo.
+  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  await expect(boxTab(page, 'Nieve')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab')).toHaveText([
+    'Mi progreso',
+    'Mis cartas',
+    /Fuego\s*2 de 20/,
+    /Agua\s*1 de 20/,
+    /Nieve\s*1 de 20/,
+  ]);
+  await boxTab(page, 'Fuego').click();
+  await expect(page.getByText('Tienes 2 cartas de Fuego · promedio 10,5 · 2 de 20 distintas')).toBeVisible();
+  await boxTab(page, 'Agua').click();
+  await expect(page.getByRole('heading', { name: 'Caja de Agua' })).toBeVisible();
+  // Y de vuelta a las cartas de ese elemento.
+  await page.getByRole('button', { name: 'Volver a Mis cartas' }).click();
+  await expect(page.getByRole('heading', { name: 'Agua · página 3/6' })).toBeVisible();
+});
+
+test('R-28: sin monedas no se puede comprar, y la tienda dice que se ganan en las partidas en línea', async ({
+  page,
+}) => {
+  await signUp(page, person(), 'Fuego');
+  await openBoxes(page);
   await expect(wallet(page)).toHaveText('0 monedas');
   for (const size of [1, 2, 3] as const) await expect(buy(page, size)).toBeDisabled();
-  // En futuro y con su marca: las partidas en línea todavía no existen.
+  // En presente y sin marca: las partidas en línea ya existen.
   await expect(
     page.getByText(
-      'Ganarás monedas en las partidas en línea, por cada ronda superada: 60, 120 y 120, más 120 si ganas el bonus. Próximamente',
+      'Ganas monedas en las partidas en línea, por cada ronda superada: 60, 120 y 120, más 120 si ganas el bonus.',
     ),
   ).toBeVisible();
+  await expect(page.getByText('Próximamente')).toHaveCount(0);
 });
 
 test('R-28: comprar una caja descuenta las monedas, revela las cartas y las suma a la colección', async ({ page }) => {
@@ -120,9 +180,9 @@ test('R-28: comprar una caja descuenta las monedas, revela las cartas y las suma
   giveCoins(who.email);
   await page.getByRole('button', { name: 'Mi cuenta' }).click();
   await expect(summary.locator('.coins')).toHaveText('420 monedas');
-  await openCollection(page);
+  await openBoxes(page);
   await expect(wallet(page)).toHaveText('420 monedas');
-  await expect(page.getByText(/Ganarás monedas/)).toHaveCount(0);
+  await expect(page.getByText(/Ganas monedas/)).toHaveCount(0);
   await expect(buy(page, 3)).toHaveAccessibleName('Comprar una caja de 3 cartas de Fuego por 250 monedas');
   await buy(page, 3).click();
 
@@ -140,30 +200,40 @@ test('R-28: comprar una caja descuenta las monedas, revela las cartas y las suma
 
   await expect(wallet(page)).toHaveText('170 monedas');
   await expect(page.getByText(/^Tienes 5 cartas de Fuego/)).toBeVisible();
-  for (const name of drawn) {
-    const card = name.slice(0, name.indexOf(':'));
-    await expect(
-      page.getByRole('tabpanel').getByRole('img', { name: new RegExp(`^${card}: carta de Fuego`) }),
-    ).toBeVisible();
-  }
   // Con 170 monedas alcanza para la caja de 1 (100), pero no para las de 2 (180) ni 3 (250).
   await expect(buy(page, 1)).toBeEnabled();
   await expect(buy(page, 2)).toBeDisabled();
   await expect(buy(page, 3)).toBeDisabled();
+  // Las cartas de la caja están en "Mis cartas", en alguna de las dos páginas de Fuego.
+  await page.getByRole('button', { name: 'Volver a Mis cartas' }).click();
+  const owned: string[] = [];
+  for (const title of ['Fuego · página 1/6', 'Fuego · página 2/6']) {
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    owned.push(
+      ...(await grid(page)
+        .getByRole('img')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''))),
+    );
+    await page.getByRole('button', { name: 'Página siguiente' }).click();
+  }
+  for (const name of drawn) {
+    const card = name.slice(0, name.indexOf(':'));
+    expect(owned.some((label) => label.startsWith(`${card}: carta de Fuego`))).toBe(true);
+  }
 
-  // Todo quedó en la cuenta: al recargar, el perfil lo muestra.
+  // Todo quedó en la cuenta: al recargar, el perfil y la Libreta lo muestran.
   await page.reload();
   await page.getByRole('button', { name: 'Mi cuenta' }).click();
   await expect(summary.locator('.coins')).toHaveText('170 monedas');
-  await expect(summary.locator('dl > div').last()).toHaveText(/^Cajas\s*1\s*abierta$/);
-  await expect(summary.locator('dl > div').first()).toHaveText(/5 cartas$/);
+  await openNotebook(page);
+  await expect(page.locator('.note-wallet')).toHaveText(/^170 monedas\s*Cajas: 1 abierta$/);
   expect(errors).toEqual([]);
 });
 
 test('D-66: mientras espera la respuesta de una compra, los botones quedan deshabilitados', async ({ page }) => {
   const who = await signUp(page, person(), 'Fuego');
   giveCoins(who.email);
-  await openCollection(page);
+  await openBoxes(page);
   let sent = 0;
   let release = () => {};
   const held = new Promise<void>((resolve) => {
@@ -183,7 +253,7 @@ test('D-66: mientras espera la respuesta de una compra, los botones quedan desha
   await expect(buy(page, 2)).toBeDisabled();
   await expect(buy(page, 3)).toBeDisabled();
   await waiting.click({ force: true });
-  await page.getByRole('tab', { name: /Agua/ }).click();
+  await boxTab(page, 'Agua').click();
   for (const size of [1, 2, 3] as const) await expect(buy(page, size)).toBeDisabled();
   expect(sent).toBe(1);
 
@@ -198,7 +268,7 @@ test('D-66: mientras espera la respuesta de una compra, los botones quedan desha
 test('D-66: si la respuesta de una compra se pierde, comprar de nuevo no cobra dos veces', async ({ page }) => {
   const who = await signUp(page, person(), 'Fuego');
   giveCoins(who.email);
-  await openCollection(page);
+  await openBoxes(page);
   const ids: string[] = [];
   let lose = true;
   await page.route('**/api/progress/boxes', async (route) => {
@@ -237,7 +307,7 @@ test('D-68: la caja que quedó sin respuesta se puede reintentar aunque el saldo
 }) => {
   const who = await signUp(page, person(), 'Fuego');
   giveCoins(who.email);
-  await openCollection(page);
+  await openBoxes(page);
   // De las 420 monedas, una caja de 3 deja 170.
   await buy(page, 3).click();
   await page.getByRole('button', { name: 'Seguir' }).click();
@@ -261,7 +331,7 @@ test('D-68: la caja que quedó sin respuesta se puede reintentar aunque el saldo
   await expect(buy(page, 3)).toBeDisabled();
   expect(await clippedElements(page)).toEqual([]);
   // Con el aviso a la vista, todo cabe en el panel de la tienda sin tener que desplazarlo.
-  expect(await page.locator('.shop').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+  expect(await page.locator('.note-shop').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
   // La que quedó sin respuesta sí se puede comprar de nuevo, como dice el aviso.
   await expect(buy(page, 1)).toBeEnabled();
   await buy(page, 1).click();
@@ -300,7 +370,7 @@ test('lineamientos de diseño, sección 8: las pantallas del progreso no cortan 
     await page.waitForTimeout(700); // las entradas escalonadas
     const found = [...(await clippedElements(page)), ...(await smallText(page))];
     // Un solo primario por vista; el de una caja abierta es el de su ventana.
-    const primaries = await page.locator('.contents .btn-primary, .screen > .screen-actions .btn-primary').count();
+    const primaries = await page.locator('.notebook .btn-primary, .screen > .screen-actions .btn-primary').count();
     if (primaries > 1) found.push(`${primaries} botones primarios`);
     if (found.length) problems[name] = found;
   };
@@ -322,22 +392,26 @@ test('lineamientos de diseño, sección 8: las pantallas del progreso no cortan 
   await page.getByRole('button', { name: 'Elegir el Camino de la Nieve' }).click();
   await expect(page.getByRole('heading', { name: 'Camino de la Nieve' })).toBeVisible();
   await check('perfil con el camino recién elegido');
-  await openCollection(page);
-  await check('colección sin monedas');
+  await openNotebook(page);
+  await check('libreta: mi progreso');
+  await page.getByRole('tab', { name: 'Mis cartas' }).click();
+  await check('libreta: mis cartas');
+  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  await check('cajas sin monedas');
   giveCoins(who.email, 3);
-  await page.getByRole('button', { name: 'Volver' }).click();
-  await openCollection(page);
+  await closeNotebook(page);
+  await openBoxes(page);
   for (const element of ['Fuego', 'Agua', 'Nieve']) {
-    await page.getByRole('tab', { name: new RegExp(element) }).click();
-    await check(`colección: ${element}`);
+    await boxTab(page, element).click();
+    await check(`cajas: ${element}`);
     await buy(page, 3).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.waitForTimeout(1200); // las tres cartas se voltean una por una
     await check(`caja de ${element}`);
     await page.getByRole('button', { name: 'Seguir' }).click();
-    await check(`colección con la caja de ${element}`);
+    await check(`cajas con la caja de ${element}`);
   }
-  await page.getByRole('button', { name: 'Volver' }).click();
+  await closeNotebook(page);
   await check('perfil con progreso');
 
   // Lo más ancho que puede llegar a mostrarse: las 60 cartas, con sus nombres más largos, muchas copias
@@ -353,17 +427,45 @@ test('lineamientos de diseño, sección 8: las pantallas del progreso no cortan 
     }));
   });
   await check('perfil con la colección completa');
-  // Sin pasar por el botón, que traería de nuevo el progreso del servidor.
+  // Sin pasar por el botón, que traería de nuevo el progreso del servidor. Con los 9 logros, el amuleto
+  // queda completo y dice "Monedas dobles activas".
   await page.evaluate(() => {
-    type Store = { setState(update: (s: { account: object }) => object): void };
+    type Store = { setState(update: (s: { progress: { data: object } }) => object): void };
+    const achievements = [
+      'combo2',
+      'combo3',
+      'perfectSweep',
+      'upAgain',
+      'bonusWon',
+      'untouched',
+      'reviver',
+      'healer15',
+      'noOneLeft',
+    ];
     (window as unknown as { __ventisca: Store }).__ventisca.setState((s) => ({
-      account: { ...s.account, view: 'collection' },
+      screen: 'notebook',
+      notebook: { tab: 'progress', page: 0, from: 'account' },
+      progress: {
+        ...s.progress,
+        data: {
+          ...s.progress.data,
+          achievements,
+          stats: { classic: { matches: 9999, rounds: 99999, wins: 9999 }, storm: { matches: 0, rounds: 0, wins: 0 } },
+        },
+      },
     }));
   });
-  for (const element of ['Fuego', 'Agua', 'Nieve']) {
-    await page.getByRole('tab', { name: new RegExp(element) }).click();
-    await expect(page.getByRole('tabpanel').getByRole('img', { name: /que aún no tienes$/ })).toHaveCount(0);
-    await check(`colección completa: ${element}`);
+  await expect(page.getByText('Monedas dobles activas')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Amuleto: 3 de 3 pliegues' })).toBeVisible();
+  await check('libreta completa: mi progreso');
+  await page.getByRole('tab', { name: 'Mis cartas' }).click();
+  for (let n = 1; n <= 6; n++) {
+    await expect(page.getByRole('heading', { name: new RegExp(`página ${n}/6$`) })).toBeVisible();
+    await expect(grid(page).getByRole('img', { name: /que aún no tienes$/ })).toHaveCount(0);
+    await check(`colección completa: página ${n}`);
+    await page.getByRole('button', { name: 'Página siguiente' }).click();
   }
+  await page.getByRole('button', { name: 'Abrir cajas' }).click();
+  await check('cajas con la colección completa');
   expect(problems).toEqual({});
 });

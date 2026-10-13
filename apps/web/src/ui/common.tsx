@@ -62,7 +62,17 @@ export type IconName =
   | 'check'
   | 'flake'
   | 'coin'
-  | 'cards';
+  | 'cards'
+  | 'left'
+  | 'right'
+  | 'spin'
+  | 'lock'
+  | 'star'
+  | 'door'
+  | 'plug'
+  | 'pencil'
+  | 'chart'
+  | 'box';
 
 export function Icon({ name }: { name: IconName }) {
   const common = {
@@ -169,6 +179,74 @@ export function Icon({ name }: { name: IconName }) {
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2" {...common} stroke="#2E9E8F" />
+        </svg>
+      );
+    case 'left':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14.5 5l-7 7 7 7" {...common} />
+        </svg>
+      );
+    case 'right':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9.5 5l7 7-7 7" {...common} />
+        </svg>
+      );
+    case 'spin':
+      // Toma el color del texto: gira sobre una silueta de tinta o sobre la franja de carga.
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" {...common} stroke="currentColor" />
+        </svg>
+      );
+    case 'lock':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="9" rx="2" {...common} stroke="currentColor" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" {...common} stroke="currentColor" />
+        </svg>
+      );
+    case 'star':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.2 6-5.5-3-5.5 3 1.2-6L3.2 9.4l6.1-.8z"
+            fill="currentColor"
+            stroke={INK}
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'door':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M13 4H6v16h7M10 12h10M16.5 8.5L20 12l-3.5 3.5" {...common} />
+        </svg>
+      );
+    case 'plug':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4" {...common} />
+        </svg>
+      );
+    case 'pencil':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19zM14 6.5l3.5 3.5" {...common} stroke="currentColor" />
+        </svg>
+      );
+    case 'chart':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20h16M7 20v-7M12 20V5M17 20v-10" {...common} />
+        </svg>
+      );
+    case 'box':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.5 8L12 3.5 20.5 8v8.5L12 21l-8.5-4.5zM3.5 8L12 12.5 20.5 8M12 12.5V21" {...common} />
         </svg>
       );
   }

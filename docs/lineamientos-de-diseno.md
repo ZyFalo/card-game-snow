@@ -50,11 +50,11 @@ Siempre variables de `:root`. Ningún color, sombra ni tamaño de letra se escri
 | Radios | 12 px en paneles; 10 px en botones, chips y campos |
 | Sombras | 4px 4px 0 `--ink` en paneles; 3px 3px 0 `--ink` en botones y campos; 3px 3px 0 `--fire` en el botón primario |
 | Márgenes de pantalla | 56 px a los lados y 34 px arriba (`.screen-head`) |
-| Separaciones | 8, 12, 16 o 24 px |
+| Separaciones | 8, 12, 16, 24 o 32 px. En las pantallas nuevas, las del respiro de la sección 12: 8, 16, 24 y 32 |
 | Foco | `outline: 3px solid var(--water); outline-offset: 3px` en todo lo interactivo, campos y enlaces incluidos |
 | Elegido | Un aro de 3 px de `--gold` alrededor, además de su sombra, como la carta elegida de la mano |
 
-La escala y la geometría también son variables de `:root`: `--text-hero`, `--text-title`, `--text-panel`, `--text-section`, `--text-lead`, `--text-body`, `--text-notice`, `--text-small`, `--text-btn` y `--text-btn-lg`; `--leading` y `--leading-read`; `--line`; `--radius-panel`, `--radius-control` y `--radius-check`; `--shadow-panel`, `--shadow-control`, `--shadow-primary`, `--shadow-danger`, `--ring` (el aro de lo elegido) y `--shade` (la sombra de los ninjas en el suelo); `--control-h`; `--gap-1` a `--gap-4`; `--edge-x` y `--edge-top`; `--focus` y `--focus-offset`.
+La escala y la geometría también son variables de `:root`: `--text-hero`, `--text-title`, `--text-panel`, `--text-section`, `--text-lead`, `--text-body`, `--text-notice`, `--text-small`, `--text-btn` y `--text-btn-lg`; `--leading` y `--leading-read`; `--line`; `--radius-panel`, `--radius-control` y `--radius-check`; `--shadow-panel`, `--shadow-control`, `--shadow-primary`, `--shadow-danger`, `--ring` (el aro de lo elegido) y `--shade` (la sombra de los ninjas en el suelo); `--control-h`; `--gap-1` a `--gap-5`; `--edge-x` y `--edge-top`; `--focus` y `--focus-offset`. Las de la grilla y el respiro (`--grid-*`, `--space-*` y `--read-max`) están en la sección 12.
 
 ## 3. Piezas existentes: reutilizar
 
@@ -363,3 +363,78 @@ Las de los gólems usan la misma burbuja:
 
 - Deja lisa la franja de abajo, donde van los paneles de los ninjas y la mano: de 544 px hacia abajo solo hay campo nevado (`HUD_BAND_Y` en `art/scenery.ts`). Las montañas, los acantilados y los pinos se apoyan en esa línea o más arriba.
 - Así ninguna línea del fondo cruza el título de la mano ni la pista de las teclas, que van sobre el fondo sin panel propio. `art/scenery.test.ts` lo mide en los tres mapas.
+
+## 12. Grillas y composición
+
+Toda pantalla se compone sobre una grilla, con las mismas reglas de simetría y de respiro (D-99). Las maquetas que la fijaron están fuera del repositorio; aquí quedan sus números y sus reglas.
+
+### La grilla
+
+A 1280×720, el escenario de referencia:
+
+| Medida | Valor | Variable |
+| --- | --- | --- |
+| Columnas | 12 | `--grid-cols` |
+| Espacio entre columnas | 16 px | `--grid-gutter` |
+| Margen a cada lado | 56 px | `--grid-margin` |
+| Ritmo vertical | Pasos de 8 px | `--grid-step` |
+
+Con esos números, cada columna mide 82,67 px, y un bloque de 4 columnas, 378,67 px.
+
+**En las pantallas adaptables,** la grilla cambia con el ancho de la ventana:
+
+| Ancho de la ventana | Columnas | Margen |
+| --- | --- | --- |
+| 1024 px o más | 12 | 56 px |
+| De 600 a 1023 px | 8 | 32 px |
+| Menos de 600 px | 4 | 16 px |
+
+### Las cuatro plantillas
+
+| Plantilla | Para qué | Cómo se reparte |
+| --- | --- | --- |
+| **Menú** | Elegir entre pocas opciones | La cabeza arriba a la izquierda, en las columnas 1 a 6. El contenido en tarjetas de 4 columnas, tres por fila. La barra de acciones abajo a la derecha |
+| **Batalla** | El combate | La barra de arriba en una fila: la franja de contexto (6 columnas), el reloj (1), confirmar (2), la ronda (2) y los botones (1). El tablero al centro, en las columnas 2 a 11. Abajo, tres paneles de 2 columnas, la mano (3) y el lugar de los consejos (3) |
+| **Lectura** | El aviso de privacidad, la ayuda y los créditos | La columna de texto ocupa 7 columnas, unos 680 px. La ilustración va a la derecha, y la barra de acciones, abajo |
+| **Diálogo** | Los avisos | 6 columnas centradas, de la 4 a la 9, sobre el fondo oscurecido. Los botones en fila |
+
+### Simetría
+
+- **El eje central es la referencia.** Lo que va solo, va centrado en él: el tablero, un diálogo o el botón grande de una pantalla.
+- **Los bloques se reparten en partes iguales:** tres tarjetas de 4 columnas, dos de 6, o tres asientos a la misma distancia.
+- **Un lado con peso lleva su contrapeso.** El título arriba a la izquierda se equilibra con las acciones abajo a la derecha; un panel a la izquierda, con el escenario a la derecha.
+- **Los márgenes son iguales a los dos lados.**
+
+### Respiro justificado
+
+| Dónde | Separación | Variable |
+| --- | --- | --- |
+| Dentro de un elemento, entre su ícono y su texto | 8 px | `--space-in` |
+| Entre los elementos de un grupo | 16 px | `--space-item` |
+| Entre grupos | 24 px | `--space-group` |
+| Entre zonas, como el contenido y la barra de acciones | 32 px o más | `--space-zone` |
+| A los lados de la pantalla | 56 px | `--grid-margin` |
+
+**Ningún vacío sin razón.** Un espacio grande separa dos cosas distintas, como elegir y actuar. Si no separa nada, sobra.
+
+### Detalles
+
+- **Los mismos bordes, radios y sombras** en todas las piezas: los de la sección 2.
+- **Alineación óptica:** un ícono se alinea con el centro del texto que lo acompaña, no con su caja. El título y su subtítulo empiezan en la misma columna.
+- **Estados idénticos en todo el juego:** lo elegido lleva el aro dorado, lo deshabilitado se apaga igual y el foco se ve igual.
+- **El botón principal va al final de su fila,** a la derecha. Hay uno solo por vista.
+- **Las líneas de lectura no pasan de 75 caracteres** (`--read-max`).
+- **Un retrato va centrado con su texto,** con 16 px de aire a todos lados.
+
+### En horizontal siempre que quepa
+
+- El retrato a la izquierda y el texto a la derecha.
+- Las tarjetas, lado a lado.
+- Los botones, en fila.
+
+En una ventana angosta, lo que ya no cabe lado a lado pasa a ir uno bajo otro, en el mismo orden.
+
+### En el código
+
+- **Las variables** están en `:root`, en `ui/styles.css`: `--grid-cols`, `--grid-gutter`, `--grid-margin`, `--grid-step`, `--space-in`, `--space-item`, `--space-group`, `--space-zone` y `--read-max`.
+- **`ui/grid.ts`** repite esos números y describe las cuatro plantillas (`GRID`, `SPACE`, `BREAKPOINTS` y `TEMPLATES`), con `colLeft` y `span` para medir. `ui/grid.test.ts` comprueba que el código y la hoja de estilos digan lo mismo, y que cada plantilla llene sus columnas.

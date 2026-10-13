@@ -49,8 +49,24 @@
   --gap-2: 12px;
   --gap-3: 16px;
   --gap-4: 24px;
+  --gap-5: 32px;
   --edge-x: 56px;
   --edge-top: 34px;
+  /*
+   * Grilla y composición (docs/lineamientos-de-diseno.md, sección 12): 12 columnas a 1280×720, con el
+   * ritmo vertical en pasos de 8 px. Los mismos números están en ui/grid.ts; una prueba los compara.
+   */
+  --grid-cols: 12;
+  --grid-gutter: 16px;
+  --grid-margin: 56px;
+  --grid-step: 8px;
+  /* Respiro: dentro de un elemento, entre los elementos de un grupo, entre grupos y entre zonas. */
+  --space-in: var(--gap-1);
+  --space-item: var(--gap-3);
+  --space-group: var(--gap-4);
+  --space-zone: var(--gap-5);
+  /* Una línea de lectura no pasa de 75 caracteres. */
+  --read-max: 75ch;
   --focus: 3px solid var(--water);
   --focus-offset: 3px;
   box-sizing: border-box;

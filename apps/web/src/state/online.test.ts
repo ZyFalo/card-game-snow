@@ -221,6 +221,26 @@ describe('La cola (R-52)', () => {
     expect(again.payloads).toHaveLength(1);
   });
 
+  it('quien cancela la búsqueda mientras se reconecta tampoco vuelve a entrar sola', async () => {
+    const socket = enter();
+    joinQueue();
+    const seats = [
+      { element: 'fire' as const, name: null },
+      { element: 'water' as const, name: 'Ana' },
+      { element: 'snow' as const, name: null },
+    ];
+    socket.say({ type: 'queue.state', you: 'water', seats, offer: null, waitedMs: 0 });
+    socket.onclose?.({ code: 1006 });
+    await settle();
+    // Sin conexión no hay a quién avisarle, pero la intención vale: ya no quiere buscar.
+    leaveQueue();
+    timers.shift()?.();
+    last().onopen?.();
+    last().say({ type: 'idle', reason: null, notice: null });
+    expect(last().payloads).toEqual([]);
+    expect(online().place).toBe('home');
+  });
+
   it('quien canceló la búsqueda no vuelve a entrar sola tras una caída', async () => {
     const socket = enter();
     joinQueue();

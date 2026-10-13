@@ -226,6 +226,11 @@ describe('La franja de arriba en línea (D-91)', () => {
     );
     // Una sola carta no es combo.
     expect(onlineTip(app(state, om, { plans: { fire: card('fire') } }))).toBe(TIP_TEXT.plan('Escarcha'));
+    // Quien lleva a Brasa también se lee al final, aunque su ninja actúe primero.
+    const asFire = online({ you: 'fire' });
+    expect(onlineTip(app(state, asFire, { plans: { fire: card('fire'), snow: card('snow') } }))).toBe(
+      'Combo: OlaFria22 y tú juegan carta este turno.',
+    );
   });
 
   it('con su ninja caído, o recién vuelta a la partida, dice por qué no planea', () => {

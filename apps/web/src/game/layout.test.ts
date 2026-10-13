@@ -276,6 +276,8 @@ describe('La marca de listo de una partida en línea (R-36)', () => {
   it('va al centro de la casilla, sobre la cabeza, sin pisar el número de orden ni los íconos de estado', () => {
     const tile = tileRect(at);
     expect(readyPoint(at).x).toBe(tile.x + tile.w / 2);
+    // Arriba del todo: el círculo toca el borde de la casilla, donde queda la cabeza del ninja.
+    expect(readyPoint(at).y - tile.y).toBeLessThanOrEqual(READY_MARK.r);
     const order = circle(orderPoint(at), ORDER_BADGE.r + ORDER_BADGE.stroke / 2);
     expect(hits(mark(false), order)).toBe(false);
     const fp = footPoint(at);

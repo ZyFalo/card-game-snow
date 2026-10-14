@@ -84,6 +84,8 @@ Se derivan de las existentes y viven junto a ellas en `ui/common.tsx` y `styles.
 - **Casilla (`.check`):** cuadro de 22 px con borde 2 px `--ink` y radio 6 px. Marcada, fondo `--ink` con la marca en `--paper-hi`.
 - **Enlaces:**
   - dentro de un texto, en `--ink`, subrayados con 2 px de grosor y 3 px de separación;
+  - en una pantalla de lectura llevan el peso del texto: los distingue el subrayado;
+  - los que llevan fuera del juego (D-108) se abren en otra pestaña, con `rel="noopener"` y sin parámetros de seguimiento, y a un lector de pantalla le dicen que se abren en otra pestaña;
   - las acciones secundarias son botones `.btn`, no enlaces.
 - **Mensaje (`.notice`):** panel `.paper` compacto, con una franja izquierda de color (`--danger`, `--gold` o `--snow`), un ícono y texto de 14 px.
 - **Botón de peligro (`.btn-danger`):** la misma construcción de `.btn`, con fondo `--danger`, texto `--paper-hi` y sombra 3px 3px 0 `--ink`. Siempre pide confirmación.
@@ -111,7 +113,11 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 - **Portada:** se mantiene la jerarquía original:
   - el nombre del juego, la línea superior y el lema;
   - una fila de botones (primario "Jugar sin cuenta" y secundarios);
-  - los ninjas a la derecha y un pie discreto: una frase que dice qué es el proyecto y, separados por puntos medios, los enlaces a los créditos y al aviso de privacidad (`.title-foot`).
+  - los ninjas a la derecha y un pie discreto: una frase que dice qué es el proyecto y de quién y, separados por puntos medios, los enlaces a los créditos y al aviso de privacidad (`.title-foot`);
+  - en la esquina de enfrente, el sello de quien hace Ventisca (`.title-seal`, D-108): a 28 px, centrado en la línea del pie y con su mismo margen, como contrapeso del texto.
+    - **Es su marca y va tal cual:** es la única pieza de la interfaz que no lleva el contorno ni la sombra del juego. Es un archivo del juego (`src/art/wpena.svg`) y va incrustado en él.
+    - **Al pasar el ratón o al llegar con el teclado** dice a dónde lleva, a su izquierda, en la línea del pie y con su misma letra. Con el ratón sube 2 px, salvo con animaciones reducidas.
+    - **En teléfono** queda en la misma esquina: la portada es el escenario a escala.
 
 ## 6. Textos
 

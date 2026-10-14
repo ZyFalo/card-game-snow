@@ -35,3 +35,5 @@ Dela Gothic One y Zen Kaku Gothic New, bajo la licencia SIL Open Font License.
 Para la pantalla de créditos, que se abre desde el pie de la portada:
 
 > Ventisca es un homenaje a Card-Jitsu Nieve, de la saga Card-Jitsu de Club Penguin. De ahí viene la idea; los personajes, el arte, la música, los sonidos y el código son propios. Club Penguin y Card-Jitsu son marcas de Disney, y Ventisca no está afiliado ni respaldado por Disney. Gracias al equipo de Club Penguin y a su comunidad.
+>
+> Hecho por William Peña. Conoce sus otros proyectos en [wpena.dev](https://wpena.dev)

@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.27 |
+| Versión | 0.10.28 |
 | Última actualización | 13 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -443,8 +443,8 @@ flowchart LR
   R -->|Menú| T
 ```
 
-- **Título:** su pie dice qué es el proyecto ("Piloto de un proyecto personal", D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
-- **Créditos:** una pantalla de lectura con el texto corto de `CREDITOS.md`, donde Ventisca reconoce su inspiración (D-76).
+- **Título:** su pie dice qué es el proyecto y de quién ("Piloto de un proyecto personal de William Peña", D-75) y lleva a los créditos y, con servidor, al aviso de privacidad. El nombre y el sello de la esquina de enfrente llevan a su portafolio (D-108, en `docs/PRD-v2.md`).
+- **Créditos:** una pantalla de lectura con el texto corto de `CREDITOS.md`, donde Ventisca reconoce su inspiración (D-76). Su última línea dice quién lo hace y lleva a su portafolio (D-108).
 - **Tu equipo:** resumen de las tres clases (barras de movimiento, alcance y daño; qué hacen su carta y su combo; cartas en el mazo), elección de ritmo y casilla de modo consejos. En v2 vuelve la elección de elemento por jugador.
 - **Carga:** un consejo propio al azar (§9.5).
 - **Resultados:** victoria o derrota, rondas, bonus, combos, caídas, curaciones, turnos y tiempo, logros obtenidos y botones de reintentar o volver al menú.
@@ -1012,6 +1012,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 |---|---|---|---|
 | D-83 a D-103 | El multijugador en línea (Beta): acceso, cola y salas, reloj, desconexión, abandono, reinicios, logros por persona, grillas y pantallas. Se registran en `docs/PRD-v2.md`; desde D-83, las decisiones nuevas viven allí y este documento solo las enlaza | ✅ | 2026-10-12 |
 | D-104 a D-107 | Los ajustes tras la primera prueba de la Beta: el amuleto de 4 pliegues, con 12 logros por ninja y con contadores; el avance siempre a la vista; "Mis cartas" por elemento, y el aviso de mazo agotado. Se registran en `docs/PRD-v2.md`. Las metas de los logros (D-107) se recalibran con los datos reales de la Beta | ✅ | 2026-10-13 |
+| D-108 | Vínculos discretos al portafolio de quien hace Ventisca: su nombre en el pie de la portada, su sello en la esquina de enfrente y la última línea de los créditos. Se registra en `docs/PRD-v2.md` | ✅ | 2026-10-13 |
 | D-01 | Mecánica fiel; nombre, personajes, arte, audio y textos originales; cero assets del original | ✅ | 2026-09-29 |
 | D-02 | Motor de reglas puro y determinista, separado del render | ✅ | 2026-09-29 |
 | D-03 | v2 con servidor autoritativo (un Durable Object por sala); cada persona controla uno o más ninjas; bots opcionales | Reemplazada por D-35 a D-37 (`docs/PRD-v2.md`) | 2026-09-29 |
@@ -1101,6 +1102,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.28 | 2026-10-13 | Los vínculos discretos al portafolio de quien hace Ventisca (D-108), que se registra en `docs/PRD-v2.md` (versión 1.18). Aquí cambian solo los enlaces: en el §9.1, el pie de la portada, que ahora dice de quién es el proyecto, y la última línea de los créditos |
 | 0.10.27 | 2026-10-13 | Los ajustes tras la primera prueba de la Beta (D-104 a D-107), que se registran en `docs/PRD-v2.md` (versión 1.17). Aquí cambian solo los enlaces: el §9.6 (los logros pasan a ser 12, con contadores, en cuatro pliegues), la nota de R-29 (el doble de monedas pide el amuleto completo) y, en el apéndice A, las metas de los logros |
 | 0.10.26 | 2026-10-12 | El multijugador en línea (Beta). Sus decisiones, D-83 a D-103, y sus reglas se registran en `docs/PRD-v2.md` (versiones 1.15 y 1.16), que desde ahora es la fuente de las decisiones nuevas. Aquí cambian solo los enlaces: el §8 (el bot al revivir, D-101), el §9.6 (el logro "Barrido perfecto", D-98), el §11.7, los hitos M8 y M9, que se entregan juntos, y las notas de D-31 y de R-29 |
 | 0.10.25 | 2026-10-12 | Ronda de claridad del tablero, séptimo paso (D-82): las demostraciones de los gólems. La franja que nombra al gólem bajo el ratón suma "Ver cómo ataca", que abre la burbuja de las demostraciones con su ataque en bucle, y pierde sus números: los muestra la demostración, y los pone el motor. Cambia el §9.5 |

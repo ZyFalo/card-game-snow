@@ -4,7 +4,7 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
 
 > **La Beta está publicada** desde el 13 de octubre de 2026 (PR #29): toda cuenta verificada puede jugar en línea. Cada despliegue reinicia el servidor y corta las partidas en curso, así que se fusiona cuando nadie esté jugando (D-95).
 >
-> **Los ajustes de la Beta reinician los logros** (D-104): al desplegarlos, la migración `0005_avance_de_logros` vacía la tabla de logros, porque los contadores nuevos no se pueden reconstruir. Las monedas no se tocan. Las metas de los logros salieron del simulador, cuyo bot casi no cae: se recalibran con los datos reales de la Beta (P-25).
+> **Los ajustes de la Beta reiniciaron los logros** (D-104): al desplegarlos, el 13 de octubre de 2026 (PR #30), la migración `0005_avance_de_logros` vació la tabla de logros, porque los contadores nuevos no se podían reconstruir. Las monedas no se tocaron. Las metas de los logros salieron del simulador, cuyo bot casi no cae: se recalibran con los datos reales de la Beta (P-25).
 
 ## Qué hay
 
@@ -41,8 +41,9 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
   - Lo que es puro del equipo (quién está listo, quién duerme y qué dice la franja) vive en `src/state/team.ts`, con sus pruebas.
   - **Mazo agotado** (D-106): cuando a un ninja no le quedan cartas en el mazo ni en la mano, el lugar de la mano dice que se acabaron, con un texto en línea y otro sin cuenta. En su panel, "Mazo 0" va en rojo y el medidor, apagado. Vale igual en el sandbox.
 - **Portada y créditos:**
-  - El pie de la portada dice "Piloto de un proyecto personal" (D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
+  - El pie de la portada dice "Piloto de un proyecto personal de William Peña" (D-75) y lleva a los créditos y, con servidor, al aviso de privacidad.
   - La pantalla de créditos (`CreditsScreen` en `ui/Screens.tsx`) muestra el texto corto de `CREDITOS.md` (D-76); una prueba los compara. Es el único lugar del juego que nombra al original.
+  - **Tres vínculos discretos llevan al portafolio de quien hace Ventisca,** https://wpena.dev (D-108): su nombre en el pie de la portada, su sello en la esquina de enfrente y la última línea de los créditos. Se abren en otra pestaña, con `rel="noopener"` y sin parámetros de seguimiento. El sello (`src/art/wpena.svg`) es su marca y va tal cual, incrustado en el juego (`?inline`): no se pide a ningún sitio, y por eso se ve también en el juego de un solo archivo. Los textos y la dirección están en `PORTFOLIO_TEXT` (`i18n/es.ts`).
   - El aviso de privacidad dice que hoy el juego es gratuito: no vende nada ni muestra publicidad. Si eso cambia algún día, el aviso cambia antes.
 - **Tablero (`apps/web/src/game/` y `apps/web/src/state/board.ts`):**
   - Cada unidad cabe en su casilla, con su barra de vida y sus estados dentro (`game/layout.ts`).
@@ -176,19 +177,12 @@ Estado al 13 de octubre de 2026: **v0.10, con la Beta del modo en línea.** El M
 
 ## Lo que sigue
 
-El M7, P-20, la ronda de claridad del tablero, la Beta del modo en línea y los ajustes de su primera prueba están hechos. Va en este orden:
+El M7, P-20, la ronda de claridad del tablero, la Beta del modo en línea y los ajustes de su primera prueba están hechos y publicados: los ajustes (PR #30) se desplegaron el 13 de octubre de 2026, y su migración, `0005_avance_de_logros`, ya corrió en producción. Va en este orden:
 
-1. **Publicar los ajustes de la Beta.**
-   1. Su PR (#30) está revisado y aprobado, con un cambio ya aplicado: qué cuenta "Nadie se queda atrás" (P-25).
-   2. Fusionarlo cuando nadie esté jugando (D-95), con merge commit y sin squash. No hay variables nuevas que cargar en Railway.
-   3. Esperar el despliegue y correr `pnpm check:prod`.
-   4. Mirar en los registros de Railway que el arranque diga "Migraciones al día": la migración `0005_avance_de_logros` reinicia los logros y cambia su tabla.
-   5. Quien tenga el juego abierto desde antes verá el aviso de que hay una versión nueva al entrar a "Jugar en línea": el protocolo pasó a la versión 2.
-   6. Si algo falla tras el despliegue, se corrige con un PR nuevo: esa migración no admite volver atrás con "Rollback" (ver "Despliegue").
-2. **Seguir la Beta con personas,** con `docs/guia-beta.md`. Quedan por decidir, con lo que se vea:
+1. **Seguir la Beta con personas,** con `docs/guia-beta.md`. Quedan por decidir, con lo que se vea:
    - si el reloj se queda en 10 s (D-90), si el abandono se siente justo (D-93, P-22) y si las marcas del tablero bastan para coordinarse sin chat (D-91);
    - el ritmo real del amuleto: tras unas semanas de Beta se mide y se ajustan las metas. Las de "De pie otra vez" y "Reanimador" quedaron en 1 porque el bot del simulador casi no cae (P-25).
-3. **Después de la Beta,** sin orden decidido:
+2. **Después de la Beta,** sin orden decidido:
    - el mecanismo para avisar los cambios del aviso de privacidad (D-96): hasta que exista, el aviso queda congelado;
    - Tormenta en línea (D-85), con su mínimo de 5 cartas por elemento (R-51) en las salas y en la cola;
    - el resto de las estadísticas de R-42 (D-86);

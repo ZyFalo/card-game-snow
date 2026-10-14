@@ -384,8 +384,8 @@ export const OVERLAY_TEXT = {
 
 export const SCREEN_TEXT = {
   kicker: 'Tácticas por turnos · de 1 a 3 jugadores',
-  /** Pie de la portada (D-75). */
-  pilot: 'Piloto de un proyecto personal',
+  /** Pie de la portada (D-75). Le sigue el nombre de quien hace Ventisca, que lleva a su portafolio (D-108). */
+  pilot: 'Piloto de un proyecto personal de',
   cardLabel: 'Carta:',
   comboLabel: 'Combo:',
   stats: { hp: 'Vida', attack: 'Daño', range: 'Alcance', move: 'Paso' },
@@ -399,8 +399,9 @@ export const SCREEN_TEXT = {
 
 /*
  * Créditos (D-76): Ventisca reconoce su inspiración. Los tres primeros párrafos son el "Texto corto para
- * el juego" de CREDITOS.md, tal como lo escribió el dueño de producto (una prueba los compara); el último
+ * el juego" de CREDITOS.md, tal como lo escribió el dueño de producto (una prueba los compara); el cuarto
  * es la frase que estaba en el pie de la portada. Es el único lugar del juego que nombra al original (D-01).
+ * Cierra la línea de quien hace Ventisca (D-108), que también está en CREDITOS.md.
  */
 export const CREDITS_TEXT = {
   title: 'Créditos',
@@ -410,6 +411,25 @@ export const CREDITS_TEXT = {
     'Gracias al equipo de Club Penguin y a su comunidad.',
     'Arte, sonido y música generados en código.',
   ],
+  /** La última línea. Termina con el vínculo al portafolio, que dice `PORTFOLIO_TEXT.site`. */
+  madeBy: 'Hecho por William Peña. Conoce sus otros proyectos en',
+} as const;
+
+/*
+ * El portafolio de quien hace Ventisca (D-108). Tres vínculos discretos llevan a él: su nombre en el pie de
+ * la portada, su sello en la esquina de enfrente y la última línea de los créditos. Se abren en otra pestaña.
+ */
+export const PORTFOLIO_TEXT = {
+  /** Tal cual, sin parámetros de seguimiento. */
+  url: 'https://wpena.dev',
+  author: 'William Peña',
+  site: 'wpena.dev',
+  /** Lo que muestra el sello al pasar el ratón o al llegar a él con el teclado. */
+  hint: 'wpena.dev ↗',
+  /** Lo que le dice el sello a un lector de pantalla. */
+  seal: 'Portafolio de William Peña en wpena.dev, se abre en otra pestaña',
+  /** Lo que le dice un vínculo de texto a un lector de pantalla: lo que se lee y que se abre en otra pestaña. */
+  newTab: (text: string) => `${text}, se abre en otra pestaña`,
 } as const;
 
 /* ---------- Ayuda ---------- */

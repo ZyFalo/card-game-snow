@@ -37,6 +37,7 @@ import {
   openOnline,
   pickSeat,
   resumeIfPlaying,
+  showRooms,
   startRoom,
 } from './online';
 import { initialState, store } from './store';
@@ -175,6 +176,107 @@ describe('Entrar a jugar en línea (D-83 y D-87)', () => {
     cyclePick(1);
     expect(online().element).toBe('fire');
     cyclePick(-1);
+    expect(online().element).toBe('snow');
+  });
+
+  it('D-87: si el progreso llega después de abrir la ficha, la ficha pasa al ninja del camino', async () => {
+    // Entró a "Jugar en línea" antes de que llegara su progreso: la ficha abre con el ninja de siempre.
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    enter();
+    expect(online().element).toBe('fire');
+    await settle();
+    expect(store.getState().progress.data?.camino).toBe('water');
+    expect(online().element).toBe('water');
+  });
+
+  it('D-87: si ya cambió de ninja con las flechas, el progreso que llega después respeta su elección', async () => {
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    enter();
+    cyclePick(-1);
+    expect(online().element).toBe('snow');
+    await settle();
+    expect(store.getState().progress.data?.camino).toBe('water');
+    expect(online().element).toBe('snow');
+  });
+
+  it('D-87: si ya pidió entrar a la cola, o ya está en la cola o en una sala, el progreso que llega después no cambia su ninja', async () => {
+    const late = () => store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    // Pidió entrar a la cola y el servidor todavía no responde.
+    late();
+    let socket = enter();
+    joinQueue();
+    expect(socket.payloads).toEqual([{ type: 'queue.join', element: 'fire' }]);
+    await settle();
+    expect(online()).toMatchObject({ busy: true, element: 'fire' });
+    closeOnline();
+    // Ya está en la cola.
+    late();
+    socket = enter();
+    joinQueue();
+    const seats = [
+      { element: 'fire' as const, name: 'Ana' },
+      { element: 'water' as const, name: null },
+      { element: 'snow' as const, name: null },
+    ];
+    socket.say({ type: 'queue.state', you: 'fire', seats, offer: null, waitedMs: 0 });
+    expect(online()).toMatchObject({ place: 'queue', busy: false });
+    await settle();
+    expect(online().element).toBe('fire');
+    closeOnline();
+    // Ya está en una sala.
+    late();
+    socket = enter();
+    createRoom();
+    const seat = (element: 'fire' | 'water' | 'snow', you: boolean) => ({
+      element,
+      name: you ? 'Ana' : null,
+      host: you,
+      you,
+      connected: you,
+    });
+    socket.say({
+      type: 'room.state',
+      code: 'KQ7RTX',
+      host: 'Ana',
+      seats: [seat('fire', true), seat('water', false), seat('snow', false)],
+      you: { seat: 'fire', host: true, wanted: null },
+      choosing: [],
+      start: 'alone',
+      bot: null,
+    });
+    expect(online()).toMatchObject({ place: 'room', busy: false });
+    await settle();
+    expect(online().element).toBe('fire');
+  });
+
+  it('D-87: si el progreso llega después sin carta de camino, la ficha se queda con el ninja que mostraba', async () => {
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    served = progress({ camino: null });
+    enter();
+    await settle();
+    expect(store.getState().progress.data?.camino).toBeNull();
+    expect(online().element).toBe('fire');
+  });
+
+  it('D-87: si ya pasó a las salas, el progreso que llega después no cambia el ninja que vio en la ficha', async () => {
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    enter();
+    showRooms();
+    await settle();
+    expect(online()).toMatchObject({ view: 'rooms', element: 'fire' });
+  });
+
+  it('D-87: al volver a abrir la ficha, el progreso que llega después vuelve a ofrecer el camino', async () => {
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    enter();
+    cyclePick(1);
+    await settle();
+    closeOnline();
+    // La vez siguiente no cambió con las flechas: el camino vuelve a ofrecerse cuando llega el progreso.
+    store.setState((s) => ({ progress: { ...s.progress, status: 'loading', data: null } }));
+    served = progress({ camino: 'snow' });
+    enter();
+    await settle();
     expect(online().element).toBe('snow');
   });
 

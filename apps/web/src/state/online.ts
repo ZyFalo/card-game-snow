@@ -40,6 +40,8 @@ let host: NetworkHost | null = null;
 let requeue: ElementKind | null = null;
 /** Salió de su partida sin conexión: si al volver el servidor la devuelve a ella, se le avisa que salió. */
 let leftOffline = false;
+/** Cambió de ninja con las flechas desde que abrió la ficha: el progreso que llegue después no lo cambia. */
+let pickedByHand = false;
 
 function send(payload: ClientPayload): boolean {
   return socket?.send(payload) ?? false;
@@ -189,9 +191,22 @@ export function openOnline(): void {
     return;
   }
   store.setState({ screen: 'online' });
+  pickedByHand = false;
   patch({ view: 'pick', element: progress.data?.camino ?? store.getState().online.element, error: null });
   connect();
-  void loadProgress();
+  void loadProgress().then(offerCamino);
+}
+
+/**
+ * El progreso llegó después de abrir la ficha: se ofrece el ninja del camino (D-87), salvo que la persona
+ * ya haya elegido otro con las flechas o ya esté en la cola o en una sala.
+ */
+function offerCamino(): void {
+  const { online, progress } = store.getState();
+  const camino = progress.data?.camino;
+  if (!camino || pickedByHand || online.view !== 'pick') return;
+  if (online.busy || online.place === 'queue' || online.place === 'room') return;
+  patch({ element: camino });
 }
 
 /** La ✕ de la ficha: vuelve a la portada y cierra la conexión. */
@@ -239,6 +254,7 @@ export function backToTitle(): void {
 /* ---------- La ficha: elegir ninja (D-87) ---------- */
 
 export function pickNinja(element: ElementKind): void {
+  pickedByHand = true;
   patch({ element });
 }
 

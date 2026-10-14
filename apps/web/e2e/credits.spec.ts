@@ -43,6 +43,85 @@ test('el pie de la portada lleva a los créditos y al aviso de privacidad', asyn
   await expect(page.getByRole('heading', { name: 'Aviso de privacidad de Ventisca' })).toBeVisible();
 });
 
+/** El contraste entre dos colores de CSS (`rgb(…)`), como lo mide la WCAG: de 1 a 21. */
+const contrast = (page: Page, a: string, b: string) =>
+  page.evaluate(
+    ({ a, b }) => {
+      const luminance = (color: string) => {
+        const [r, g, bl] = (color.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        const lin = (c: number) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * lin(r ?? 0) + 0.7152 * lin(g ?? 0) + 0.0722 * lin(bl ?? 0);
+      };
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    },
+    { a, b },
+  );
+
+test('el pie de la portada se lee: su tinta, la de los subtítulos, pasa de 4,5 a 1 sobre el papel', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const foot = page.locator('.title-foot');
+  await expect(foot).toBeVisible();
+  const colors = await page.evaluate(() => {
+    const probe = document.createElement('i');
+    document.body.append(probe);
+    const token = (name: string) => {
+      probe.style.color = `var(${name})`;
+      return getComputedStyle(probe).color;
+    };
+    const tokens = { paper: token('--paper'), ink2: token('--ink-2') };
+    probe.remove();
+    const foot = document.querySelector('.title-foot') as HTMLElement;
+    return {
+      ...tokens,
+      foot: getComputedStyle(foot).color,
+      links: [...foot.querySelectorAll('.link')].map((el) => getComputedStyle(el).color),
+      subtitle: getComputedStyle(document.querySelector('.title-tagline') as HTMLElement).color,
+    };
+  });
+  // La tinta tenue de la paleta: la del lema de la portada y la de los subtítulos.
+  expect(colors.foot).toBe(colors.ink2);
+  expect(colors.subtitle).toBe(colors.ink2);
+  // Los vínculos del pie llevan la misma tinta que su frase.
+  expect(colors.links.length).toBeGreaterThanOrEqual(3);
+  for (const link of colors.links) expect(link).toBe(colors.foot);
+  expect(await contrast(page, colors.foot, colors.paper)).toBeGreaterThanOrEqual(4.5);
+});
+
+test('lineamientos de diseño, sección 8: la prueba de desbordes marca lo que se corta o se sale de una caja que se ve, no lo que solo pasa el ancho de una caja invisible', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Ventisca' })).toBeVisible();
+  // La portada de verdad: el nombre del juego pasa el ancho de su bloque, pero se ve entero.
+  expect(await clippedElements(page)).toEqual([]);
+  await page.evaluate(() => {
+    const screen = document.querySelector('.screen') as HTMLElement;
+    const add = (tag: string, text: string, style: string) => {
+      const el = document.createElement(tag);
+      el.textContent = text;
+      el.setAttribute('style', `position:absolute;width:60px;white-space:nowrap;${style}`);
+      screen.append(el);
+    };
+    add('p', 'Texto cortado por su caja', 'left:0;top:0;margin:0;overflow:hidden');
+    add('button', 'Texto que se sale del botón', 'left:0;top:40px;border:2px solid black');
+    add('div', 'Texto que pasa una caja invisible', 'left:0;top:80px');
+    add('div', 'Texto cortado por el borde de la pantalla', 'right:0;top:120px');
+  });
+  const found = await clippedElements(page);
+  // La pantalla esconde lo que pasa su borde, así que también la marca, además del texto que corta.
+  const screen = found.filter((line) => line.startsWith('div.screen'));
+  expect(screen).toHaveLength(1);
+  expect(
+    found
+      .filter((line) => !screen.includes(line))
+      .map((line) => line.split(': ').at(-1))
+      .sort(),
+  ).toEqual(['Texto cortado por el borde de la pantalla', 'Texto cortado por su caja', 'Texto que se sale del botón']);
+});
+
 test('lineamientos de diseño, sección 8: la pantalla de créditos no corta texto ni lo achica', async ({ page }) => {
   await page.goto('/?speed=0.2');
   await page.getByRole('button', { name: 'Créditos' }).click();
@@ -210,8 +289,8 @@ test('D-108: el sello va en la esquina de enfrente, en la línea del pie, tal cu
   const origin = new URL(page.url()).origin;
   expect(requests.filter((url) => !url.startsWith(`${origin}/`) && !url.startsWith('data:'))).toEqual([]);
 
-  // Lineamientos de diseño, sección 8: el pie no corta texto, y la portada no lo achica.
-  expect(await clippedElements(page, ['.title-foot'])).toEqual([]);
+  // Lineamientos de diseño, sección 8: la portada entera, sin texto cortado ni achicado.
+  expect(await clippedElements(page)).toEqual([]);
   expect(await smallText(page)).toEqual([]);
 });
 
@@ -232,8 +311,8 @@ test('D-108: al pasar el ratón, el sello dice a dónde lleva y sube 2 px', asyn
   const raised = await sealLayout(page);
   expect(raised.seal).toEqual(before.seal);
   expect(raised.image?.left).toBe(before.image?.left);
-  // Con el texto a la vista, el pie sigue sin cortar nada.
-  expect(await clippedElements(page, ['.title-foot'])).toEqual([]);
+  // Con el texto a la vista, la portada sigue sin cortar nada.
+  expect(await clippedElements(page)).toEqual([]);
 
   // Al quitar el ratón, vuelve a su lugar y el texto se apaga.
   await page.mouse.move(640, 360);

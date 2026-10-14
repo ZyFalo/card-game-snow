@@ -28,8 +28,9 @@ import { BetaChip } from './Online';
 
 /**
  * Un vínculo al portafolio de quien hace Ventisca (D-108). Se abre en otra pestaña, que no recibe acceso a
- * esta (`noopener`), y va a la dirección tal cual, sin parámetros de seguimiento. `label` es lo que oye un
- * lector de pantalla, y `hint`, lo que el sello muestra al pasar el ratón.
+ * esta (`noopener`), y va a la dirección tal cual, sin parámetros de seguimiento. Sin `noreferrer`, a
+ * propósito: el portafolio cuenta las visitas que llegan desde el juego. `label` es lo que oye un lector de
+ * pantalla, y `hint`, lo que el sello muestra al pasar el ratón.
  */
 function PortfolioLink({
   className,

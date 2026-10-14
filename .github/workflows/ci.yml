@@ -68,8 +68,8 @@ jobs:
   # entre tres máquinas: `scripts/e2e-reparto.mjs` le da a cada una sus archivos, equilibrados por lo que
   # tardan. Más máquinas no acortan la CI: la más lenta ya tarda lo que su archivo más pesado, cuyas pruebas
   # van una tras otra. Solo corren en los pull requests (ver arriba).
+  # Sin nombre propio: en un PR se llaman "e2e (1)", "e2e (2)" y "e2e (3)", y en main, donde no corren, "e2e".
   e2e:
-    name: e2e (${{ matrix.maquina }}/${{ strategy.job-total }})
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:

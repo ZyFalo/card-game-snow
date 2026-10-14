@@ -116,13 +116,34 @@ export const savedSettings = (page: Page) =>
  * Lineamientos de diseño, sección 8: los elementos visibles de la pantalla cuyo contenido es más ancho
  * que su caja y que no se pueden desplazar, es decir, texto cortado o que se sale. También los que
  * recortan lo que no les cabe a lo alto, como una carta con un nombre de dos líneas. Devuelve una
- * descripción de cada uno; la prueba espera una lista vacía. `scope` limita la búsqueda a una parte de
- * la pantalla, como el pie de la portada.
+ * descripción de cada uno; la prueba espera una lista vacía.
+ *
+ * No cuenta lo que pasa el ancho de una caja que no se ve (sin borde, fondo ni sombra) y se ve entero,
+ * porque nada lo corta: como el nombre del juego en la portada, más ancho que el bloque que lo ordena.
  */
-export function clippedElements(page: Page, scope = ['.screen', '.modal']): Promise<string[]> {
-  return page.evaluate((scope) => {
+export function clippedElements(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
     const found: string[] = [];
-    for (const el of document.querySelectorAll(scope.flatMap((root) => [root, `${root} *`]).join(', '))) {
+    /** La caja se ve: lo que se sale de ella, se ve salirse. */
+    const drawsBox = (style: CSSStyleDeclaration) =>
+      ['Top', 'Right', 'Bottom', 'Left'].some(
+        (side) => Number.parseFloat(style.getPropertyValue(`border-${side.toLowerCase()}-width`)) > 0,
+      ) ||
+      style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+      style.backgroundImage !== 'none' ||
+      style.boxShadow !== 'none';
+    /** Un antepasado que esconde lo que se sale de él lo corta: el contenido pasa su borde derecho. */
+    const cutByAncestor = (el: HTMLElement, right: number) => {
+      for (let up = el.parentElement; up; up = up.parentElement) {
+        const { overflowX } = getComputedStyle(up);
+        if (overflowX === 'visible') continue;
+        // Si se desplaza, lo que no cabe se alcanza desplazándolo: no está cortado.
+        if (overflowX === 'auto' || overflowX === 'scroll') return false;
+        return right > up.getBoundingClientRect().right + 1;
+      }
+      return false;
+    };
+    for (const el of document.querySelectorAll('.screen, .screen *, .modal, .modal *')) {
       if (!(el instanceof HTMLElement)) continue;
       // Los campos de texto se desplazan solos al escribir; los iframes (Turnstile) traen su propia caja.
       if (el instanceof HTMLInputElement || el instanceof HTMLIFrameElement) continue;
@@ -130,16 +151,22 @@ export function clippedElements(page: Page, scope = ['.screen', '.modal']): Prom
       if (el.classList.contains('sr-only')) continue;
       const box = el.getBoundingClientRect();
       if (box.width === 0 || box.height === 0 || el.clientWidth === 0) continue;
-      const { overflowX, overflowY } = getComputedStyle(el);
+      const style = getComputedStyle(el);
+      const { overflowX, overflowY } = style;
       const wide = el.scrollWidth > el.clientWidth + 1 && overflowX !== 'auto' && overflowX !== 'scroll';
       const tall = el.scrollHeight > el.clientHeight + 1 && (overflowY === 'hidden' || overflowY === 'clip');
       if (!wide && !tall) continue;
+      if (wide && !tall && overflowX === 'visible' && !drawsBox(style)) {
+        // Hasta dónde llega el contenido, en la escala en que se dibuja (el escenario puede ir achicado).
+        const scale = el.offsetWidth > 0 ? box.width / el.offsetWidth : 1;
+        if (!cutByAncestor(el, box.left + (el.clientLeft + el.scrollWidth) * scale)) continue;
+      }
       const name = `${el.tagName.toLowerCase()}${el.className ? `.${String(el.className).trim().replace(/\s+/g, '.')}` : ''}`;
       const size = wide ? `${el.scrollWidth} > ${el.clientWidth}` : `alto ${el.scrollHeight} > ${el.clientHeight}`;
       found.push(`${name} (${size}): ${(el.textContent ?? '').trim().slice(0, 60)}`);
     }
     return found;
-  }, scope);
+  });
 }
 
 /**

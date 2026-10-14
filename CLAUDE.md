@@ -9,7 +9,7 @@ Construido en claude.ai hasta la v0.9; aquí continúa el desarrollo. Empieza po
 ## Documentos que mandan
 
 - `docs/PRD.md`: el mapa del proyecto (reglas R-01 a R-32, decisiones D-01 a D-33, D-63, D-74 y D-76 a D-82, hitos y preguntas abiertas). Si una tarea contradice el PRD, pregunta antes de implementar.
-- `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-55, las decisiones D-34 a D-62, D-64 a D-73, D-75 y D-83 a D-107, y los hitos M7 a M9. Desde D-83, las decisiones nuevas se registran allí. En todo lo del modo en línea manda sobre `docs/PRD.md`.
+- `docs/PRD-v2.md`: el modo en línea (v2): multijugador, cuentas, progreso en el servidor y despliegue en Railway, con las reglas R-33 a R-55, las decisiones D-34 a D-62, D-64 a D-73, D-75 y D-83 a D-108, y los hitos M7 a M9. Desde D-83, las decisiones nuevas se registran allí. En todo lo del modo en línea manda sobre `docs/PRD.md`.
 - `docs/traspaso.md`: estado del proyecto, puesta en marcha y próximos pasos.
 - `docs/adr/`, `docs/balance-report.md` y `docs/ai-log.md`: decisiones de arquitectura, balance medido y bitácora del trabajo con IA.
 

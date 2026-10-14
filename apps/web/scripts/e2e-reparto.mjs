@@ -38,7 +38,7 @@ export const DEFAULT_SECONDS = 60;
 /** La prueba del reinicio corta a todo el que esté conectado: no entra en el reparto y corre sola, al final. */
 export const RESTART = 'restart.spec.ts';
 
-/** Los procesos de Playwright en una máquina de la CI: la mitad de sus 4 núcleos. */
+/** Los procesos de Playwright en una máquina de la CI (`--workers=2` en `.github/workflows/ci.yml`). */
 const WORKERS = 2;
 
 const seconds = (file) => SECONDS[file] ?? DEFAULT_SECONDS;

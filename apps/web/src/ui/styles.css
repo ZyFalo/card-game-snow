@@ -674,15 +674,78 @@ button {
   white-space: nowrap;
 }
 
+/* El pie va de lado a lado: el texto a la izquierda y, en la esquina de enfrente, el sello. */
 .title-foot {
   position: absolute;
   left: 80px;
+  right: 80px;
   bottom: 28px;
   display: flex;
   align-items: baseline;
   gap: var(--gap-1);
   font: 500 var(--text-small) / 1.4 var(--font-ui);
   color: var(--ink-3);
+}
+
+/*
+ * El sello de quien hace Ventisca (D-108): es su marca y va tal cual, sin el contorno ni la sombra del juego.
+ * Queda centrado en la línea del pie, como contrapeso del texto de la izquierda.
+ */
+.title-seal {
+  --seal: 28px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: var(--seal);
+  height: var(--seal);
+  margin-top: calc(var(--seal) / -2);
+  /* Solo le da forma al foco, que sigue las esquinas del sello: un cuarto de su lado. */
+  border-radius: calc(var(--seal) / 4);
+}
+
+.title-seal:focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
+}
+
+/* Sube la imagen y no el vínculo: así el área del ratón no se mueve bajo el cursor. */
+.title-seal img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.15s ease-out;
+}
+
+.title-seal:hover img {
+  transform: translateY(-2px);
+}
+
+/*
+ * A dónde lleva el sello: sale a su izquierda, en la línea del pie y con su misma letra, al pasar el ratón
+ * o al llegar con el teclado. Su relleno derecho cubre la separación, para que el ratón pase del sello al
+ * texto sin que se apague.
+ */
+.title-seal::after {
+  content: attr(data-hint);
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  padding-right: var(--gap-2);
+  font: 500 var(--text-small) / 1.4 var(--font-ui);
+  color: var(--ink-2);
+  white-space: nowrap;
+  translate: 0 -50%;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease-out,
+    visibility 0.15s;
+}
+
+.title-seal:hover::after,
+.title-seal:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
 }
 
 .title-ninjas {
@@ -2123,6 +2186,16 @@ button {
   animation: none;
 }
 
+/* El sello no sube, y su texto sale sin transición. */
+.reduced .title-seal img,
+.reduced .title-seal::after {
+  transition: none;
+}
+
+.reduced .title-seal:hover img {
+  transform: none;
+}
+
 .reduced .banner {
   animation-name: fadeonly;
 }
@@ -2643,6 +2716,11 @@ button {
 
 .reading section:last-child p:last-child {
   margin-bottom: 0;
+}
+
+/* Un vínculo dentro de la lectura lleva el peso del texto: lo distingue el subrayado. */
+.reading .link {
+  font-weight: inherit;
 }
 
 .results-invite {

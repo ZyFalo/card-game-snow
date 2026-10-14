@@ -116,12 +116,13 @@ export const savedSettings = (page: Page) =>
  * Lineamientos de diseño, sección 8: los elementos visibles de la pantalla cuyo contenido es más ancho
  * que su caja y que no se pueden desplazar, es decir, texto cortado o que se sale. También los que
  * recortan lo que no les cabe a lo alto, como una carta con un nombre de dos líneas. Devuelve una
- * descripción de cada uno; la prueba espera una lista vacía.
+ * descripción de cada uno; la prueba espera una lista vacía. `scope` limita la búsqueda a una parte de
+ * la pantalla, como el pie de la portada.
  */
-export function clippedElements(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
+export function clippedElements(page: Page, scope = ['.screen', '.modal']): Promise<string[]> {
+  return page.evaluate((scope) => {
     const found: string[] = [];
-    for (const el of document.querySelectorAll('.screen, .screen *, .modal, .modal *')) {
+    for (const el of document.querySelectorAll(scope.flatMap((root) => [root, `${root} *`]).join(', '))) {
       if (!(el instanceof HTMLElement)) continue;
       // Los campos de texto se desplazan solos al escribir; los iframes (Turnstile) traen su propia caja.
       if (el instanceof HTMLInputElement || el instanceof HTMLIFrameElement) continue;
@@ -138,7 +139,7 @@ export function clippedElements(page: Page): Promise<string[]> {
       found.push(`${name} (${size}): ${(el.textContent ?? '').trim().slice(0, 60)}`);
     }
     return found;
-  });
+  }, scope);
 }
 
 /**

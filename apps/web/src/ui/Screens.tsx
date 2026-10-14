@@ -1,5 +1,7 @@
 import { BALANCE, type Difficulty, ELEMENTS } from '@ventisca/core';
+import type { ReactNode } from 'react';
 import { art } from '../art';
+import wpenaSeal from '../art/wpena.svg?inline';
 import { audio } from '../audio/audio';
 import {
   ACCOUNT_TEXT,
@@ -13,6 +15,7 @@ import {
   ONLINE_TEXT,
   PACES,
   type Pace,
+  PORTFOLIO_TEXT,
   SCREEN_TEXT,
   STAT_LABELS,
 } from '../i18n/es';
@@ -22,6 +25,36 @@ import { openOnline } from '../state/online';
 import { useApp } from '../state/store';
 import { Icon, NinjaTrio, ScreenActions, ScreenHead, Segmented, Toggle, useCountUp } from './common';
 import { BetaChip } from './Online';
+
+/**
+ * Un vínculo al portafolio de quien hace Ventisca (D-108). Se abre en otra pestaña, que no recibe acceso a
+ * esta (`noopener`), y va a la dirección tal cual, sin parámetros de seguimiento. `label` es lo que oye un
+ * lector de pantalla, y `hint`, lo que el sello muestra al pasar el ratón.
+ */
+function PortfolioLink({
+  className,
+  label,
+  hint,
+  children,
+}: {
+  className: string;
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      className={className}
+      href={PORTFOLIO_TEXT.url}
+      target="_blank"
+      rel="noopener"
+      aria-label={label}
+      data-hint={hint}
+    >
+      {children}
+    </a>
+  );
+}
 
 export function TitleScreen() {
   const account = useApp((s) => s.account);
@@ -80,7 +113,12 @@ export function TitleScreen() {
         ))}
       </div>
       <div className="title-foot">
-        <span>{SCREEN_TEXT.pilot}</span>
+        <span>
+          {SCREEN_TEXT.pilot}{' '}
+          <PortfolioLink className="link" label={PORTFOLIO_TEXT.newTab(PORTFOLIO_TEXT.author)}>
+            {PORTFOLIO_TEXT.author}
+          </PortfolioLink>
+        </span>
         <span aria-hidden="true">·</span>
         <button type="button" className="link" onClick={() => goto('credits')}>
           {CREDITS_TEXT.title}
@@ -94,6 +132,11 @@ export function TitleScreen() {
             </button>
           </>
         ) : null}
+        {/* El sello de quien hace Ventisca: su marca, tal cual. Va dentro del propio juego (`?inline`), así que
+            no se pide a ningún sitio y también se ve en el juego de un solo archivo. */}
+        <PortfolioLink className="title-seal" label={PORTFOLIO_TEXT.seal} hint={PORTFOLIO_TEXT.hint}>
+          <img src={wpenaSeal} alt="" />
+        </PortfolioLink>
       </div>
     </div>
   );
@@ -112,6 +155,12 @@ export function CreditsScreen() {
           {CREDITS_TEXT.body.map((p) => (
             <p key={p}>{p}</p>
           ))}
+          <p>
+            {CREDITS_TEXT.madeBy}{' '}
+            <PortfolioLink className="link" label={PORTFOLIO_TEXT.newTab(PORTFOLIO_TEXT.site)}>
+              {PORTFOLIO_TEXT.site}
+            </PortfolioLink>
+          </p>
         </section>
         <NinjaTrio />
       </div>

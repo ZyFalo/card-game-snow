@@ -44,7 +44,7 @@ docs               PRD, ADRs, lineamientos de diseño, reporte de balance, guía
 
 En Railway, con Postgres, en https://ventisca.wpena.dev: cada push a `main` se despliega cuando termina su CI. `pnpm check:prod` comprueba el despliegue. Detalle en `docs/traspaso.md`.
 
-El CI (`.github/workflows/ci.yml`) corre lint, tipos, pruebas, build y las e2e de humo en cada push.
+La CI (`.github/workflows/ci.yml`) corre en cada pull request el estilo, los tipos, las pruebas, el build, la imagen y las e2e, repartidas en tres máquinas. En `main`, tras fusionar, corre todo menos las e2e: GitHub exige que la rama esté al día para fusionar, así que el PR ya las corrió sobre el mismo código.
 
 ## Créditos e inspiración
 

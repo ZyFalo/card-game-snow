@@ -85,7 +85,7 @@ Se derivan de las existentes y viven junto a ellas en `ui/common.tsx` y `styles.
 - **Enlaces:**
   - dentro de un texto, en `--ink`, subrayados con 2 px de grosor y 3 px de separación;
   - en una pantalla de lectura llevan el peso del texto: los distingue el subrayado;
-  - los que llevan fuera del juego (D-108) se abren en otra pestaña, con `rel="noopener"` y sin parámetros de seguimiento, y a un lector de pantalla le dicen que se abren en otra pestaña;
+  - los que llevan fuera del juego (D-108) se abren en otra pestaña, con `rel="noopener"` y sin parámetros de seguimiento, y a un lector de pantalla le dicen que se abren en otra pestaña. Sin `noreferrer`: el portafolio cuenta las visitas que llegan desde el juego;
   - las acciones secundarias son botones `.btn`, no enlaces.
 - **Mensaje (`.notice`):** panel `.paper` compacto, con una franja izquierda de color (`--danger`, `--gold` o `--snow`), un ícono y texto de 14 px.
 - **Botón de peligro (`.btn-danger`):** la misma construcción de `.btn`, con fondo `--danger`, texto `--paper-hi` y sombra 3px 3px 0 `--ink`. Siempre pide confirmación.
@@ -113,7 +113,7 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
 - **Portada:** se mantiene la jerarquía original:
   - el nombre del juego, la línea superior y el lema;
   - una fila de botones (primario "Jugar sin cuenta" y secundarios);
-  - los ninjas a la derecha y un pie discreto: una frase que dice qué es el proyecto y de quién y, separados por puntos medios, los enlaces a los créditos y al aviso de privacidad (`.title-foot`);
+  - los ninjas a la derecha y un pie discreto: una frase que dice qué es el proyecto y de quién y, separados por puntos medios, los enlaces a los créditos y al aviso de privacidad (`.title-foot`). Va en la tinta de los subtítulos (`--ink-2`), que sobre el papel pasa de 4,5 a 1, lo que pide la letra pequeña;
   - en la esquina de enfrente, el sello de quien hace Ventisca (`.title-seal`, D-108): a 28 px, centrado en la línea del pie y con su mismo margen, como contrapeso del texto.
     - **Es su marca y va tal cual:** es la única pieza de la interfaz que no lleva el contorno ni la sombra del juego. Es un archivo del juego (`src/art/wpena.svg`) y va incrustado en él.
     - **Al pasar el ratón o al llegar con el teclado** dice a dónde lleva, a su izquierda, en la línea del pie y con su misma letra. Con el ratón sube 2 px, salvo con animaciones reducidas.
@@ -143,7 +143,7 @@ En el código, en `ui/common.tsx`: `Field` (con `hint`, `error` y `code` para lo
    - acciones abajo a la derecha;
    - texto de 13 px o más;
    - foco visible.
-3. **Prueba automática de desbordes:** en las e2e de cada pantalla nueva, recorre los elementos visibles y falla si alguno tiene `scrollWidth > clientWidth` sin permitir desplazamiento. Así se detecta el texto cortado.
+3. **Prueba automática de desbordes:** en las e2e de cada pantalla nueva, recorre los elementos visibles y falla si alguno tiene `scrollWidth > clientWidth` sin permitir desplazamiento. Así se detecta el texto cortado, y el que se sale de una caja que se ve (con borde, fondo o sombra). No cuenta lo que pasa el ancho de una caja invisible y se ve entero, porque nada lo corta: el nombre del juego en la portada es más ancho que el bloque que lo ordena.
 
 En el código, en `apps/web/e2e/helpers.ts`: `clippedElements` busca el texto cortado y `smallText`, el de menos de 13 px.
 

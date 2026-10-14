@@ -5,7 +5,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.10.29 |
+| Versión | 0.10.30 |
 | Última actualización | 13 de octubre de 2026 |
 | Estado | 🟢 v1 jugable de punta a punta: M0 a M5 completos, M6 en curso |
 | Dueño de producto | _(tu nombre)_ |
@@ -1103,6 +1103,7 @@ Son los hitos del PRD de v2 (`docs/PRD-v2.md`), donde viven sus listas completas
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 0.10.30 | 2026-10-13 | D-108 pasa a aprobada, con la referencia de origen que mantiene su vínculo; se registra en `docs/PRD-v2.md` (versión 1.20). Aquí no cambia nada más |
 | 0.10.29 | 2026-10-13 | La CI más rápida (D-109), que se registra en `docs/PRD-v2.md` (versión 1.19). Aquí cambia solo el enlace |
 | 0.10.28 | 2026-10-13 | Los vínculos discretos al portafolio de quien hace Ventisca (D-108), que se registra en `docs/PRD-v2.md` (versión 1.18). Aquí cambian solo los enlaces: en el §9.1, el pie de la portada, que ahora dice de quién es el proyecto, y la última línea de los créditos |
 | 0.10.27 | 2026-10-13 | Los ajustes tras la primera prueba de la Beta (D-104 a D-107), que se registran en `docs/PRD-v2.md` (versión 1.17). Aquí cambian solo los enlaces: el §9.6 (los logros pasan a ser 12, con contadores, en cuatro pliegues), la nota de R-29 (el doble de monedas pide el amuleto completo) y, en el apéndice A, las metas de los logros |

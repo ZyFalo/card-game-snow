@@ -1,14 +1,21 @@
 name: CI
 
-# En main corre en cada push (Railway espera este resultado antes de desplegar: "Wait for CI");
-# en las demás ramas, a través de su pull request, para no correr todo dos veces.
+# En un pull request corre todo: lo rápido (estilo, tipos, pruebas unitarias y build), la imagen y las e2e,
+# repartidas entre varias máquinas. En main, tras fusionar, corre solo lo rápido y la imagen.
+#
+# Las e2e no se repiten en main porque GitHub exige que la rama esté al día para fusionar (regla de main:
+# `ci` y `docker` requeridas, con la rama al día): el PR ya probó exactamente el código que llega a main.
+# Si esa regla se quita, las e2e tienen que volver a correr en main.
+#
+# Railway espera el resultado de main antes de desplegar ("Wait for CI").
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
-  ci:
+  rapidas:
+    name: estilo, tipos, unitarias y build
     runs-on: ubuntu-latest
     # Postgres para las pruebas del servidor: cada corrida crea y borra su propia base temporal.
     services:
@@ -39,24 +46,136 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      # Las e2e levantan el servidor de verdad (cuentas, PR 7), con su propia base en el Postgres del servicio.
-      # Van en dos corridas. La del reinicio del servidor corta a todo el que esté conectado, así que corre
-      # sola, al final. Y pedida junto con las demás traería de vuelta la prueba lenta: Playwright corre
-      # entero, sin los filtros de la línea de comandos, el proyecto del que otro depende.
-      - name: Prueba de humo e2e
+      # Un PR solo puede leer la caché que guardó main, y en main las e2e ya no corren: aquí se dejan
+      # guardados sus navegadores. Si ya están, no se descarga nada.
+      - name: Versión de Playwright
+        if: github.event_name == 'push'
+        id: playwright
+        run: echo "version=$(pnpm --filter @ventisca/web exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      - name: Navegadores de las e2e, en caché para los PRs
+        if: github.event_name == 'push'
+        id: navegadores
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+          lookup-only: true
+      - name: Descarga los navegadores que falten
+        if: github.event_name == 'push' && steps.navegadores.outputs.cache-hit != 'true'
+        run: pnpm --filter @ventisca/web exec playwright install chromium
+
+  # Las e2e levantan el servidor de verdad, con su propia base en el Postgres del servicio. Van repartidas
+  # entre varias máquinas: `scripts/e2e-reparto.mjs` le da a cada una sus archivos, equilibrados por lo que
+  # tardan. Solo corren en los pull requests (ver arriba).
+  e2e:
+    name: "e2e (${{ matrix.maquina }}/${{ matrix.maquinas }}${{ matrix.experimento && format(', {0} procesos, experimento', matrix.procesos) || '' }})"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimento == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { maquina: 1, maquinas: 3, procesos: 2 }
+          - { maquina: 2, maquinas: 3, procesos: 2 }
+          - { maquina: 3, maquinas: 3, procesos: 2 }
+          # Experimento, solo para medir las dos ideas anotadas en el traspaso: tres procesos en vez de dos,
+          # y dos máquinas. Se quita antes de fusionar.
+          - { maquina: 1, maquinas: 3, procesos: 3, experimento: true }
+          - { maquina: 2, maquinas: 3, procesos: 3, experimento: true }
+          - { maquina: 3, maquinas: 3, procesos: 3, experimento: true }
+          - { maquina: 1, maquinas: 2, procesos: 2, experimento: true }
+          - { maquina: 2, maquinas: 2, procesos: 2, experimento: true }
+          - { maquina: 1, maquinas: 2, procesos: 3, experimento: true }
+          - { maquina: 2, maquinas: 2, procesos: 3, experimento: true }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ventisca
+          POSTGRES_PASSWORD: ventisca
+          POSTGRES_DB: ventisca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ventisca -d ventisca"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL_TEST: postgres://ventisca:ventisca@localhost:5432/postgres
+      # Sin tarjeta gráfica: el tablero se dibuja por software.
+      PW_SWIFTSHADER: 1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Versión de Playwright
+        id: playwright
+        run: echo "version=$(pnpm --filter @ventisca/web exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      - name: Navegadores de prueba, en caché
+        id: navegadores
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # Las bibliotecas del sistema que pide Chromium no entran en la caché: se instalan siempre.
+      - name: Navegadores de prueba
         run: |
-          pnpm --filter @ventisca/web exec playwright install --with-deps chromium
-          PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --project juego --grep-invert @lento
-          PW_SWIFTSHADER=1 pnpm --filter @ventisca/web exec playwright test --project reinicio --no-deps
+          if [ "${{ steps.navegadores.outputs.cache-hit }}" = true ]; then
+            pnpm --filter @ventisca/web exec playwright install-deps chromium
+          else
+            pnpm --filter @ventisca/web exec playwright install --with-deps chromium
+          fi
+      - name: E2E del juego, la parte de esta máquina
+        working-directory: apps/web
+        run: |
+          archivos=$(node scripts/e2e-reparto.mjs ${{ matrix.maquina }} ${{ matrix.maquinas }})
+          echo "Esta máquina corre: $archivos"
+          pnpm exec playwright test $archivos --project=juego --grep-invert @lento --workers=${{ matrix.procesos }}
+      # La del reinicio del servidor corta a todo el que esté conectado, así que corre sola, al final, en la
+      # máquina que termina antes. Y pedida junto con las demás traería de vuelta la prueba lenta: Playwright
+      # corre entero, sin los filtros de la línea de comandos, el proyecto del que otro depende.
+      - name: E2E del reinicio del servidor
+        working-directory: apps/web
+        run: |
+          if node scripts/e2e-reparto.mjs ${{ matrix.maquina }} ${{ matrix.maquinas }} --reinicio; then
+            pnpm exec playwright test --project reinicio --no-deps
+          else
+            echo "La prueba del reinicio corre en otra máquina."
+          fi
       # Si una e2e falla, Playwright deja su traza y una captura: se suben para verlas después.
       - name: Evidencia de las e2e que fallaron
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: evidencia-e2e
+          name: evidencia-e2e-${{ matrix.maquina }}-de-${{ matrix.maquinas }}-con-${{ matrix.procesos }}-procesos
           path: apps/web/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # La verificación que GitHub exige para fusionar y la que Railway espera para desplegar. Conserva su
+  # nombre de siempre, `ci`, y pasa cuando pasó todo lo que le tocaba a este evento: en un pull request,
+  # lo rápido y las e2e de todas las máquinas; en main, lo rápido.
+  ci:
+    if: always()
+    needs: [rapidas, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pasó todo lo que tocaba
+        env:
+          RAPIDAS: ${{ needs.rapidas.result }}
+          E2E: ${{ needs.e2e.result }}
+          E2E_ESPERADO: ${{ github.event_name == 'pull_request' && 'success' || 'skipped' }}
+        run: |
+          echo "estilo, tipos, unitarias y build: $RAPIDAS"
+          echo "e2e: $E2E (se espera $E2E_ESPERADO)"
+          test "$RAPIDAS" = success
+          test "$E2E" = "$E2E_ESPERADO"
 
   # La misma imagen que se despliega en Railway: se construye, arranca, migra y sirve el juego.
   docker:
